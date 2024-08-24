@@ -39,13 +39,3 @@ class AddressPointer(ABC):
     @abstractmethod
     def from_table(cls, address: int, index: int) -> Self:
         pass
-
-
-class ReferencePointer(AddressPointer):
-    # TODO: Completely replace this with AddressPointer.
-    reference_pointer: int
-
-    def __init__(self, address: int, offset: int) -> None:
-        self.address = address
-        self.index = offset
-        self.pointer = find_table_pointer(address, offset)

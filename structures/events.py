@@ -1,7 +1,6 @@
-from helpers.addresses import address_from_lorom
 from helpers.files import read_file
 from typing import Self
-from abc_.pointers import AddressPointer, ReferencePointer
+from abc_.pointers import AddressPointer
 from helpers.bits import read_little_int
 from tables import MapEventObject
 
@@ -11,14 +10,15 @@ from tables import MapEventObject
 #     address = 0x4A14
 #     count = 205
 
-# TODO: verify
-events_start = 0x7e077e
-events_start_rom = address_from_lorom(events_start)
 
+class Event(AddressPointer):
+    def __init__(self, op_code: bytes, args: bytes) -> None:
+        self.op_code = op_code
+        self.args = args
 
-class Event(ReferencePointer):
-    def __init__(self, reference_pointer: int, address: int, index: int) -> None:
-        return super().__init__(address, index)
+    def __repr__(self) -> str:
+        return f" {self.op_code} > {self.args}"
+
 
 
 MAP_EVENT_SIZE = sum(
