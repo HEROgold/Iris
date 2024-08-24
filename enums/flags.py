@@ -160,7 +160,7 @@ class EquipTypes(SingleByteEnum):
     HELMET = auto()
     RING = auto()
     JEWEL = auto()
-    U66 = auto()
+    U66 = auto() # Arrow, Bomb, Fire arrow, Hook and hammer
     U67 = auto()
 
 
