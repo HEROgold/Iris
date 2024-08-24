@@ -15,8 +15,13 @@ from tables.zones import ZoneObject
 from helpers.files import read_file, write_file
 
 
+# TODO: Map items to chests, chest to zones.
+# Be able to determine which items are from what zone.
+
+
 class Zone:
     connections: list[Self]
+    _chest_indices: list[int] # TODO
     _cache = Cache[int, Self]()
 
 
