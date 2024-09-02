@@ -9,7 +9,7 @@ from logger import iris
 
 type LocationArgs = Sequence[int] | int
 
-class PointerList(ABC):
+class Pointer(ABC):
     pointer: int
 
     def __init__(self, pointer: int) -> None:
@@ -23,7 +23,7 @@ class PointerList(ABC):
         pass
 
 
-class AddressPointer(ABC):
+class TablePointer(ABC):
     address: int
     index: int
     pointer: int
