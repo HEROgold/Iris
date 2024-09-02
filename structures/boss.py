@@ -1,8 +1,8 @@
 from typing import Self
-from abc_.pointers import PointerList
+from abc_.pointers import Pointer
 from helpers.files import write_file
 
-class Boss(PointerList):
+class Boss(Pointer):
     def __init__(
         self,
         name: str,

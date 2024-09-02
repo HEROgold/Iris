@@ -2,7 +2,7 @@
 
 from helpers.files import read_file
 from typing import Self
-from abc_.pointers import AddressPointer
+from abc_.pointers import TablePointer
 from tables import OverPaletteObject, CapPaletteObject, OverSpriteObject, SpriteMetaObject, TownSpriteObject
 
 
@@ -26,7 +26,7 @@ CAP_PALETTE_SIZE = sum([
 ])
 
 
-class CapsulePallette(AddressPointer):
+class CapsulePallette(TablePointer):
     def __init__(self, data: bytes) -> None:
         self.palette = data
 

@@ -1,10 +1,10 @@
 from helpers.files import read_file
 from typing import Self
-from abc_.pointers import AddressPointer
+from abc_.pointers import TablePointer
 from helpers.bits import read_little_int
 from tables import RoamingNPCObject
 
-class RoamingNPC(AddressPointer):
+class RoamingNPC(TablePointer):
     def __init__(
         self,
         npc_event_map_index: int,

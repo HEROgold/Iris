@@ -5,13 +5,13 @@ from typing import Self
 from enums.flags import CastableSpells
 from helpers.bits import read_little_int
 from tables import SpellObject
-from abc_.pointers import PointerList
+from abc_.pointers import Pointer
 
 
 SPELLS_ADDRESS = 0x000AFAAB
 
 
-class Spell(PointerList):
+class Spell(Pointer):
     _int_cache = Cache[int, Self]()
     _name_cache = Cache[str, Self]()
 

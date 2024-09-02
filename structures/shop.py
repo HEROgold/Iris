@@ -1,7 +1,7 @@
 from enum import Enum
-from helpers.files import read_file, write_file
+from helpers.files import read_file, restore_pointer, write_file
 from typing import Any, Generator, Self
-from abc_.pointers import AddressPointer, PointerList
+from abc_.pointers import TablePointer, Pointer
 from enums.flags import ShopIdentifier, ShopTypes
 from helpers.bits import find_table_pointer, read_little_int
 from structures.item import Item
@@ -82,17 +82,15 @@ class ShopSection:
 
         yield from self._gen_items(next_section)
 
-
+    @restore_pointer
     def fix_spell_section(self, start: int):
         """A fix for spell shop sections."""
-        restore = read_file.tell()
         j = 0
         read_file.seek(start)
         while read_file.read(1) != Sections.SPELL_END.value:
             j += 1
             pass
         end = start + j
-        read_file.seek(restore)
         return end
 
 
@@ -141,7 +139,7 @@ class ShopSection:
                 write_file.write(item.index.to_bytes())
 
 
-class Shop(AddressPointer):
+class Shop(TablePointer):
     _cache = Cache[int, Self]()
     identifier: ShopIdentifier
     shop_sections: list[ShopSection]
@@ -199,8 +197,8 @@ class Shop(AddressPointer):
         cls._cache.to_cache(index, inst)
         return inst
 
+    @restore_pointer
     def _find_alternative_end(self, start: int, stop: int):
-        restore = read_file.tell()
         read_file.seek(stop - 2) # -2 > Length of alternative end.
         read = read_file.read(2)
 
@@ -212,24 +210,20 @@ class Shop(AddressPointer):
         if section is Sections.ALTERNATIVE_END:
             start = read_file.tell() - 2 # -2 > Length of alternative end.
             iris.warning(f"Alternative end found at {start}.")
-            read_file.seek(restore)
             # Init the section, and patch it to behave as required.
             shop_section = ShopSection(Sections.ALTERNATIVE_END, 0, shop=self)
             shop_section.pointer = start
             shop_section.start_data = start
             shop_section.end_data = start + 2
             return shop_section
-        read_file.seek(restore)
 
+    @restore_pointer
     def _find_shop_sections(self, shop_start: int, stop: int) -> Generator[ShopSection, Any, None]:
-        restore = read_file.tell()
         offset = 0
         read_file.seek(shop_start)
         while True:
             tell = read_file.tell()
             if tell >= stop:
-                # return to where file was before.
-                read_file.seek(restore)
                 break
             read_file.seek(shop_start + offset)
             read = read_file.read(3)
@@ -304,7 +298,7 @@ class Shop(AddressPointer):
 
 
 # TODO: Implement ShopKureji. To match Shop.
-class ShopKureji(PointerList):
+class ShopKureji(Pointer):
     """
     Jp and Kureji versions of the shop object.
     """

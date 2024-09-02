@@ -1,6 +1,6 @@
 from bitstring import BitArray
 from helpers.addresses import address_from_lorom, address_to_lorom
-from helpers.files import read_file, write_file
+from helpers.files import read_file, restore_pointer, write_file
 
 END = b"\x00"
 COMPRESS = b"\x0A"
@@ -22,20 +22,23 @@ def read_as_decompressed_name(pointer: int):
     name = read = read_file.read(1)
     while read != END:
         if read == COMPRESS:
-            restore = read_file.tell() + 2
-                # 12 lower bits = address,
-                # 4 higher bits = bytes to copy -2
-                # stored in byte1 and byte2
-            byte1 = BitArray(read_file.read(1))
-            byte2 = BitArray(read_file.read(1))
-            length = byte2[:4].uint + 2 # Get first digit, add 2
-            copy_address = address_from_lorom((byte2[4:] + byte1).uint + COMPRESSED_NAME_OFFSET)
-            read_file.seek(copy_address)
-            name += read_file.read(length) # + b"\x0A" # we add a mark, so we can split later.??
-            read_file.seek(restore)
+            read_file.seek(read_file.tell() + 2)
+            decompress_name(name)
         read = read_file.read(1)
         name += read
     return name
+
+@restore_pointer
+def decompress_name(name: bytes):
+    # 12 lower bits = address,
+    # 4 higher bits = bytes to copy -2
+    # stored in byte1 and byte2
+    byte1 = BitArray(read_file.read(1))
+    byte2 = BitArray(read_file.read(1))
+    length = byte2[:4].uint + 2 # Get first digit, add 2
+    copy_address = address_from_lorom((byte2[4:] + byte1).uint + COMPRESSED_NAME_OFFSET)
+    read_file.seek(copy_address)
+    name += read_file.read(length) # + b"\x0A" # we add a mark, so we can split later.??
 
 
 def write_compressed_better(end_pointer: int, name: bytes):

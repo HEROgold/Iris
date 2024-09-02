@@ -4,7 +4,7 @@ from helpers.files import read_file, write_file
 from typing import Self
 
 from abc_.flags import Flagged, Scalable
-from abc_.pointers import AddressPointer
+from abc_.pointers import TablePointer
 from abc_.stats import ScalableRpgStats
 from enums.flags import Flags
 
@@ -72,7 +72,7 @@ MONSTER_SIZE: int = sum([
 #         return self.offset.to_bytes(2, "little")
 
 
-class Monster(Scalable, Flagged, AddressPointer):
+class Monster(Scalable, Flagged, TablePointer):
     name: str
     index: int
     sprite_index: int

@@ -6,6 +6,7 @@ file.close()
 ```
 """
 
+from collections.abc import Callable
 import shutil
 from pathlib import Path
 from types import TracebackType
@@ -50,3 +51,13 @@ class BackupFile:
         new = self.temp.with_stem(f"{self.temp.stem}").with_suffix(self.original.suffix)
         shutil.copy(self.temp, new)
         self.temp.unlink()
+
+
+def restore_pointer[F, **P](func: Callable[P, F]) -> Callable[P, F]:
+    """Restore the read_file pointer after the function is called."""
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> F:
+        restore = read_file.tell()
+        result = func(*args, **kwargs)
+        read_file.seek(restore)
+        return result
+    return wrapper

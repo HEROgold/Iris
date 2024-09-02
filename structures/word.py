@@ -1,19 +1,23 @@
-from helpers.files import read_file, write_file
+from helpers.files import read_file, restore_pointer, write_file
 from typing import Self
 from helpers.bits import find_table_pointer
-from abc_.pointers import AddressPointer
+from abc_.pointers import TablePointer
 from tables import WordObject
 
 
-class Word(AddressPointer):
+class Word(TablePointer):
     def __init__(self, word: str) -> None:
         self.word = word
+
+    def __repr__(self) -> str:
+        return f"Word: {self.word}"
 
     @classmethod
     def from_index(cls, index: int) -> Self:
         return cls.from_table(WordObject.address , index)
 
     @classmethod
+    @restore_pointer
     def from_table(cls, address: int, index: int) -> Self:
         pointer = find_table_pointer(address, index)
         read_file.seek(pointer)

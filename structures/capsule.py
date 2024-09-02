@@ -1,13 +1,13 @@
 from helpers.files import read_file, write_file
 from typing import Self
-from abc_.pointers import AddressPointer
+from abc_.pointers import TablePointer
 from abc_.stats import RpgStats
 from enums.flags import Alignment
 from helpers.bits import find_table_pointer, read_little_int
 from tables import CapsuleLevelObject, CapsuleObject, CapAttackObject
 from .sprites import CapsulePallette
 
-class CapsuleLevel(AddressPointer):
+class CapsuleLevel(TablePointer):
     def __init__(self, level: int) -> None:
         self.level = level
 
@@ -22,7 +22,7 @@ class CapsuleLevel(AddressPointer):
         write_file.seek(self.pointer)
         write_file.write(bytes(self.level))
 
-class CapsuleAttack(AddressPointer):
+class CapsuleAttack(TablePointer):
     unknown: bytes
 
     def __init__(self, animation: int) -> None:
@@ -49,7 +49,7 @@ class CapsuleAttack(AddressPointer):
         write_file.write(bytes(self.animation.to_bytes(CapAttackObject.animation, "little")))
 
 
-class CapsuleMonster(AddressPointer):
+class CapsuleMonster(TablePointer):
     # Banned: Fixed
     animation_fixes = {
         0x84: 0x8A,

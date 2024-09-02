@@ -1,6 +1,6 @@
 import logging
 from typing import TYPE_CHECKING, TypedDict
-from helpers.files import read_file, write_file
+from helpers.files import read_file, restore_pointer, write_file
 from logger import iris
 
 if TYPE_CHECKING:
@@ -647,6 +647,8 @@ class SubRoutine:
     # TODO: implement reading and writing of subroutines.
 
 
+# TODO: implement parent child relationship for scripts.
+# Where jump to or GOTO locations are children. (Same as structures\events.py)
 class BattleScript:
     pointer: int
     _script: list[tuple[int, bytes, bytes | None]]
@@ -678,8 +680,8 @@ class BattleScript:
             if args:
                 write_file.write(args)
 
+    @restore_pointer
     def read(self, offset: int=0):
-        restore = read_file.tell()
         restore_stack: list[int] = [self.pointer]
         read_file.seek(self.pointer + offset)
 
@@ -837,5 +839,4 @@ class BattleScript:
         for i in self._pretty_script:
             s += f"    {i[0]}: {i[1]}\n"
         self.logger.debug(s)
-        read_file.seek(restore)
 

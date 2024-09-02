@@ -11,12 +11,12 @@
 from helpers.files import read_file, write_file
 from typing import Self
 
-from abc_.pointers import AddressPointer
+from abc_.pointers import TablePointer
 from structures.monster import Monster
 from tables import FormationObject
 
 
-class BattleFormation(AddressPointer):
+class BattleFormation(TablePointer):
     max_monsters = 8
 
     def __init__(self, monsters: list[Monster]) -> None:
@@ -65,10 +65,10 @@ class BattleFormation(AddressPointer):
             write_file.write(monster.index.to_bytes())
 
 
-class BossFormation(AddressPointer):
+class BossFormation(TablePointer):
     pass
 
-class MapFormation(AddressPointer):
+class MapFormation(TablePointer):
     pass
 
 

@@ -1,11 +1,11 @@
 from enums.flags import Targeting, TargetingCursor
 from helpers.files import read_file, write_file
 from typing import Self
-from abc_.pointers import PointerList
+from abc_.pointers import Pointer
 from helpers.bits import read_little_int
 from tables import IPAttackObject
 
-class IPAttack(PointerList):
+class IPAttack(Pointer):
     def __init__(
         self,
         effect: int, # L2BASM subroutine number. (2 bytes)

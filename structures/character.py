@@ -1,13 +1,13 @@
 from helpers.files import read_file, write_file
 from typing import Self
-from abc_.pointers import AddressPointer, PointerList
+from abc_.pointers import TablePointer, Pointer
 from abc_.stats import RpgStats
 from helpers.bits import read_little_int
 from tables import CharLevelObject, CharacterObject, CharExpObject, InitialEquipObject, CharGrowthObject, ItemObject
 from .item import Item
 
 
-class CharacterLevel(PointerList):
+class CharacterLevel(Pointer):
     def __init__(self, level: int) -> None:
         self.level = level
 
@@ -26,7 +26,7 @@ class CharacterLevel(PointerList):
         write_file.seek(self.pointer)
         write_file.write(self.level.to_bytes(CharLevelObject.level, "little"))
 
-class CharacterExperience(PointerList):
+class CharacterExperience(Pointer):
     def __init__(self, xp: int) -> None:
         self.xp = xp
 
@@ -45,7 +45,7 @@ class CharacterExperience(PointerList):
         write_file.seek(self.pointer)
         write_file.write(self.xp.to_bytes(CharExpObject.xp, "little"))
 
-class InitialEquipment(PointerList):
+class InitialEquipment(Pointer):
     def __init__(self, weapon: int, armor: int, shield: int, helmet: int, ring: int, jewelry: int) -> None:
         self.weapon = Item.from_index(weapon)
         self.armor = Item.from_index(armor)
@@ -79,7 +79,7 @@ class InitialEquipment(PointerList):
         write_file.write(self.ring.index.to_bytes(InitialEquipObject.ring, "little"))
         write_file.write(self.jewelry.index.to_bytes(InitialEquipObject.jewel, "little"))
 
-class CharacterGrowth(PointerList):
+class CharacterGrowth(Pointer):
     def __init__(
         self,
         health_points: int,
@@ -128,7 +128,7 @@ CHARACTER_SIZE = sum([
     CharacterObject.mgr,
 ])
 
-class PlayableCharacter(AddressPointer):
+class PlayableCharacter(TablePointer):
     def __init__(self, name: str) -> None:
         self.name = name
         self.stats = RpgStats()

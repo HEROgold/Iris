@@ -8,7 +8,7 @@ from abc_.flags import Equipable
 from structures.word import Word
 from tables import ItemObject
 from enums.flags import EquipTypes, EquipableCharacter, ItemFlags2, Usability
-from abc_.pointers import AddressPointer
+from abc_.pointers import TablePointer
 from helpers.bits import find_table_pointer, read_little_int
 from tables import ItemNameObject
 from logger import iris
@@ -29,7 +29,7 @@ ITEM_SIZE = sum(
     ]
 )
 
-class Item(AddressPointer, Equipable, Usable):
+class Item(TablePointer, Equipable, Usable):
     price: int
     equip_types: EquipTypes
     usability: Usability
@@ -113,7 +113,7 @@ class Item(AddressPointer, Equipable, Usable):
             iris.warning(f"Item name not found for {index=}")
 
         inst = cls(name, index, sprite)
-        AddressPointer.__init__(inst, address, index)
+        TablePointer.__init__(inst, address, index)
         Equipable.__init__(inst, item_type)
         Usable.__init__(inst, usability)
         inst.pointer = pointer

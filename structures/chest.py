@@ -1,6 +1,6 @@
 from typing import Self
 
-from abc_.pointers import AddressPointer, PointerList
+from abc_.pointers import TablePointer, Pointer
 from helpers.bits import read_little_int, read_nth_bit
 from helpers.files import read_file, write_file
 
@@ -13,7 +13,7 @@ from tables import (
 from .item import Item
 
 
-class AddressChest(AddressPointer):
+class AddressChest(TablePointer):
     def __init__(self, item: Item) -> None:
         self.item = item
 
@@ -37,7 +37,7 @@ class AddressChest(AddressPointer):
         write_file.seek(self.pointer)
         write_file.write(self.item.index.to_bytes(2, "little"))
 
-class PointerChest(PointerList):
+class PointerChest(Pointer):
     misc1: bytes
     misc2: bytes
 
