@@ -11,6 +11,7 @@ from typing import Self
 
 from _types.objects import Cache
 from helpers.name import read_as_decompressed_name, write_as_compressed_name, write_compressed_better
+from structures.events import EventList
 from tables.zones import ZoneObject
 from helpers.files import read_file, write_file
 
@@ -31,6 +32,11 @@ class Zone:
         self.start = start
         self.end = end
         self.connections = [] # type: ignore[reportAttributeAccessIssue]
+
+        # TODO: Verify this is correct.
+        _test_pointer = 241500 # TODO: find out how we (dynamically) find these npc/event pointers.
+        self._event_list = EventList(_test_pointer, 0)
+
 
     def __repr__(self) -> str:
         return f"<Zone: {self.index}, {self.name}>"
