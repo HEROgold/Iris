@@ -17,6 +17,7 @@ from structures import Item, Monster, Spell
 from structures.character import InitialEquipment, PlayableCharacter
 from structures.chest import AddressChest, PointerChest
 from structures.ip_attack import IPAttack
+from structures.item import ItemName
 
 from tables import (
     AncientChest1Object,
@@ -98,7 +99,7 @@ def randomize_all_items():
     iris.info("Randomizing items.")
     items = get_items()
     for item in deepcopy(items):
-        item.name = random.choice(items).name
+        item.name_pointer = random.choice(items).name_pointer
         item.price = random.randint(0, 0xFFFF)
         item.equip_types
         item.usability = Usability(random.randint(0, Usability.ALL))
@@ -163,7 +164,7 @@ def shuffle_items():
     random.shuffle(shuffled)
 
     for item in shuffled:
-        item.name = shuffled.pop(0).name
+        item.name_pointer = shuffled.pop(0).name_pointer
         item.equip_types = shuffled.pop(0).equip_types
         item.usability = shuffled.pop(0).usability
         item.targeting = shuffled.pop(0).targeting
@@ -200,13 +201,13 @@ def arty_to_artea():
     """Change Arty to Artea, and Arty's bow to Artea's Bow."""
     iris.info("Changing Arty to Artea.")
     artea = PlayableCharacter.from_index(3)
-    item = Item.from_index(163)
+    item_name = ItemName.from_index(163)
 
     artea.name = "Artea"
-    item.name = "Artea's Bow"
+    item_name.name = "Artea's Bow"
 
     artea.write()
-    item.write()
+    item_name.write()
 
 
 def ax_to_axe():
@@ -214,10 +215,10 @@ def ax_to_axe():
     iris.info("Renaming 'ax' to 'axe'.")
     for index in range(ItemObject.count):
         item = Item.from_index(index)
-        if "ax" in item.name:
+        if "ax" in item.name_pointer.name:
             # Include the spaces to avoid overwriting big names
-            item.name = item.name.replace(" ax ", " axe")
-            iris.info(f"Renamed to: {item.name}.")
+            item.name_pointer.name = item.name_pointer.name.replace(" ax ", " axe")
+            iris.info(f"Renamed to: {item.name_pointer}.")
             item.write()
     
     ax_attack = IPAttack.from_pointer(IPAttackObject.pointers[164])
@@ -252,9 +253,8 @@ def gorem_to_golem():
             monster.name = monster.name.replace("Gorem", "Golem")
             monster.write()
 
-def set_rom_name():
+def set_rom_name(name: bytes):
     write_file.seek(0x007FC0)
     empty_name = bytes(21)
-    to_fill = b"Lufia II (Iris patch)"
-    assert len(to_fill) <= len(empty_name)
-    write_file.write(b"L2Iris")
+    assert len(name) <= len(empty_name)
+    write_file.write(name)
