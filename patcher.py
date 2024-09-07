@@ -234,7 +234,7 @@ def treadool_warp():
 
 def start_engine():
     item = Item.from_index(449)
-    assert item.name.startswith("Engine"), f"Expected Engine, got {item.name}"
+    assert item.name_pointer.name.startswith("Engine"), f"Expected Engine, got {item.name_pointer}"
     # TODO: add that to starting inventory.
 
 def set_spawn_location(location: Zone, entrance_cutscene: int = 0x2):
