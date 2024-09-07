@@ -1,74 +1,24 @@
-import logging
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from args import args
 from enums.flags import Flags
-from enums.patches import Patch
-from helpers.bits import read_little_int
 from patcher import (
     apply_game_genie_codes,
     apply_patch,
-    max_world_clock,
-    open_world_base,
     apply_patch_name,
     set_spawn_location,
-    skip_tutorial,
     start_engine,
     test_translate_genie_code_chars,
-    treadool_warp,
 )
-from patches.custom import arty_to_artea, ax_to_axe, gorem_to_golem, randomize_all_items, randomize_all_monsters, randomize_all_spells, randomize_chest_items, randomize_starting_equipment, set_rom_name, shuffle_chest_items, shuffle_items, shuffle_monsters, swap_pierre_danielle_sprites
-from structures import (
-    AddressChest,
-    BattleFormation,
-    CapsuleMonster,
-    Item,
-    Monster,
-    Shop,
-    Spell,
-)
-from structures.capsule import CapsuleAttack
-from structures.character import PlayableCharacter
-from structures.chest import PointerChest
-from structures.ip_attack import IPAttack
-from structures.shop import ShopKureji
-from structures.word import Word
+from patches.custom import arty_to_artea, ax_to_axe, gorem_to_golem, set_rom_name, swap_pierre_danielle_sprites
 
 from structures.zone import Zone
-from tables import CharExpObject
-from tables.zones import ZoneObject
 
-
-if TYPE_CHECKING:
-    from src._types.objects import all_table_objects
-else:
-    from _types.objects import all_table_objects
-from helpers.files import read_file, write_file, new_file, original_file
+from helpers.files import read_file, write_file
+from tests.read_write import read_write_all
 
 from config import ASCII_ART_COLORIZED, PROJECT_NAME, VERSION
 from logger import iris, dump
-from tables import (
-    AncientChest1Object,
-    AncientChest2Object,
-    BlueChestObject,
-    BossFormationObject,
-    CapAttackObject,
-    CapsuleLevelObject,
-    CapsuleObject,
-    CharacterObject,
-    CharGrowthObject,
-    ChestObject,
-    FormationObject,
-    InitialEquipObject,
-    IPAttackObject,
-    ItemNameObject,
-    ItemObject,
-    MapFormationsObject,
-    MonsterObject,
-    ShopObject,
-    SpellObject,
-    WordObject,
-)
 
 # Some arrays with byte data for the "PATCH" and "EOF" of the IPS
 patch_magic = [0x50, 0x41, 0x54, 0x43, 0x48]
@@ -98,106 +48,6 @@ if args.world:
     flags += Flags.WORLD
 
 
-def gather_objects():
-    for cls in all_table_objects:
-        cls = cls()
-        log = logging.getLogger(f"{iris.name}.Gathering.{cls.__class__.__name__}")
-        log.debug(f"Reading {cls.__class__.__name__}")
-        if isinstance(cls, ChestObject):
-            for pointer in cls.pointers:
-                chest = PointerChest.from_pointer(pointer)
-                objects.append(chest)
-                chest.write()
-        elif isinstance(cls, IPAttackObject): 
-            for pointer in cls.pointers: 
-                ip_attack = IPAttack.from_pointer(pointer)
-                objects.append(ip_attack) 
-                ip_attack.write()
-        elif isinstance(cls, (AncientChest1Object, AncientChest2Object, BlueChestObject)):
-            for offset in range(cls.count):
-                chest = AddressChest.from_table(cls.address, offset)
-                objects.append(chest)
-                chest.write()
-        elif isinstance(cls, FormationObject):
-            for offset in range(cls.count):
-                formation = BattleFormation.from_table(cls.address, offset)
-                objects.append(formation)
-                formation.write()
-        elif isinstance(cls, CapsuleObject):
-            for offset in range(cls.count):
-                capsule = CapsuleMonster.from_table(cls.address, offset)
-                objects.append(capsule)
-                capsule.write()
-        elif isinstance(cls, CharacterObject):
-            for offset in range(cls.count):
-                character = PlayableCharacter.from_table(cls.address, offset)
-                objects.append(character)
-                character.write()
-        elif isinstance(cls, ItemObject): 
-            for offset in range(cls.count): 
-                item = Item.from_index(offset)
-                objects.append(item) 
-                item.write()
-        elif isinstance(cls, MonsterObject):
-            for offset in range(cls.count):
-                monster = Monster.from_index(offset)
-                objects.append(monster)
-                monster.write()
-        elif isinstance(cls, ShopObject): # TODO
-            if args.selected_patch == Patch.KUREJI: # type: ignore
-                for i, pointer in enumerate(cls.pointers):
-                    shop = ShopKureji.from_pointer(pointer, i)
-                    objects.append(shop)
-                    shop.write()
-            else:
-                # LSP thinks they are from kureji. So we ignore some type errors.
-                for offset in range(cls.count): # type: ignore
-                    shop = Shop.from_index(offset) # type: ignore
-                    objects.append(shop)
-                    shop.write()
-        elif isinstance(cls, SpellObject):
-            for pointer in cls.pointers:
-                spell = Spell.from_pointer(pointer)
-                objects.append(spell)
-                spell.write()
-        elif isinstance(cls, WordObject):
-            for offset in range(cls.count):
-                word = Word.from_table(WordObject.address, offset)
-                objects.append(word)
-                word.write()
-        elif isinstance(cls, CapAttackObject):
-            for offset in range(cls.count):
-                capsule_attack = CapsuleAttack.from_table(cls.address, offset)
-                objects.append(capsule_attack)
-                capsule_attack.write()
-        elif isinstance(cls, ZoneObject):
-            for offset in range(cls.count):
-                zone = Zone.from_index(offset)
-                objects.append(zone)
-                zone.write()
-        elif isinstance(cls, (
-                ItemNameObject,  # Implemented in Items
-                CapsuleLevelObject,  # implemented in Capsules
-                BossFormationObject,  # implemented in Formations
-                MapFormationsObject,  # implemented in Formations
-                CharExpObject,  # implemented in PlayableCharacter
-                CharGrowthObject,  # implemented in PlayableCharacter
-                InitialEquipObject,  # implemented in PlayableCharacter
-            )
-        ):
-            pass
-        else:
-            msg = f"Table {cls.__class__.__name__} not implemented."
-            if args.debug:
-                log.warning(msg)
-            else:
-                raise NotImplementedError(msg)
-        # Check if the read and write files are the same (As expected without randomization)
-        with original_file.open("rb") as f1, new_file.open("rb") as f2:
-            if f1.readlines() != f2.readlines():
-                log.critical(f"Read and write files are not the same, after {cls.__class__.__name__}")
-
-
 def main() -> None:
     print(ASCII_ART_COLORIZED)
     print(f"You are using the Lufia II randomizer {PROJECT_NAME} version {VERSION}.\n")
@@ -207,13 +57,12 @@ def main() -> None:
 
     apply_patch(args.selected_patch) # TODO: test with others besides Vanilla.
     if args.no_patch:
-        # Reads > immediately writes, after this, new file and original file are the exact same. (for debugging/testing purposes)
-        gather_objects()
+        read_write_all()
         for obj in objects:
             dump.info(f"{obj.__class__.__name__}.pre: {obj.__dict__}")
 
     # Rom identification
-    set_rom_name()
+    set_rom_name(b"Lufia II (Iris patch)")
 
     if args.debug:
         test_translate_genie_code_chars()
@@ -306,7 +155,7 @@ def main() -> None:
     if args.zero_gold_command:
         apply_patch_name("zero_gold_command")
 
-    # TODO: Then implement a route finder, which will place required items (arrow, hook, scenario items.)
+    # TODO: Implement a route finder, which will place required items (arrow, hook, scenario items.)
     # gather_objects()
 
     for obj in objects:
