@@ -7,7 +7,7 @@ from patcher import (
     start_engine,
     test_translate_genie_code_chars,
 )
-from patches.custom import arty_to_artea, ax_to_axe, gorem_to_golem, set_rom_name, swap_pierre_danielle_sprites
+from patches.custom import arty_to_artea, ax_to_axe, fix_boltfish, gorem_to_golem, set_rom_name, swap_pierre_danielle_sprites
 
 from structures.zone import Zone
 
@@ -28,6 +28,9 @@ def main() -> None:
     apply_patch(args.selected_patch) # TODO: test with others besides Vanilla.
     if args.no_patch:
         read_write_all()
+
+    if args.fix_softlocks:
+        fix_boltfish()
 
     # Rom identification
     set_rom_name(b"Lufia II (Iris patch)")

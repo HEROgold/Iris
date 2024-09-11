@@ -83,6 +83,7 @@ class Args(argparse.Namespace):
     spell_target_limit: bool
     zero_capsule_command: bool
     zero_gold_command: bool
+    fix_softlocks: bool
 
 
 
@@ -140,6 +141,7 @@ parser.add_argument("--no_submarine", action="store_true", default=False)
 parser.add_argument("--spell_target_limit", action="store_true", default=False)
 parser.add_argument("--zero_capsule_command", action="store_true", default=False)
 parser.add_argument("--zero_gold_command", action="store_true", default=False)
+parser.add_argument("--fix-softlocks", action="store_true", default=True)
 
 
 args: Args = parser.parse_args(namespace=Args())
