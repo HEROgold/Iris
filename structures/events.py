@@ -1,13 +1,18 @@
 from enum import Enum
 import logging
+from _types.objects import Cache
 from config import POINTER_SIZE
 from helpers.files import read_file, restore_pointer
-from typing import Self, TypedDict
+from typing import TYPE_CHECKING, Self, TypedDict
 from abc_.pointers import TablePointer
 from helpers.bits import read_little_int
 from helpers.name import read_as_decompressed_name
 from tables import MapEventObject
 from logger import iris
+
+if TYPE_CHECKING:
+    from structures.zone import Zone
+
 # Structure
 # class EventInstObject:
 #     reference_pointer = 2
@@ -37,6 +42,9 @@ MAP_EVENT_SIZE = sum(
 
 
 class MapEvent(TablePointer):
+    zone: "Zone | None"
+    _cache = Cache[int, Self]()
+
     def __init__(
         self,
         pointer: int,
@@ -61,6 +69,9 @@ class MapEvent(TablePointer):
 
     @classmethod
     def from_table(cls, address: int, index: int) -> Self:
+        if inst := cls._cache.from_cache(index):
+            return inst
+
         pointer = address + index * MAP_EVENT_SIZE
         read_file.seek(pointer)
         inst = cls(
@@ -75,6 +86,7 @@ class MapEvent(TablePointer):
         inst.index = index
         inst._gen_scripts()
 
+        cls._cache.to_cache(index, inst)
         return inst
 
     def _gen_scripts(self) -> None:
@@ -504,58 +516,7 @@ class EventScript:
                     self._stack.append(pointer)
                     offset += POINTER_SIZE
             elif op_code == 0x14:
-                flag = None
-                while True:
-                    if flag is None:
-                        flag = args[0]
-                    else:
-                        flag = read_little_int(read_file, 1)
-                        offset += 1
-
-                    if flag == 0xff:
-                        break
-                    elif flag & 0xf0 == 0xf0:
-                        assert len(args) == 1
-                        assert flag in {0xf0, 0xf8}
-                        # 0xf0 Monster on button
-                        # 0xf8 if NPC state
-                    elif flag & 0xf0 == 0xc0:
-                        assert len(args) == 1
-                        assert flag in {0xc0, 0xc2}
-                        # 0xc0 Check item possessed exactly number
-                        # 0xc2 Check item possessed GTE
-                        item_index = read_file.read(2)
-                        offset += 2
-                        item_number = read_file.read(2)
-                        offset += 2
-                        self._script.append(item_index)
-                        self._script.append(item_number)
-                    elif flag & 0xf0 == 0x10:
-                        assert len(args) == 1
-                        assert flag in {0x10, 0x12}
-                        # 0x10 Equals
-                        # 0x12 GTE
-                        _1 = read_file.read(1)
-                        offset += 1
-                        _2 = read_file.read(1)
-                        offset += 1
-                        self._script += [_1, _2]
-                    elif flag & 0xe0 == 0x20:
-                        assert flag in {0x20, 0x30}
-                        # 0x20 Branch if True
-                        # 0x30 Branch if False
-                        pointer_offset = read_file.read(2)
-                        offset += 2
-                        pointer = self.pointer + int.from_bytes(pointer_offset, "little")
-                        self._script.append(pointer_offset)
-                    else:
-                        assert flag in {0x00, 0x01, 0x40, 0x41, 0x80, 0x81}
-                        # 0x01 NOT
-                        # 0x40 OR
-                        # 0x80 AND
-                        read = read_file.read(1)
-                        offset += 1
-                        self._script.append(read)
+                self.instruction_parsing(offset, args)
             elif op_code == 0x16:
                 # TODO: find out if this has a jump?
                 # stack.append(self.pointer + args[1])
@@ -592,6 +553,61 @@ class EventScript:
         for i in self._pretty_script:
             s += f"    {i[0]} + {i[1]}: {i[2]}\n"
         self.logger.debug(s)
+
+    def instruction_parsing(self, offset: int, args: bytes):
+        # TODO: figure out a better name for this method.
+        flag = None
+        while True:
+            if flag is None:
+                flag = args[0]
+            else:
+                flag = read_little_int(read_file, 1)
+                offset += 1
+
+            if flag == 0xff:
+                break
+            elif flag & 0xf0 == 0xf0:
+                assert len(args) == 1
+                assert flag in {0xf0, 0xf8}
+                        # 0xf0 Monster on button
+                        # 0xf8 if NPC state
+            elif flag & 0xf0 == 0xc0:
+                assert len(args) == 1
+                assert flag in {0xc0, 0xc2}
+                        # 0xc0 Check item possessed exactly number
+                        # 0xc2 Check item possessed GTE
+                item_index = read_file.read(2)
+                offset += 2
+                item_number = read_file.read(2)
+                offset += 2
+                self._script.append(item_index)
+                self._script.append(item_number)
+            elif flag & 0xf0 == 0x10:
+                assert len(args) == 1
+                assert flag in {0x10, 0x12}
+                        # 0x10 Equals
+                        # 0x12 GTE
+                _1 = read_file.read(1)
+                offset += 1
+                _2 = read_file.read(1)
+                offset += 1
+                self._script += [_1, _2]
+            elif flag & 0xe0 == 0x20:
+                assert flag in {0x20, 0x30}
+                        # 0x20 Branch if True
+                        # 0x30 Branch if False
+                pointer_offset = read_file.read(2)
+                offset += 2
+                _pointer = self.pointer + int.from_bytes(pointer_offset, "little")
+                self._script.append(pointer_offset)
+            else:
+                assert flag in {0x00, 0x01, 0x40, 0x41, 0x80, 0x81}
+                        # 0x01 NOT
+                        # 0x40 OR
+                        # 0x80 AND
+                read = read_file.read(1)
+                offset += 1
+                self._script.append(read)
 
 
     def _branch(self, jump: int):

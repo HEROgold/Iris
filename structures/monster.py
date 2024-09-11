@@ -5,7 +5,7 @@ from typing import Self
 from abc_.pointers import TablePointer
 from abc_.stats import ScalableRpgStats
 
-from helpers.bits import find_table_pointer, read_little_int
+from helpers.bits import find_table_pointer, read_little_int, update_pointer_table
 from structures.battlescript import BattleScript, ScriptType
 from tables import MonsterObject
 
@@ -31,6 +31,7 @@ class MonsterSprite:
         return cls(name, index, sprite)
 
 
+TABLE_SIZE = MonsterObject.count * 2
 MONSTER_SIZE: int = sum([
     MonsterObject.name_text, # type: ignore  name_text is actually an int.
     MonsterObject.level,
@@ -83,10 +84,21 @@ class Monster(TablePointer):
     def __repr__(self) -> str:
         return f"<Monster: {self.name}, {self.index}>"
 
+    @property
+    def total_size(self) -> int:
+        size = MONSTER_SIZE
+        if self.attack_script:
+            size += self.attack_script.size
+        if self.defense_script:
+            size += self.defense_script.size
+        return size
+
     @classmethod
     def from_index(cls, index: int) -> Self:
-        if index > MonsterObject.count:
+        if index > MonsterObject.count and index != 0xFF:
             raise IndexError(f"Monster index out of range, max: {MonsterObject.count} got {index}")
+        if index == 0xFF:
+            return cls("Dummy", 0xFF, 0x0)
         return cls.from_table(MonsterObject.address, index)
 
     @classmethod
@@ -169,7 +181,6 @@ class Monster(TablePointer):
             self.attack_script_offset,
             ScriptType.ATTACK
         )
-        self.attack_script.read()
         if read_file.read(1) == b"\x08":
             self.create_defense_script()
 
@@ -182,7 +193,6 @@ class Monster(TablePointer):
             self.defense_script_offset,
             ScriptType.DEFENSE
         )
-        self.defense_script.read()
 
 
     def _set_movement(self) -> None:
@@ -297,6 +307,30 @@ class Monster(TablePointer):
     def can_drop_item(self, value: bool) -> None:
         self._misc = b"\x03" if value else b"\x00"
 
+    @classmethod
+    def adjust_monster_pointers(cls):
+        # FIXME: This code edits the file when nothing has changed.
+        start = MonsterObject.address
+        end = start + MonsterObject.count * 2
+        for monster in cls._cache.values():
+            if monster.index == 0:
+                continue
+            previous_monster = cls._cache[monster.index - 1]
+            offset = monster.pointer - end
+            new_pointer = end + offset + previous_monster.total_size
+            if new_pointer == monster.pointer:
+                continue
+            monster.pointer = new_pointer
+
+    @classmethod
+    def adjust_pinter_table(cls) -> None:
+        # FIXME: This code edits the file when nothing has changed.
+        start = MonsterObject.address
+        end = start + TABLE_SIZE
+        for monster in cls._cache.values():
+            offset = monster.pointer - end + TABLE_SIZE
+            update_pointer_table(start, monster.index, offset)
+
     def write(self) -> None:
         stats = self.stats.to_int()
         write_file.seek(self.pointer)
@@ -323,9 +357,14 @@ class Monster(TablePointer):
             write_file.write(self._drop_item.to_bytes(1))
             write_file.write(self._drop_rate.to_bytes(1))
         if self.attack_script:
+            self.attack_script.write_offset()
+            if self.defense_script:
+                self.defense_script.write_offset()
             self.attack_script.write()
+            if self.defense_script:
+                self.defense_script.write()
             has_end_byte = True
-        if self.defense_script:
+        elif self.defense_script:
             self.defense_script.write()
             has_end_byte = True
         if not has_end_byte:

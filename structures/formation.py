@@ -11,26 +11,32 @@
 from helpers.files import read_file, write_file
 from typing import Self
 
-from abc_.pointers import TablePointer
+from abc_.pointers import Pointer, TablePointer
 from structures.monster import Monster
-from tables import FormationObject
 
 
-class BattleFormation(TablePointer):
+class BattleFormation(Pointer):
+    address: int | None
+    index: int | None
     max_monsters = 8
 
     def __init__(self, monsters: list[Monster]) -> None:
         self.monsters = monsters
 
-    @classmethod
-    def from_index(cls, index: int) -> Self:
-        return cls.from_table(FormationObject.address, index)
+    # We Don't implement a from_index method, since there's 3 tables to read from.
 
     @classmethod
     def from_table(cls, address: int, index: int) -> Self:
         pointer = address + index * 8
         read_file.seek(pointer)
+        inst = cls.from_pointer(pointer)
+        inst.address = address
+        inst.index = index
+        return inst
 
+    @classmethod
+    def from_pointer(cls, pointer: int) -> Self:
+        read_file.seek(pointer)
         _0 = read_file.read(1)
         _1 = read_file.read(1)
         _2 = read_file.read(1)
@@ -40,22 +46,12 @@ class BattleFormation(TablePointer):
         _6 = read_file.read(1)
         _7 = read_file.read(1)
 
-        monsters = [_0,_1,_2,_3,_4,_5,_6,_7,]
-        while b"\xFF" in monsters:
-            monsters.pop(monsters.index(b"\xFF"))
-
-        monsters_test = [
+        monsters = [
             Monster.from_index(int.from_bytes(i))
-            for i in monsters
+            for i in [_0, _1, _2, _3, _4, _5, _6, _7]
         ]
 
-        for idx, monster in zip(monsters, monsters_test):
-            m_idx = int.from_bytes(idx)
-            assert m_idx == monster.index
-
-        inst = cls(monsters_test)
-        inst.address = address
-        inst.index = index
+        inst = cls(monsters)
         inst.pointer = pointer
         return inst
 

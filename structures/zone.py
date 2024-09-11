@@ -11,10 +11,10 @@ from typing import Self
 
 from _types.objects import Cache
 from helpers.name import read_as_decompressed_name
-from structures.events import EventList
+from structures.events import EventList, MapEvent
 from tables.zones import ZoneObject
 from helpers.files import read_file, write_file
-
+from tables import MapEventObject
 
 # TODO: Map items to chests, chest to zones.
 # Be able to determine which items are from what zone.
@@ -22,6 +22,7 @@ from helpers.files import read_file, write_file
 
 class Zone:
     connections: list[Self]
+    event: MapEvent
     _requirements: list[int]
     _chest_indices: list[int] # TODO
     _cache = Cache[int, Self]()
@@ -33,10 +34,6 @@ class Zone:
         self.start = start
         self.end = end
         self.connections = [] # type: ignore[reportAttributeAccessIssue]
-
-        # TODO: Verify this is correct.
-        _test_pointer = 241500 # TODO: (dynamically) find these npc/event pointers. (Using MapEventObject.map_name_pointer?)
-        self._event_list = EventList(_test_pointer, 0)
 
 
     def __repr__(self) -> str:
@@ -71,12 +68,19 @@ class Zone:
         for _ in range(0xFF):
             read_file.seek(prev_end_address)
             start_address = read_file.tell()
-            _compressed_name = cls.read_compressed_name(start_address) # Read the full compressed name. (Including 0A etc.)
             name = read_as_decompressed_name(start_address)
             prev_end_address = read_file.tell()
 
             inst = cls(current_index, start_address, prev_end_address)
             inst._name = name
+
+            # FIXME: code for event linking
+            # for i in range(MapEventObject.count):
+            #     event = MapEvent.from_index(i)
+            #     if event.map_name == name:
+            #         inst.event = event
+            #         event.zone = inst
+            #         print(f"Event: {event.index=} for for map {inst._name}, {inst.index=}")
             cls._cache.to_cache(current_index, inst)
             current_index += 1
 

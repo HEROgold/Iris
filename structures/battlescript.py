@@ -654,14 +654,9 @@ class SubRoutine:
     # TODO: implement reading and writing of subroutines.
 
 
-# TODO: implement parent child relationship for scripts.
-# Where jump to or GOTO locations are children. (Same as structures\events.py)
-# TODO: Some jump offsets are incorrect?
-# TODO: Verify scripts with given notes from other's research.
 class BattleScript:
-    pointer: int
-    _script: list[tuple[int, bytes, bytes | None]]
-    _pretty_script: list[tuple[str, str]]
+    bytecode: bytes
+    _pretty: list[tuple[str, str]]
     _visited: list[int]
     crash_codes = [0x02, 0x31, 0x33, 0x34, 0x38, 0x39, 0x3A, 0x3B]
 
@@ -669,58 +664,79 @@ class BattleScript:
         self.logger = logging.getLogger(f"{iris.name}.{monster.name}.Script.{type.name.title()}")
         self.monster = monster
         self.offset = offset
-        self.pointer = self.monster.pointer + offset
         self.type = type
-        self._script = []
-        self._pretty_script = []
-        self._visited = []
+        self.read()
 
     @property
     def size(self):
-        size = 0
-        for _, _, args in self._script:
-            size += 1
-            if args:
-                size += len(args)
-        return size
+        type_size = 1
+        offset_size = 2
+        return len(self.bytecode) + type_size + offset_size
 
     def get_arguments(self, opcode: int) -> int:
         return op_codes[opcode]["params"]
 
     @property
+    def pointer(self) -> int:
+        return self.monster.pointer + self.offset
+
+    @property
     def end(self):
-        return self.pointer + len(self._script)
+        return self.pointer + self.size
+
+    @property
+    def pretty(self) -> str:
+        content = ""
+        for line in self._pretty:
+            content += f"{line[0]}: {line[1]}\n"
+        return content
+
+    def validate_offset(self):
+        assert self.offset == self.pointer - self.monster.pointer, f"Offset is incorrect. {self.offset} != {self.monster.pointer - self.pointer}"
+
+    def update_offset(self):
+        self.offset = self.pointer - self.monster.pointer
 
     def write(self):
+        # Pointer *should* already be set to where the script type is specified.
+        # Then we can just write the type, and the offset where the actual script lives.
+        # TODO: Investigate if this works for capsule monsters, and can we use this for capsule monsters?
+        self.validate_offset()
+        write_file.seek(self.pointer)
+        write_file.write(self.bytecode)
+
+    def write_offset(self):
+        self.validate_offset()
         write_file.write(self.type.value)
         write_file.write(self.offset.to_bytes(2, "little"))
 
-        for pointer, op_code, args in self._script:
-            write_file.seek(pointer)
-            write_file.write(op_code)
-            if args:
-                write_file.write(args)
+    def from_range(self, start: int, end: int):
+        read_file.seek(start)
+        self.bytecode = read_file.read(end - start)
 
     @restore_pointer
     def read(self, offset: int=0):
-        restore_stack: list[int] = [self.pointer]
+        stack: list[int] = [self.pointer]
         read_file.seek(self.pointer + offset)
 
+        code: list[tuple[int, bytes, bytes]] = []
+        self._pretty = []
+        visited = []
         while True:
             tell = read_file.tell()
 
-            if tell in self._visited:
-                if len(restore_stack) == 0:
+            if tell in visited:
+                if len(stack) == 0:
                     break
                 self.logger.debug(f"{tell} already visited. (continue...)")
-                read_file.seek(restore_stack.pop())
+                read_file.seek(stack.pop())
                 continue
 
-            self._visited.append(tell)
+            visited.append(tell)
 
             if tell == self.monster.pointer:
                 self.logger.debug(f"{tell} reached monster pointer. (continue...)")
-                read_file.seek(restore_stack.pop())
+                read_file.seek(stack.pop())
                 continue
 
             byte = read_file.read(1)
@@ -731,15 +747,15 @@ class BattleScript:
             if nr_args > 0:
                 offset += nr_args
                 args = read_file.read(nr_args)
-                self._script.append((tell, byte, args))
+                code.append((tell, byte, args))
             else:
                 args = b""
-                self._script.append((tell, byte, None))
+                code.append((tell, byte, args))
 
-            self._pretty_script.append((hex(op_code), f"Code -->> {op_codes[op_code]["comment"]}"))
+            self._pretty.append((hex(op_code), f"Code -->> {op_codes[op_code]["comment"]}"))
 
             if op_code == 0x0:
-                read_file.seek(restore_stack.pop())
+                read_file.seek(stack.pop())
                 continue
             elif op_code == 0x1:
                 # Execute effect code
@@ -750,114 +766,119 @@ class BattleScript:
             elif op_code == 0x3:
                 assert nr_args == 2 and args
                 jump_offset = int.from_bytes(args[0:2], "little")
-                self._pretty_script.append((hex(jump_offset), "0 -> Jump Offset"))
-                restore_stack.append(self.monster.pointer + jump_offset)
+                self._pretty.append((hex(jump_offset), "0 -> Jump Offset"))
+                stack.append(self.monster.pointer + jump_offset)
             elif op_code == 0x4: # On Failure GoTo > If previous command failed
                 assert nr_args == 2 and args
                 jump_offset = int.from_bytes(args, "little")
-                self._pretty_script.append((hex(jump_offset), "0 -> Jump Offset"))
-                restore_stack.append(self.monster.pointer + jump_offset)
+                self._pretty.append((hex(jump_offset), "0 -> Jump Offset"))
+                stack.append(self.monster.pointer + jump_offset)
             elif op_code == 0x5: # Chance GoTo
                 assert nr_args == 3 and args
                 chance = args[0]
                 bytes_offset = args[1:3]
                 jump_offset = int.from_bytes(bytes_offset, "little", signed=True)
-                self._pretty_script.append((hex(chance), f"0: Chance ({chance/255*100}%)"))
-                self._pretty_script.append((hex(jump_offset), "1 -> Jump Offset"))
-                restore_stack.append(self.monster.pointer + jump_offset)
+                self._pretty.append((hex(chance), f"0: Chance ({chance/255*100}%)"))
+                self._pretty.append((hex(jump_offset), "1 -> Jump Offset"))
+                stack.append(self.monster.pointer + jump_offset)
             elif op_code == 0x6:
                 assert nr_args == 5 and args
                 compare_value = int.from_bytes(args[0:2], "little")
                 compare_against = int.from_bytes(args[2:4], "little")
                 jump_offset = int.from_bytes(args[4:6], "little")
-                self._pretty_script.append((hex(compare_value), "1 -> Compare == (Reg)"))
-                self._pretty_script.append((hex(compare_against), "2 -> Comparison (Value)"))
-                self._pretty_script.append((hex(jump_offset), "3 -> Jump Offset"))
-                restore_stack.append(self.monster.pointer + jump_offset)
+                self._pretty.append((hex(compare_value), "1 -> Compare == (Reg)"))
+                self._pretty.append((hex(compare_against), "2 -> Comparison (Value)"))
+                self._pretty.append((hex(jump_offset), "3 -> Jump Offset"))
+                stack.append(self.monster.pointer + jump_offset)
             elif op_code == 0x7:
                 assert nr_args == 5 and args
                 compare_value = int.from_bytes(args[0:2], "little")
                 compare_against = int.from_bytes(args[2:4], "little")
                 jump_offset = int.from_bytes(args[4:6], "little")
-                self._pretty_script.append((hex(compare_value), "1 -> Compare != (Reg)"))
-                self._pretty_script.append((hex(compare_against), "2 -> Comparison (Value)"))
-                self._pretty_script.append((hex(jump_offset), "3 -> Jump Offset"))
-                restore_stack.append(self.monster.pointer + jump_offset)
+                self._pretty.append((hex(compare_value), "1 -> Compare != (Reg)"))
+                self._pretty.append((hex(compare_against), "2 -> Comparison (Value)"))
+                self._pretty.append((hex(jump_offset), "3 -> Jump Offset"))
+                stack.append(self.monster.pointer + jump_offset)
             elif op_code == 0x8:
                 assert nr_args == 5 and args
                 compare_value = int.from_bytes(args[0:2], "little")
                 compare_against = int.from_bytes(args[2:4], "little")
                 jump_offset = int.from_bytes(args[4:6], "little")
-                self._pretty_script.append((hex(compare_value), "1 -> Compare > (Reg)"))
-                self._pretty_script.append((hex(compare_against), "2 -> Comparison (Value)"))
-                self._pretty_script.append((hex(jump_offset), "3 -> Jump Offset"))
-                restore_stack.append(self.monster.pointer + jump_offset)
+                self._pretty.append((hex(compare_value), "1 -> Compare > (Reg)"))
+                self._pretty.append((hex(compare_against), "2 -> Comparison (Value)"))
+                self._pretty.append((hex(jump_offset), "3 -> Jump Offset"))
+                stack.append(self.monster.pointer + jump_offset)
             elif op_code == 0x9:
                 assert nr_args == 5 and args
                 compare_value = int.from_bytes(args[0:2], "little")
                 compare_against = int.from_bytes(args[2:4], "little")
                 jump_offset = int.from_bytes(args[4:6], "little")
-                self._pretty_script.append((hex(compare_value), "1 -> Compare < (Reg)"))
-                self._pretty_script.append((hex(compare_against), "2 -> Comparison (Value)"))
-                self._pretty_script.append((hex(jump_offset), "3 -> Jump Offset"))
-                restore_stack.append(self.monster.pointer + jump_offset)
+                self._pretty.append((hex(compare_value), "1 -> Compare < (Reg)"))
+                self._pretty.append((hex(compare_against), "2 -> Comparison (Value)"))
+                self._pretty.append((hex(jump_offset), "3 -> Jump Offset"))
+                stack.append(self.monster.pointer + jump_offset)
             elif op_code == 0xA:
                 assert nr_args == 5 and args
                 compare_value = int.from_bytes(args[0:2], "little")
                 compare_against = int.from_bytes(args[2:4], "little")
                 jump_offset = int.from_bytes(args[4:6], "little")
-                self._pretty_script.append((hex(compare_value), "1 -> Compare >= (Reg)"))
-                self._pretty_script.append((hex(compare_against), "2 -> Comparison (Value)"))
-                self._pretty_script.append((hex(jump_offset), "3 -> Jump Offset"))
-                restore_stack.append(self.monster.pointer + jump_offset)
+                self._pretty.append((hex(compare_value), "1 -> Compare >= (Reg)"))
+                self._pretty.append((hex(compare_against), "2 -> Comparison (Value)"))
+                self._pretty.append((hex(jump_offset), "3 -> Jump Offset"))
+                stack.append(self.monster.pointer + jump_offset)
             elif op_code == 0xB:
                 assert nr_args == 5 and args
                 compare_value = int.from_bytes(args[0:2], "little")
                 compare_against = int.from_bytes(args[2:4], "little")
                 jump_offset = int.from_bytes(args[4:6], "little")
-                self._pretty_script.append((hex(compare_value), "1 -> Compare <= (Reg)"))
-                self._pretty_script.append((hex(compare_against), "2 -> Comparison (Value)"))
-                self._pretty_script.append((hex(jump_offset), "3 -> Jump Offset"))
-                restore_stack.append(self.monster.pointer + jump_offset)
+                self._pretty.append((hex(compare_value), "1 -> Compare <= (Reg)"))
+                self._pretty.append((hex(compare_against), "2 -> Comparison (Value)"))
+                self._pretty.append((hex(jump_offset), "3 -> Jump Offset"))
+                stack.append(self.monster.pointer + jump_offset)
             elif op_code in [0xC, 0xD, 0xE, 0xF, 0x10, 0x16, 0x17, 0x18]:
                 assert nr_args == 3 and args
                 reg = args[0]
                 value = int.from_bytes(args[1:3], "little")
-                self._pretty_script.append((hex(reg), "0 -> Register"))
-                self._pretty_script.append((hex(value), "1 -> Value"))
+                self._pretty.append((hex(reg), "0 -> Register"))
+                self._pretty.append((hex(value), "1 -> Value"))
             elif op_code in [0x11, 0x12, 0x13, 0x14, 0x15]:
                 assert nr_args == 2 and args
                 reg = args[0]
                 value = int.from_bytes(args[1:2], "little")
-                self._pretty_script.append((hex(reg), "0 -> Register"))
-                self._pretty_script.append((hex(value), "1 -> Value"))
+                self._pretty.append((hex(reg), "0 -> Register"))
+                self._pretty.append((hex(value), "1 -> Value"))
             elif op_code == 0x1A:
                 assert nr_args == 1 and args
                 reg = args[0]
-                self._pretty_script.append((hex(reg), "0 -> Register"))
+                self._pretty.append((hex(reg), "0 -> Register"))
             elif op_code == 0x32:
                 # TODO: investigate cases for target all foes/allies/self (more args?)
                 assert nr_args == 1 and args
                 target = args[0]
-                self._pretty_script.append((hex(target), "0 -> Target"))
+                self._pretty.append((hex(target), "0 -> Target"))
             elif op_code == 0x37:
                 # Physical Attack, Execute Weapon effect?
                 pass
             elif op_code == 0x42: # Subroutine
                 assert nr_args == 2 and args and args[1:2] == b"\x00"
-                self._pretty_script.append((hex(args[0]), f"0 -> {subroutines[args[0]]}"))
-                self._pretty_script.append((hex(args[1]), "1 -> Empty Byte"))
+                self._pretty.append((hex(args[0]), f"0 -> {subroutines[args[0]]}"))
+                self._pretty.append((hex(args[1]), "1 -> Empty Byte"))
                 # TODO: read subroutines. (So we could edit it later) (Separate class?)
             elif op_code == 0x43:
                 # Return from Subroutine
                 continue
             else:
                 for arg in args:
-                    self._pretty_script.append((hex(arg), f"{args.index(arg)} -> Argument"))
+                    self._pretty.append((hex(arg), f"{args.index(arg)} -> Argument"))
 
-        assert len(restore_stack) == 0, f"Script restore stack not empty: {restore_stack}"
+        # Sort by pointer. This ensures we read the script in order.
+        code = sorted(code, key=lambda x: x[0])
+        self.bytecode = b""
+        for t in code:
+            self.bytecode += t[1] + t[2]
+
+        assert len(stack) == 0, f"Script restore stack not empty: {stack}"
         s = "\n"
-        for i in self._pretty_script:
+        for i in self._pretty:
             s += f"    {i[0]}: {i[1]}\n"
         self.logger.debug(s)
-
