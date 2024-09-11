@@ -1,6 +1,6 @@
 from io import BufferedReader
 from config import POINTER_SIZE
-from helpers.files import read_file, restore_pointer
+from helpers.files import read_file, write_file, restore_pointer
 
 def read_nth_bit(byte: bytes, n: int) -> int:
     mask = 1 << n
@@ -18,11 +18,17 @@ def get_true_bit_index(byte: bytes) -> int | None:
 
 
 @restore_pointer
-def find_table_pointer(address: int, offset: int) -> int:
-    """Find a pointer from a pointer table, doesn't change the file current."""
-    read_file.seek(address + offset * POINTER_SIZE)
+def find_table_pointer(address: int, index: int) -> int:
+    """Find a pointer from a pointer table, doesn't change the current file."""
+    read_file.seek(address + index * POINTER_SIZE)
     pointer = read_little_int(read_file, POINTER_SIZE)
     return address + pointer
+
+
+def update_pointer_table(address: int, index: int, offset: int) -> None:
+    """Set a pointer in a pointer table."""
+    write_file.seek(address + index * POINTER_SIZE)
+    write_file.write(offset.to_bytes(POINTER_SIZE, "little"))
 
 
 def read_little_int(file: BufferedReader, size: int) -> int:
