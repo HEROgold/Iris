@@ -1,6 +1,6 @@
 """Extra structures for sprites and palettes, for future support of gathering sprites and palettes from the ROM."""
 
-from helpers.files import read_file
+from helpers.files import read_file, write_file
 from typing import Self
 from abc_.pointers import TablePointer
 from tables import OverPaletteObject, CapPaletteObject, OverSpriteObject, SpriteMetaObject, TownSpriteObject
@@ -31,6 +31,10 @@ class CapsulePallette(TablePointer):
         self.palette = data
 
     @classmethod
+    def from_index(cls, index: int) -> Self:
+        return cls.from_table(CapPaletteObject.address, index)
+
+    @classmethod
     def from_table(cls, address: int, index: int) -> Self:
         pointer = address + index * CAP_PALETTE_SIZE
         read_file.seek(pointer)
@@ -39,5 +43,5 @@ class CapsulePallette(TablePointer):
         return inst
 
     def write(self):
-        read_file.seek(self.pointer)
-        read_file.write(self.palette)
+        write_file.seek(self.pointer)
+        write_file.write(self.palette)

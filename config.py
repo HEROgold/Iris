@@ -19,7 +19,7 @@ rom = Path(f"{__file__}").parent / "test_roms" / "Lufia II - Rise of the Sinistr
 POINTER_SIZE = 2
 
 
-EMPTY_BYES = [
+EMPTY_BYTES = [
     range(0x286a10, 0x30d80e),
     range(0x30d87b, 0x3e4038),
     range(0x3e700d, 0x3e7ffc),

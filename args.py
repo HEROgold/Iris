@@ -58,6 +58,11 @@ class Args(argparse.Namespace):
     skip_tutorial: bool
     treadool_warp: bool
     # Specific rom patches
+    aggressive_movement: bool
+    passive_movement: bool
+    easy_mode: bool
+    equip_everyone: bool
+    equip_anywhere: bool
     capsule_feeding_bonus: bool
     clear_initial_spells: bool
     eat_dragon_eggs: bool
@@ -110,6 +115,11 @@ parser.add_argument("--open_world_base", action="store_true", default=False)  # 
 parser.add_argument("--skip_tutorial", action="store_true", default=False)  # TODO: Implement and set default to True
 parser.add_argument("--treadool_warp", action="store_true", default=False)  # TODO: Implement and set default to True
 # Patch flags
+parser.add_argument("--aggressive-movement", action="store_true", help="Set all monsters to be aggressive.")
+parser.add_argument("--passive-movement", action="store_true", help="Set all monsters to be passive.")
+parser.add_argument("--easy-mode", action="store_true", help="Makes all monsters weak.")
+parser.add_argument("--equip-everyone", action="store_true", help="Any character can equip every item.")
+parser.add_argument("--equip-anywhere", action="store_true", help="Any item can be equipped in any slot.")
 parser.add_argument("--custom_spawn_city", action="store_true", default=False)
 parser.add_argument("--spawn_location", action="store", default="portravia", help="Set the starting location. Default is Portravia. Available locations:\n" + ALL_CITIES)
 parser.add_argument("--capsule_feeding_bonus", action="store_true", default=False)
@@ -177,6 +187,10 @@ else:
     args.selected_patch = SUGGESTED_PATCH
 
 iris.info(f"Selected patch is {args.selected_patch.name}")
+
+if args.aggressive_movement and args.passive_movement:
+    raise ValueError("You cannot set both aggressive and passive movement at the same time.")
+
 
 if args.debug:
     args.max_world_clock = True

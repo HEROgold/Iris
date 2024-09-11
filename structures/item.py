@@ -1,17 +1,15 @@
 from bitstring import BitArray
-from enums.flags import ItemFlags1, MenuIcon, Targeting
-from config import BYTE_LENGTH, MAX_2_BYTE, SHIFT_BYTE
+from enums.flags import ItemTypes, MenuIcon, Targeting
 from helpers.files import read_file, write_file
 from typing import Self
-from abc_.flags import Usable
-from abc_.flags import Equipable
 from structures.word import Word
 from tables import ItemObject
-from enums.flags import EquipTypes, EquipableCharacter, ItemFlags2, Usability
+from enums.flags import EquipTypes, EquipableCharacter, ItemEffects, Usability
 from abc_.pointers import TablePointer
 from helpers.bits import find_table_pointer, read_little_int
 from tables import ItemNameObject
 from logger import iris
+from args import args
 
 ITEM_SIZE = sum(
     [
@@ -29,15 +27,42 @@ ITEM_SIZE = sum(
     ]
 )
 
-class Item(TablePointer, Equipable, Usable):
+class ItemName(TablePointer):
+    def __init__(self, address: int, index: int) -> None:
+        self.address = address
+        self.index = index
+        self.pointer = self.address + self.index * ItemNameObject.name_text # type: ignore
+        self.name = self.read()
+
+    def __repr__(self) -> str:
+        return f"<ItemName: {self.name}, {self.index}>"
+
+    @classmethod
+    def from_table(cls, address: int, index: int) -> Self:
+        return cls(address, index)
+
+    @classmethod
+    def from_index(cls, index: int) -> Self:
+        return cls(ItemNameObject.address, index) # type: ignore
+
+    def read(self) -> str:
+        read_file.seek(self.pointer)
+        return read_file.read(ItemNameObject.name_text).decode("ascii") # type: ignore
+
+    def write(self) -> None:
+        write_file.seek(self.pointer)
+        write_file.write(self.name.encode("ascii"))
+
+
+class Item(TablePointer):
     price: int
     equip_types: EquipTypes
     usability: Usability
     targeting: Targeting
     icon: MenuIcon
     equipability: EquipableCharacter
-    item_flags1: ItemFlags1
-    item_flags2: ItemFlags2
+    item_types: ItemTypes
+    item_effects: ItemEffects
     # Writing data.
     unknown2: bytes
 
@@ -55,13 +80,13 @@ class Item(TablePointer, Equipable, Usable):
         466,  # Last        #
     ]
 
-    def __init__(self, name: str, item_index: int, sprite_index: int) -> None:
-        self.name = name
+    def __init__(self, name: ItemName, item_index: int, sprite_index: int) -> None:
+        self.name_pointer = name
         self.index = item_index
         self.sprite_index = sprite_index
 
     def __repr__(self) -> str:
-        return f"<Item: {self.name}, {self.index}>"
+        return f"<Item: {self.name_pointer}, {self.index}>"
 
     def __bytes__(self) -> bytes:
         """Return the index of any item, without 0x00 bytes."""
@@ -74,14 +99,14 @@ class Item(TablePointer, Equipable, Usable):
         assert self.targeting is not None
         assert self.icon is not None
         assert self.equipability is not None
-        assert self.item_flags1 is not None
-        assert self.item_flags2 is not None
+        assert self.item_types is not None
+        assert self.item_effects is not None
         self._validate_effects()
         self.description
 
     def _validate_effects(self):
         effects = list(self.get_effects())
-        effect_validity = (bool(effects) == (bool(self.item_flags2)))
+        effect_validity = (bool(effects) == (bool(self.item_effects)))
         assert effect_validity
 
     @classmethod
@@ -97,30 +122,28 @@ class Item(TablePointer, Equipable, Usable):
         misc1 = read_file.read(1)
         targeting = read_file.read(ItemObject.targetting)
         icon = read_file.read(ItemObject.icon)
-        sprite = read_little_int(read_file, ItemObject.sprite)  # 00 for no-chest items, and coins.
+        sprite = read_little_int(read_file, size=ItemObject.sprite)  # 00 for no-chest items, and coins.
         price = read_little_int(read_file, ItemObject.price)
         item_type = EquipTypes.from_byte(read_file.read(1))
         equipability = EquipableCharacter.from_byte(read_file.read(1))
         misc2 = read_file.read(2)
         unknown2 = read_file.read(ItemObject.zero)
 
-        if index <= ItemNameObject.count:
-            name_pointer = ItemNameObject.address + index * ItemNameObject.name_text # type: ignore name_text is actually an int.
-            read_file.seek(name_pointer) # type: ignore name_text is actually an int.
-            name = read_file.read(ItemNameObject.name_text).decode("ascii") # type: ignore name_text is actually an int.
-        else:
-            name = f"UnkItem {index}"
-            iris.warning(f"Item name not found for {index=}")
+        name = ItemName.from_index(index)
 
         inst = cls(name, index, sprite)
         TablePointer.__init__(inst, address, index)
-        Equipable.__init__(inst, item_type)
-        Usable.__init__(inst, usability)
         inst.pointer = pointer
 
+        if args.equip_everyone:
+            inst.equipability = EquipableCharacter(EquipableCharacter.ALL)
+        if args.equip_anywhere:
+            inst.equip_types = EquipTypes(EquipTypes.ALL)
+
         inst.equip_types = item_type
-        inst.item_flags1 = ItemFlags1.from_byte(misc1)
-        inst.item_flags2 = ItemFlags2.from_bytes(misc2)
+        inst.usability = usability
+        inst.item_types = ItemTypes.from_byte(misc1)
+        inst.item_effects = ItemEffects.from_bytes(misc2)
         inst.targeting = Targeting.from_byte(targeting)
         inst.icon = MenuIcon.from_byte(icon)
         inst.price = price
@@ -155,7 +178,7 @@ class Item(TablePointer, Equipable, Usable):
         # TODO: Verify, seems to work (correct addresses from reference L2ItemDataFormat.txt)
         table_address = 0xB551C
         # For each bit that is set, 2 extra bytes exist.
-        offset = BitArray(self.item_flags2.to_bytes(2))
+        offset = BitArray(self.item_effects.to_bytes(2))
         # right to left in binary, offset is the position of every bit set (*2, pointers are 2 bytes).
         offsets = [
             i
@@ -185,21 +208,21 @@ class Item(TablePointer, Equipable, Usable):
     def get_effects(self):
         """Get the effect values and definitions for the item."""
         # For each bit that is set, a effect is returned.
-        bits = BitArray(self.item_flags2.to_bytes(2))
+        bits = BitArray(self.item_effects.to_bytes(2))
         effects = self.get_effect_bytes()
         for i, bit in enumerate(reversed(bits.bin)):
             if bit == "1":
                 value = 1 << i
-                item_flag = ItemFlags2(value) if value < 0x0F else ItemFlags2(value >> 4)
+                item_flag = ItemEffects(value) if value < 0x0F else ItemEffects(value >> 4)
                 self._warn_extra_increases(item_flag)
                 yield next(effects),
 
-    def _warn_extra_increases(self, item_flag: ItemFlags2):
-        if ItemFlags2.INCREASE_STR in item_flag:
+    def _warn_extra_increases(self, item_flag: ItemEffects):
+        if ItemEffects.INCREASE_STR in item_flag:
             iris.warning(f"{item_flag=} also increases ATP (increases STR).")
-        if ItemFlags2.INCREASE_STR in item_flag:
+        if ItemEffects.INCREASE_STR in item_flag:
             iris.warning(f"{item_flag=} also increases DFP (increases STR).")
-        if ItemFlags2.INCREASE_AGL in item_flag:
+        if ItemEffects.INCREASE_AGL in item_flag:
             iris.warning(f"{item_flag=} also increases DFP (increases AGL).") 
 
     @property
@@ -207,17 +230,16 @@ class Item(TablePointer, Equipable, Usable):
         return 0x18a <= self.index <= 0x18d
 
     def write(self) -> None:
-        write_file.seek(ItemNameObject.address + self.index * ItemNameObject.name_text) # type: ignore[reportOperatorIssue]
-        write_file.write(self.name.encode("ascii"))
+        self.name_pointer.write()
 
         write_file.seek(self.pointer)
         write_file.write(self.usability.to_bytes())
-        write_file.write(self.item_flags1.to_bytes())
+        write_file.write(self.item_types.to_bytes())
         write_file.write(self.targeting.to_bytes())
         write_file.write(self.icon.to_bytes())
         write_file.write(self.sprite_index.to_bytes())
         write_file.write(self.price.to_bytes(ItemObject.price, "little"))
         write_file.write(self.equip_types.to_bytes())
         write_file.write(self.equipability.to_bytes())
-        write_file.write(self.item_flags2.to_bytes(2, "little")[::-1]) # Might need to swap the bytes first?
+        write_file.write(self.item_effects.to_bytes(2, "little")[::-1]) # Might need to swap the bytes first?
         write_file.write(self.unknown2)

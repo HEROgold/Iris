@@ -9,7 +9,7 @@ from args import args
 from enums.patches import Patch
 from helpers.files import new_file
 from helpers.files import BackupFile
-from patches.parser import EventPatchParser, PatchData, PatchParser
+from patches.parser import PatchData, PatchParser
 from structures.item import Item
 
 from logger import iris
@@ -124,7 +124,7 @@ def unpack_int(string: bytes):
     return ret
 
 
-event_parser = EventPatchParser()  # Script parser for event patches.
+# event_parser = EventPatchParser()  # Script parser for event patches.
 parser = PatchParser()  # Script parser for patches.
 
 # Mapping table for SNES Game Genie characters to hexadecimal values
@@ -214,22 +214,22 @@ def apply_game_genie_codes(*codes: str):
 # TODO: Write a function that can apply SRAM patches.
 
 # TODO: get a event patch's bytecode diff and apply it to the rom.
-def max_world_clock():
-    file = Path(__file__).parent/"patches/eventpatch_max_world_clock.txt"
-    _patch, _validation = event_parser(file)
-    patch, validation = parser(file)
-def open_world_base() -> None:
-    file = Path(__file__).parent/"patches/eventpatch_open_world_base.txt"
-    _patch, _validation = event_parser(file)
-    patch, validation = parser(file)
-def skip_tutorial():
-    file = Path(__file__).parent/"patches/eventpatch_skip_tutorial.txt"
-    _patch, _validation = event_parser(file)
-    patch, validation = parser(file)
-def treadool_warp():
-    file = Path(__file__).parent/"patches/eventpatch_treadool_warp.txt"
-    _patch, _validation = event_parser(file)
-    patch, validation = parser(file)
+# def max_world_clock():
+#     file = Path(__file__).parent/"patches/eventpatch_max_world_clock.txt"
+#     _patch, _validation = event_parser(file)
+#     patch, validation = parser(file)
+# def open_world_base() -> None:
+#     file = Path(__file__).parent/"patches/eventpatch_open_world_base.txt"
+#     _patch, _validation = event_parser(file)
+#     patch, validation = parser(file)
+# def skip_tutorial():
+#     file = Path(__file__).parent/"patches/eventpatch_skip_tutorial.txt"
+#     _patch, _validation = event_parser(file)
+#     patch, validation = parser(file)
+# def treadool_warp():
+#     file = Path(__file__).parent/"patches/eventpatch_treadool_warp.txt"
+#     _patch, _validation = event_parser(file)
+#     patch, validation = parser(file)
 
 
 def start_engine():

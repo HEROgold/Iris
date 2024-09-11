@@ -8,7 +8,7 @@ from .monster import Monster, MonsterSprite
 from .character import PlayableCharacter
 from .priest import Priest
 from .reward import RewardItem
-from .shop import Shop, ShopItem
+from .shop import Shop
 from .spell import Spell
 from .zone import Zone
 
@@ -27,7 +27,6 @@ __all__ = [
     "Priest",
     "RewardItem",
     "Shop",
-    "ShopItem",
     "Spell",
     "Zone",
 ]

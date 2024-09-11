@@ -1,11 +1,12 @@
+from enum import Enum
 import logging
 from typing import TYPE_CHECKING, TypedDict
 from helpers.files import read_file, restore_pointer, write_file
 from logger import iris
 
 if TYPE_CHECKING:
-    from structures.monster import ScriptType
     from structures import Monster
+    from structures.capsule import CapsuleMonster
 
 
 class OpCode(TypedDict):
@@ -640,15 +641,23 @@ def calc_offset(offset: bytes):
     """Calculate the offset of the jump, using signed bytes."""
     return
 
+
+
+class ScriptType(Enum):
+    ATTACK = 0x07.to_bytes()
+    DEFENSE = 0x08.to_bytes()
+
+
 class SubRoutine:
     def __init__(self, index: int) -> None:
         self.index = index
-
     # TODO: implement reading and writing of subroutines.
 
 
 # TODO: implement parent child relationship for scripts.
 # Where jump to or GOTO locations are children. (Same as structures\events.py)
+# TODO: Some jump offsets are incorrect?
+# TODO: Verify scripts with given notes from other's research.
 class BattleScript:
     pointer: int
     _script: list[tuple[int, bytes, bytes | None]]
@@ -656,14 +665,24 @@ class BattleScript:
     _visited: list[int]
     crash_codes = [0x02, 0x31, 0x33, 0x34, 0x38, 0x39, 0x3A, 0x3B]
 
-    def __init__(self, monster: "Monster", pointer: int, type: "ScriptType") -> None:
+    def __init__(self, monster: "Monster | CapsuleMonster", offset: int, type: "ScriptType") -> None:
         self.logger = logging.getLogger(f"{iris.name}.{monster.name}.Script.{type.name.title()}")
         self.monster = monster
-        self.pointer = pointer
+        self.offset = offset
+        self.pointer = self.monster.pointer + offset
         self.type = type
         self._script = []
         self._pretty_script = []
         self._visited = []
+
+    @property
+    def size(self):
+        size = 0
+        for _, _, args in self._script:
+            size += 1
+            if args:
+                size += len(args)
+        return size
 
     def get_arguments(self, opcode: int) -> int:
         return op_codes[opcode]["params"]
@@ -673,7 +692,9 @@ class BattleScript:
         return self.pointer + len(self._script)
 
     def write(self):
-        # FIXME: Sometimes overwrites (parts) of the script.
+        write_file.write(self.type.value)
+        write_file.write(self.offset.to_bytes(2, "little"))
+
         for pointer, op_code, args in self._script:
             write_file.seek(pointer)
             write_file.write(op_code)

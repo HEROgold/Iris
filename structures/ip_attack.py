@@ -61,9 +61,9 @@ class IPAttack(Pointer):
         [$0AF509, $0AFC5A]:  L2BASM scripts for IP effects.
         Each L2BASM script is preceeded by $FF.
         """
-        # TODO: decompress the description.
+        # TODO: decompress the description. Same goes for item descriptions.
         pointers = range(0xB8662, 0xB87B3, 2)
-        data = [
+        _data = [
             0x0AF509 + pointer
             for pointer in pointers
         ]

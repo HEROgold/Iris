@@ -1,5 +1,5 @@
 from bitstring import BitArray
-from helpers.addresses import address_from_lorom, address_to_lorom
+from helpers.addresses import address_from_lorom
 from helpers.files import read_file, restore_pointer, write_file
 
 END = b"\x00"

@@ -5,8 +5,7 @@ from helpers.files import read_file, restore_pointer
 from typing import Self, TypedDict
 from abc_.pointers import TablePointer
 from helpers.bits import read_little_int
-from helpers.name import read_as_decompressed_name, read_compressed_name
-from structures.word import Word
+from helpers.name import read_as_decompressed_name
 from tables import MapEventObject
 from logger import iris
 # Structure

@@ -13,6 +13,7 @@ from tables import (
 from .item import Item
 
 
+# TODO: replace inheritance with Protocol (interface)
 class AddressChest(TablePointer):
     def __init__(self, item: Item) -> None:
         self.item = item
@@ -22,8 +23,6 @@ class AddressChest(TablePointer):
         pointer = address + index * POINTER_SIZE
         read_file.seek(pointer)
         item_index = read_little_int(read_file, POINTER_SIZE)
-
-        # item_index = Item.adjust_index(item_index)
 
         inst = cls(Item.from_index(item_index))
         # Init the required attributes manually.

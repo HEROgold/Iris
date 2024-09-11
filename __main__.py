@@ -1,7 +1,4 @@
-from typing import Any
-
 from args import args
-from enums.flags import Flags
 from patcher import (
     apply_game_genie_codes,
     apply_patch,
@@ -18,34 +15,7 @@ from helpers.files import read_file, write_file
 from tests.read_write import read_write_all
 
 from config import ASCII_ART_COLORIZED, PROJECT_NAME, VERSION
-from logger import iris, dump
-
-# Some arrays with byte data for the "PATCH" and "EOF" of the IPS
-patch_magic = [0x50, 0x41, 0x54, 0x43, 0x48]
-eof_magic = [0x45, 0x4F, 0x46]
-objects: list[Any] = []
-active_flags = Flags(0)
-selected_flags = Flags(0)
-
-flags = Flags(0)
-if args.character:
-    flags += Flags.CHARACTER
-if args.item:
-    flags += Flags.ITEMS
-if args.spell:
-    flags += Flags.SPELLS
-if args.monster:
-    flags += Flags.MONSTERS
-if args.movement:
-    flags += Flags.MONSTER_MOVEMENT
-if args.capsule:
-    flags += Flags.CAPSULES
-if args.shop:
-    flags += Flags.SHOPS
-if args.treasure:
-    flags += Flags.TREASURE
-if args.world:
-    flags += Flags.WORLD
+from logger import iris
 
 
 def main() -> None:
@@ -58,8 +28,6 @@ def main() -> None:
     apply_patch(args.selected_patch) # TODO: test with others besides Vanilla.
     if args.no_patch:
         read_write_all()
-        for obj in objects:
-            dump.info(f"{obj.__class__.__name__}.pre: {obj.__dict__}")
 
     # Rom identification
     set_rom_name(b"Lufia II (Iris patch)")
@@ -133,9 +101,6 @@ def main() -> None:
     if args.start_engine:
         start_engine()
 
-    # Apply Fixing patches
-    # if args.ancient_cave_music:
-        # patch_name("ac_music_hack")  # Won't be implemented
     if args.capsule_master_select:
         apply_patch_name("capsule_master_select")
     if args.capsule_tag:
@@ -156,10 +121,6 @@ def main() -> None:
         apply_patch_name("zero_gold_command")
 
     # TODO: Implement a route finder, which will place required items (arrow, hook, scenario items.)
-    # gather_objects()
-
-    for obj in objects:
-        dump.info(f"{obj.__class__.__name__}.pre: {obj.__dict__}")
 
     # Apply custom patches
     ax_to_axe()
@@ -176,9 +137,6 @@ def main() -> None:
     # shuffle_chest_items()
     # randomize_chest_items()
 
-    # TODO: For this to work, we need to re-read all objects from the new file.
-    # for obj in objects:
-        # dump.info(f"{obj.__class__.__name__}.post: {obj.__dict__}")
 
 
 if __name__ == "__main__":

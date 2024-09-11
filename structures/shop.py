@@ -11,6 +11,13 @@ from logger import iris
 from _types.objects import Cache
 from args import args
 
+
+UNUSED_SHOPS = [0x1A, 0x27]
+
+
+type SectionsType = tuple[Sections, int]
+
+
 class Sections(Enum):
     DIVIDER = 0x000000.to_bytes(3)
     WEAPON = 0x003800.to_bytes(3)
@@ -20,9 +27,6 @@ class Sections(Enum):
     DUMMY = 0xFFFFFF.to_bytes(3)
     SHOP_START = 0xFFFFFE.to_bytes(3)
     ALTERNATIVE_END = 0x0000.to_bytes(2) # Special section, for certain shop endings.
-
-
-type SectionsType = tuple[Sections, int]
 
 
 class ShopSection:
@@ -176,7 +180,7 @@ class Shop(TablePointer):
 
         assert zero == b"\x00", "ShopObject._zero is not 0x00."
 
-        if index in ShopItem.unused_shops:
+        if index in UNUSED_SHOPS:
             iris.debug(f"Shop {index} is unused.")
 
         inst = cls(ShopTypes.from_byte(shop_type))
@@ -288,7 +292,7 @@ class Shop(TablePointer):
         write_file.write(self.shop_type.to_bytes())
         write_file.write(b"\x00")
 
-        if self.index in ShopItem.unused_shops:
+        if self.index in UNUSED_SHOPS:
             iris.debug(f"Shop {self.index} is unused.")
 
         for section in self.shop_sections:
@@ -333,13 +337,6 @@ class ShopKureji(Pointer):
         return inst
 
     write = Shop.write
-
-
-class ShopItem(Item):
-    unused_shops = [0x1A, 0x27]
-
-    def __init__(self, name: str, item_index: int, sprite_index: int) -> None:
-        super().__init__(name, item_index, sprite_index)
 
 
 """

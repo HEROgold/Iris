@@ -5,22 +5,29 @@ from abc_.stats import RpgStats
 from enums.flags import Alignment
 from helpers.bits import find_table_pointer, read_little_int
 from tables import CapsuleLevelObject, CapsuleObject, CapAttackObject
-from .sprites import CapsulePallette
+# from .sprites import CapsulePallette
+
 
 class CapsuleLevel(TablePointer):
     def __init__(self, level: int) -> None:
         self.level = level
 
     @classmethod
+    def from_index(cls, index: int) -> Self:
+        return cls.from_table(CapsuleLevelObject.address, index)
+
+    @classmethod
     def from_table(cls, address: int, index: int) -> Self:
         read_file.seek(address + index)
         inst = cls(level=read_little_int(read_file, CapsuleLevelObject.level))
-        super().__init__(inst, address, index)
+        inst.address = address
+        inst.index = index
+        inst.pointer = address + index
         return inst
 
     def write(self) -> None:
         write_file.seek(self.pointer)
-        write_file.write(bytes(self.level))
+        write_file.write(self.level.to_bytes(1))
 
 class CapsuleAttack(TablePointer):
     unknown: bytes
@@ -80,6 +87,10 @@ class CapsuleMonster(TablePointer):
         self.strength = -1
 
     @classmethod
+    def from_index(cls, index: int) -> Self:
+        return cls.from_table(CapsuleObject.address, index)
+
+    @classmethod
     def from_table(cls, address: int, index: int) -> Self:
         pointer = find_table_pointer(address, index)
         read_file.seek(pointer)
@@ -88,8 +99,8 @@ class CapsuleMonster(TablePointer):
         _zero = read_little_int(read_file, CapsuleObject.zero)
         class_ = read_little_int(read_file, CapsuleObject.capsule_class)
         alignment = Alignment(read_little_int(read_file, CapsuleObject.alignment))
-        start_skills = read_file.read(CapsuleObject.start_skills)  # type: ignore # list of 3, TODO figure out how these are stored. 
-        upgrade_skills = read_file.read(CapsuleObject.upgrade_skills)  # type: ignore # list of 3, TODO figure out how these are stored. 
+        start_skills = read_file.read(CapsuleObject.start_skills)  # type: ignore # list of 3, TODO figure out how these are stored. (Battle scripts?) 
+        upgrade_skills = read_file.read(CapsuleObject.upgrade_skills)  # type: ignore # list of 3, TODO figure out how these are stored. (Battle scripts?) 
         hp = read_little_int(read_file, CapsuleObject.hp)
         attack = read_little_int(read_file, CapsuleObject.attack)
         defense = read_little_int(read_file, CapsuleObject.defense)
@@ -107,13 +118,13 @@ class CapsuleMonster(TablePointer):
         # Here follow 2 bytes that are always 0x00 0x00.
         # We may want to check if this is always the case.
         # TODO: figure out the following bytes.
-        _zero = read_little_int(read_file, 1) # 1 empty byte. Xp/file, Level/gold,
-        _zero = read_little_int(read_file, 1) # 1 empty byte. Xp/file, Level/gold,
-        _1 = read_little_int(read_file, 1) # 1 Byte with data,read_little_int file, Always 2B gold,
+        _zero = read_little_int(read_file, 1)
+        _zero = read_little_int(read_file, 1)
+        _1 = read_little_int(read_file, 1) # 1 Byte with data, Always 0x2B, (BattleScript offset?)
         assert 0x2B == _1
-        _zero = read_little_int(read_file, 1) #read_little_int file, 1 Empty Byt,
+        _zero = read_little_int(read_file, 1) # 1 Empty Byte,
         _2 = read_little_int(read_file, 1) # 1 Byte with data. Mana?
-        _zero = read_little_int(read_file, 3) #read_little_int file, 3 Empty Byt,
+        _zero = read_little_int(read_file, 3) # 3 Empty Bytes,
         # The following sequences were found
         # 00 00 2B 00 > Used by not just capsule monsters, but these values are around
         # the same area in the ROM. It's clearly some indicator of something.
@@ -145,6 +156,8 @@ class CapsuleMonster(TablePointer):
             start_skills=start_skills,
             upgrade_skills=upgrade_skills,
         )
+        super().__init__(inst, address, index)
+        inst.pointer = pointer
         inst.stats = RpgStats(
             health_points=hp,
             attack=attack,
@@ -165,9 +178,6 @@ class CapsuleMonster(TablePointer):
         inst.intelligence_factor = intelligence_factor
         inst.guts_factor = guts_factor
         inst.magic_resistance_factor = magic_resistance_factor
-
-        super().__init__(inst, address, index)
-        inst.pointer = pointer
         return inst
 
     def write(self):

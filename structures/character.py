@@ -3,7 +3,7 @@ from typing import Self
 from abc_.pointers import TablePointer, Pointer
 from abc_.stats import RpgStats
 from helpers.bits import read_little_int
-from tables import CharLevelObject, CharacterObject, CharExpObject, InitialEquipObject, CharGrowthObject, ItemObject
+from tables import CharLevelObject, CharacterObject, CharExpObject, InitialEquipObject, CharGrowthObject
 from .item import Item
 
 
@@ -84,21 +84,21 @@ class CharacterGrowth(Pointer):
         self,
         health_points: int,
         mana_points: int,
-        attack: int,
-        defense: int,
+        strength: int,
         agility: int,
         intelligence: int,
         guts: int,
         magic_resistance: int,
+        unk: int,
     ) -> None:
         self.health_points = health_points
         self.mana_points = mana_points
-        self.attack = attack
-        self.defense = defense
+        self.attack = strength
         self.agility = agility
         self.intelligence = intelligence
         self.guts = guts
         self.magic_resistance = magic_resistance
+        self.unk = unk
 
     @classmethod
     def from_pointer(cls, pointer: int) -> Self:
@@ -116,6 +116,16 @@ class CharacterGrowth(Pointer):
         super().__init__(inst, pointer)
         return inst
 
+    def write(self):
+        write_file.seek(self.pointer)
+        write_file.write(self.health_points.to_bytes(CharGrowthObject.hp, "little"))
+        write_file.write(self.mana_points.to_bytes(CharGrowthObject.mp, "little"))
+        write_file.write(self.attack.to_bytes(CharGrowthObject.str, "little"))
+        write_file.write(self.agility.to_bytes(CharGrowthObject.agl, "little"))
+        write_file.write(self.intelligence.to_bytes(CharGrowthObject.int, "little"))
+        write_file.write(self.guts.to_bytes(CharGrowthObject.gut, "little"))
+        write_file.write(self.magic_resistance.to_bytes(CharGrowthObject.mgr, "little"))
+        write_file.write(self.unk.to_bytes(CharGrowthObject.unk, "little"))
 
 NAME_LENGTH = 6
 CHARACTER_SIZE = sum([

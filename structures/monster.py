@@ -1,26 +1,18 @@
-from enum import Enum
 from _types.objects import Cache
 from helpers.files import read_file, write_file
 from typing import Self
 
-from abc_.flags import Flagged, Scalable
 from abc_.pointers import TablePointer
 from abc_.stats import ScalableRpgStats
-from enums.flags import Flags
 
 from helpers.bits import find_table_pointer, read_little_int
-from structures.battlescript import BattleScript
+from structures.battlescript import BattleScript, ScriptType
 from tables import MonsterObject
 
 from .item import Item
 from args import args
 from logger import iris
 
-
-
-class ScriptType(Enum):
-    ATTACK = 0x07.to_bytes()
-    DEFENSE = 0x08.to_bytes()
 
 
 class MonsterSprite:
@@ -31,7 +23,9 @@ class MonsterSprite:
 
     @classmethod
     def from_index(cls, index: int) -> Self:
-        name, sprite = MONSTER_SPRITES[index] # FIXME: on Out of range error > implement return 0x94 # Red Jelly
+        if index > MonsterObject.count:
+            index = 0xA4 # Red JElly
+        name, sprite = MONSTER_SPRITES[index]
         if args.spekkio and 'Lady Spider' in name:
             sprite = 0x89 # Web Spider
         return cls(name, index, sprite)
@@ -56,23 +50,7 @@ MONSTER_SIZE: int = sum([
     MonsterObject.misc,
 ])
 
-
-# class BattleScript:
-#     byte_code: bytes
-
-#     def __init__(self, monster: "Monster", offset: int, type: ScriptType) -> None:
-#         self.monster = monster
-#         self.offset = offset
-#         self.type = type
-
-#     def __repr__(self) -> str:
-#         return f"<{self.type.name} script: {self.offset}>"
-
-#     def to_bytes(self) -> bytes:
-#         return self.offset.to_bytes(2, "little")
-
-
-class Monster(Scalable, Flagged, TablePointer):
+class Monster(TablePointer):
     name: str
     index: int
     sprite_index: int
@@ -82,23 +60,25 @@ class Monster(Scalable, Flagged, TablePointer):
     _drop_item: int
     _drop_rate: int
     _stats: ScalableRpgStats
-    _sprite: MonsterSprite
+    sprite: MonsterSprite
     _drop_rate_modifier: int
     _unknown: int
     _palette: int
     _misc: bytes
 
     def __init__(self, name: str, monster_index: int, sprite_index: int) -> None:
-        Scalable.__init__(self)
-        Flagged.__init__(self)
         self.name = name
         self.index = monster_index
         self.sprite_index = sprite_index
         self._drop_item = 0x0
         self._drop_rate = 0x0
         self._stats = ScalableRpgStats()
-        self._sprite = MonsterSprite.from_index(monster_index)
+        self.sprite = MonsterSprite.from_index(monster_index)
         self._drop_rate_modifier = 2
+        self.attack_script = None
+        self.defense_script = None
+        self.scale = 1
+        self._scaled = False
 
     def __repr__(self) -> str:
         return f"<Monster: {self.name}, {self.index}>"
@@ -181,12 +161,12 @@ class Monster(Scalable, Flagged, TablePointer):
 
 
     def create_attack_script(self):
-        if self.has_attack_script and hasattr(self, "attack_script"):
+        if self.attack_script:
             raise ValueError(f"{self} already has an attack script.")
         self.attack_script_offset = read_little_int(read_file, 2)
         self.attack_script = BattleScript(
             self,
-            self.pointer+self.attack_script_offset,
+            self.attack_script_offset,
             ScriptType.ATTACK
         )
         self.attack_script.read()
@@ -194,25 +174,25 @@ class Monster(Scalable, Flagged, TablePointer):
             self.create_defense_script()
 
     def create_defense_script(self):
-        if self.has_defense_script and hasattr(self, "defense_script"):
+        if self.defense_script:
             raise ValueError(f"{self} already has an attack script.")
         self.defense_script_offset = read_little_int(read_file, 2)
         self.defense_script = BattleScript(
-                self,
-                self.pointer+self.defense_script_offset,
-                ScriptType.DEFENSE
-            )
+            self,
+            self.defense_script_offset,
+            ScriptType.DEFENSE
+        )
         self.defense_script.read()
 
 
     def _set_movement(self) -> None:
-        # TODO: Implement with argparse.
-        if self.has_flag(Flags.NOTHING_PERSONNEL_KID):
+        if args.aggressive_movement:
             self.movement = 0x1F
-        if self.has_flag(Flags.HOLIDAY):
+        elif args.passive_movement:
             self.movement = 0x1B
         else:
             self.movement = 0x0
+
 
     def apply_scale(self) -> None:
         if self._scaled:
@@ -255,7 +235,7 @@ class Monster(Scalable, Flagged, TablePointer):
     @stats.setter
     def stats(self, stats: ScalableRpgStats) -> None:
         self._stats = stats
-        if self.has_flag(Flags.EASY_MODE):
+        if args.easy_mode:
             self._stats = ScalableRpgStats(
                 health_points = 1,
                 attack = 1,
@@ -316,16 +296,11 @@ class Monster(Scalable, Flagged, TablePointer):
     @can_drop_item.setter
     def can_drop_item(self, value: bool) -> None:
         self._misc = b"\x03" if value else b"\x00"
-    @property
-    def has_attack_script(self) -> bool:
-        return self._misc == b"\x07" or hasattr(self, "attack_script")
-    @property
-    def has_defense_script(self) -> bool:
-        return self._misc == b"\x08" or hasattr(self, "defense_script")
 
     def write(self) -> None:
         stats = self.stats.to_int()
         write_file.seek(self.pointer)
+        has_end_byte = False
 
         write_file.write(self.name.encode())
         write_file.write(stats.level.to_bytes(MonsterObject.level, "little"))
@@ -347,15 +322,14 @@ class Monster(Scalable, Flagged, TablePointer):
             write_file.write(self._misc)
             write_file.write(self._drop_item.to_bytes(1))
             write_file.write(self._drop_rate.to_bytes(1))
-        if self.has_attack_script and self.attack_script: # self.attack_script > To shut up type checker for NoneType
-            write_file.write(b"\x07")
-            write_file.write(self.attack_script_offset.to_bytes(2, "little"))
+        if self.attack_script:
             self.attack_script.write()
-        if self.has_defense_script and self.defense_script: # self.defense_script > To shut up type checker for NoneType
-            write_file.write(b"\x08")
-            write_file.write(self.defense_script_offset.to_bytes(2, "little"))
+            has_end_byte = True
+        if self.defense_script:
             self.defense_script.write()
-        write_file.write(b"\x00")
+            has_end_byte = True
+        if not has_end_byte:
+            write_file.write(b"\x00")
 
 
 # sprite_index, name
