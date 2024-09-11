@@ -21,6 +21,7 @@ from logger import iris
 def main() -> None:
     print(ASCII_ART_COLORIZED)
     print(f"You are using the Lufia II randomizer {PROJECT_NAME} version {VERSION}.\n")
+    set_rom_name(b"Lufia II (Iris patch)") # For identification purposes.
 
     if args.debug:
         iris.setLevel("DEBUG")
@@ -32,8 +33,6 @@ def main() -> None:
     if args.fix_softlocks:
         fix_boltfish()
 
-    # Rom identification
-    set_rom_name(b"Lufia II (Iris patch)")
 
     if args.debug:
         test_translate_genie_code_chars()
