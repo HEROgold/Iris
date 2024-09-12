@@ -637,11 +637,6 @@ subroutines = {
             "FULL PROTECTION AGAINST ALL DAMAGE!",
 }
 
-def calc_offset(offset: bytes):
-    """Calculate the offset of the jump, using signed bytes."""
-    return
-
-
 
 class ScriptType(Enum):
     ATTACK = 0x07.to_bytes()
@@ -742,17 +737,17 @@ class BattleScript:
             byte = read_file.read(1)
             op_code = byte[0]
             nr_args = self.get_arguments(op_code)
+            comment = op_codes[op_code]["comment"]
 
             offset += 1
             if nr_args > 0:
                 offset += nr_args
                 args = read_file.read(nr_args)
-                code.append((tell, byte, args))
             else:
                 args = b""
-                code.append((tell, byte, args))
 
-            self._pretty.append((hex(op_code), f"Code -->> {op_codes[op_code]["comment"]}"))
+            code.append((tell, byte, args))
+            self._pretty.append((hex(op_code), f"Code -->> {comment}"))
 
             if op_code == 0x0:
                 read_file.seek(stack.pop())
@@ -871,7 +866,6 @@ class BattleScript:
                 for arg in args:
                     self._pretty.append((hex(arg), f"{args.index(arg)} -> Argument"))
 
-        # Sort by pointer. This ensures we read the script in order.
         code = sorted(code, key=lambda x: x[0])
         self.bytecode = b""
         for t in code:
