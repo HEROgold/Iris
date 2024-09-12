@@ -111,37 +111,37 @@ parser.add_argument("--frue", action="store_true", help="Apply the Frue Lufia pa
 parser.add_argument("--spekkio", action="store_true", help="Apply the Spekkio Lufia patch.\n" + CANNOT_PATCH_TOGETHER)
 parser.add_argument("--kureji", action="store_true", help="Apply the Kureji Lufia patch.\n" + CANNOT_PATCH_TOGETHER)
 # Event patches
-parser.add_argument("--max_world_clock", action="store_true", default=False)  # TODO: Implement and set default to True
-parser.add_argument("--open_world_base", action="store_true", default=False)  # TODO: Implement and set default to True
-parser.add_argument("--skip_tutorial", action="store_true", default=False)  # TODO: Implement and set default to True
-parser.add_argument("--treadool_warp", action="store_true", default=False)  # TODO: Implement and set default to True
+parser.add_argument("--max_world_clock", action="store_true")  # TODO: Implement and set default to True
+parser.add_argument("--open_world_base", action="store_true")  # TODO: Implement and set default to True
+parser.add_argument("--skip_tutorial", action="store_true")  # TODO: Implement and set default to True
+parser.add_argument("--treadool_warp", action="store_true")  # TODO: Implement and set default to True
 # Patch flags
 parser.add_argument("--aggressive-movement", action="store_true", help="Set all monsters to be aggressive.")
 parser.add_argument("--passive-movement", action="store_true", help="Set all monsters to be passive.")
 parser.add_argument("--easy-mode", action="store_true", help="Makes all monsters weak.")
 parser.add_argument("--equip-everyone", action="store_true", help="Any character can equip every item.")
 parser.add_argument("--equip-anywhere", action="store_true", help="Any item can be equipped in any slot.")
-parser.add_argument("--custom_spawn_city", action="store_true", default=False)
+parser.add_argument("--custom_spawn_city", action="store_true")
 parser.add_argument("--spawn_location", action="store", default="portravia", help="Set the starting location. Default is Portravia. Available locations:\n" + ALL_CITIES)
-parser.add_argument("--capsule_feeding_bonus", action="store_true", default=False)
-parser.add_argument("--clear_initial_spells", action="store_true", default=False)
-parser.add_argument("--eat_dragon_eggs", action="store_true", default=False)
-parser.add_argument("--no_boat_encounters", action="store_true", default=False)
-parser.add_argument("--secondary_tool", action="store_true", default=False)
-parser.add_argument("--unlock_gift_mode", action="store_true", default=False)
-parser.add_argument("--start_engine", action="store_true", default=False)
+parser.add_argument("--capsule_feeding_bonus", action="store_true")
+parser.add_argument("--clear_initial_spells", action="store_true")
+parser.add_argument("--eat_dragon_eggs", action="store_true")
+parser.add_argument("--no_boat_encounters", action="store_true")
+parser.add_argument("--secondary_tool", action="store_true")
+parser.add_argument("--unlock_gift_mode", action="store_true")
+parser.add_argument("--start_engine", action="store_true")
 # Fix patches
-parser.add_argument("--ancient_cave_music", action="store_true", default=False) # TODO: seems to not work?
-parser.add_argument("--capsule_master_select", action="store_true", default=False)
-parser.add_argument("--capsule_tag", action="store_true", default=False)
-parser.add_argument("--ancient_cave_items", action="store_true", default=False)
-parser.add_argument("--no_maxim_boat", action="store_true", default=False)
-parser.add_argument("--no_maxim_warp", action="store_true", default=False)
-parser.add_argument("--no_submarine", action="store_true", default=False)
-parser.add_argument("--spell_target_limit", action="store_true", default=False)
-parser.add_argument("--zero_capsule_command", action="store_true", default=False)
-parser.add_argument("--zero_gold_command", action="store_true", default=False)
-parser.add_argument("--fix-softlocks", action="store_true", default=False)
+parser.add_argument("--ancient_cave_music", action="store_true") # TODO: seems to not work?
+parser.add_argument("--capsule_master_select", action="store_true")
+parser.add_argument("--capsule_tag", action="store_true")
+parser.add_argument("--ancient_cave_items", action="store_true")
+parser.add_argument("--no_maxim_boat", action="store_true")
+parser.add_argument("--no_maxim_warp", action="store_true")
+parser.add_argument("--no_submarine", action="store_true")
+parser.add_argument("--spell_target_limit", action="store_true")
+parser.add_argument("--zero_capsule_command", action="store_true")
+parser.add_argument("--zero_gold_command", action="store_true")
+parser.add_argument("--fix-softlocks", action="store_true")
 
 
 args: Args = parser.parse_args(namespace=Args())
