@@ -5,8 +5,7 @@ from enums.flags import (
     Alignment,
     CastableSpells,
     EquipableCharacter,
-    ItemFlags1,
-    ItemFlags2,
+    ItemEffects,
     MenuIcon,
     Targeting,
     Usability,
@@ -106,9 +105,9 @@ def randomize_all_items():
         item.targeting = Targeting(random.randint(0, 0xFF))
         item.icon = MenuIcon(random.choice([MenuIcon.ALL]))
         item.equipability = EquipableCharacter(random.randint(0, EquipableCharacter.ALL))
-        item.item_flags2 = ItemFlags2(random.randint(0, ItemFlags2.ALL))
-        item.item_flags2 = ItemFlags2(random.randint(0, ItemFlags2.ALL))
-        item.item_flags1
+        item.item_effects = ItemEffects(random.randint(0, ItemEffects.ALL))
+        item.item_effects = ItemEffects(random.randint(0, ItemEffects.ALL))
+        item.item_types
         item.unknown2
         item.write()
 
@@ -170,9 +169,9 @@ def shuffle_items():
         item.targeting = shuffled.pop(0).targeting
         item.icon = shuffled.pop(0).icon
         item.equipability = shuffled.pop(0).equipability
-        item.item_flags2 = shuffled.pop(0).item_flags2
-        item.item_flags2 = shuffled.pop(0).item_flags2
-        item.item_flags1 = shuffled.pop(0).item_flags1
+        item.item_effects = shuffled.pop(0).item_effects
+        item.item_effects = shuffled.pop(0).item_effects
+        item.item_types = shuffled.pop(0).item_types
         item.unknown2 = shuffled.pop(0).unknown2
         item.write()
 
@@ -258,3 +257,24 @@ def set_rom_name(name: bytes):
     empty_name = bytes(21)
     assert len(name) <= len(empty_name)
     write_file.write(name)
+
+def fix_boltfish():
+    """Fix the boltfish attack script to avoid softlocks.
+    This sets 2 offsets to 0x45.
+    Previously they pointed to itself (0x3b)."""
+    bolt_fish = Monster.from_index(85)
+    assert bolt_fish.attack_script
+    code = bolt_fish.attack_script.bytecode
+    patch = b"\x45"
+    patched_code = bytes_overwrite(code, 0x15, patch)
+    patched_code = bytes_overwrite(patched_code, 0x1A, patch)
+    bolt_fish.attack_script.bytecode = patched_code
+    bolt_fish.write()
+    bolt_fish.attack_script.read()
+
+
+def bytes_overwrite(old: bytes, index: int, patch: bytes) -> bytes:
+    size = len(patch)
+
+    patched_code = old[:index] + patch + old[index+size:]
+    return patched_code
