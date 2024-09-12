@@ -11,7 +11,7 @@
 from helpers.files import read_file, write_file
 from typing import Self
 
-from abc_.pointers import Pointer, TablePointer
+from abc_.pointers import Pointer
 from structures.monster import Monster
 
 
@@ -59,14 +59,3 @@ class BattleFormation(Pointer):
         write_file.seek(self.pointer)
         for monster in self.monsters:
             write_file.write(monster.index.to_bytes())
-
-
-class BossFormation(TablePointer):
-    pass
-
-class MapFormation(TablePointer):
-    pass
-
-
-# TODO: BossFormationObject
-# TODO: MapFormationsObject)
