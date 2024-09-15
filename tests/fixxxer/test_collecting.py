@@ -1,5 +1,5 @@
 from helpers.bits import find_table_pointer
-from tables.vanilla import (
+from tables.fixxxer import (
     FormationObject,
     MapEventObject,
     EventInstObject,
