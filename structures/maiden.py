@@ -14,6 +14,7 @@ class Maiden:
         self.maiden_flag1 = sister_flag_1
         self.maiden_flag2 = sister_flag_2
 
-Lisa = Maiden("lisa","Lisa",0x1a,0x1b,0x1c)
-Marie = Maiden("marie","Marie",0x1b,0x1c,0x1a)
-Clare = Maiden("clare","Clare",0x1c,0x1a,0x1b)
+
+Lisa = Maiden("lisa", "Lisa", 0x1A, 0x1B, 0x1C)
+Marie = Maiden("marie", "Marie", 0x1B, 0x1C, 0x1A)
+Clare = Maiden("clare", "Clare", 0x1C, 0x1A, 0x1B)
