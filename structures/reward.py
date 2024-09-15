@@ -1,5 +1,7 @@
 
 class RewardItem:
+    """A reward item that can be given to the player.
+    This is used when you receive and item from a chest, NPC, etc."""
     def __init__(
         self,
         name: str,
@@ -11,14 +13,3 @@ class RewardItem:
         self.item_display_name = display_name
         self.item_index = item_index
         self.item_icon_code = icon_code
-
-class RewardMaiden:
-    def __init__(
-        self,
-        name: str,
-        display_name: str,
-        flag: int,
-        sister_flag1: int,
-        sister_flag2: int
-    ) -> None:
-        pass
