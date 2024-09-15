@@ -3,7 +3,10 @@ from tables.spekkio import (
     FormationObject,
     MapEventObject,
     EventInstObject,
-    ChestObject, AncientChest1Object, AncientChest2Object, MapFormationsObject,
+    ChestObject,
+    AncientChest1Object,
+    AncientChest2Object,
+    MapFormationsObject,
     TownSpriteObject,
     OverSpriteObject,
     BossFormationObject,
@@ -25,7 +28,7 @@ from structures.shop import Shop
 from structures.reward import RewardItem
 from structures.npc import RoamingNPC
 from structures.monster import Monster
-from structures.maiden import Lisa, Marie, Clare 
+from structures.maiden import Lisa, Marie, Clare
 from structures.item import Item
 from structures.ip_attack import IPAttack
 from structures.chest import AddressChest, PointerChest
@@ -57,15 +60,16 @@ def test_events():
     pass
 
 
-
 def test_bosses():
     for i in range(BossFormationObject.count):
         pointer = find_table_pointer(BossFormationObject.address, i)
         assert BattleFormation.from_pointer(pointer)
 
+
 def test_formations():
     for i in range(FormationObject.count):
         assert BattleFormation.from_table(FormationObject.address, i)
+
 
 def test_map_formations():
     for i in range(MapFormationsObject.count):
@@ -100,7 +104,7 @@ def test_npcs():
 
 
 def test_priests():
-    pass # TODO: Implement PriestObject/From npc?
+    pass  # TODO: Implement PriestObject/From npc?
 
 
 def test_rewards():

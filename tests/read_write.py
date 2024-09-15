@@ -74,11 +74,11 @@ log = logging.getLogger(f"{iris.name}.WriteTest")
 def read_write_all():
     """
     Reads > immediately writes.
-    after this, new file and original file are the exact same. 
-    
+    after this, new file and original file are the exact same.
+
     (for debugging/testing purposes)
-    
-    
+
+
     Raises
     ------
     :class:`NotImplementedError`
@@ -107,6 +107,7 @@ def read_write_all():
 
         verify_files(f"Files are not the same. after {i}")
 
+
 def verify_files(msg: str):
     with original_file.open("rb") as o, new_file.open("rb") as n:
         if o.read() != n.read():
@@ -118,10 +119,12 @@ def test_words():
         word = Word.from_index(i)
         word.write()
 
+
 def test_spells():
     for i in SpellObject.pointers:
         spell = Spell.from_pointer(i)
         spell.write()
+
 
 def test_shops():
     for i in range(ShopObject.count):
@@ -132,10 +135,12 @@ def test_shops():
         shop = ShopKureji.from_pointer(pointer, i)
         shop.write()
 
+
 def test_monsters():
     for i in range(MonsterObject.count):
         monster = Monster.from_index(i)
         monster.write()
+
 
 def test_maps():
     # TODO: This needs to be created, and then tested.
@@ -156,10 +161,12 @@ def test_maps():
         npc = RoamingNPC.from_index(i)
         npc.write()
 
+
 def test_initial_equipment():
     for i in InitialEquipObject.pointers:
         equip = InitialEquipment.from_pointer(i)
         equip.write()
+
 
 def test_items():
     for i in range(ItemNameObject.count):
@@ -169,6 +176,7 @@ def test_items():
         item = Item.from_index(i)
         item.write()
 
+
 def test_capsules():
     for i in range(CapsuleLevelObject.count):
         level = CapsuleLevel.from_table(CapsuleLevelObject.address, i)
@@ -177,12 +185,14 @@ def test_capsules():
         capsule = CapsuleMonster.from_table(CapsuleObject.address, i)
         capsule.write()
 
+
 def test_palettes():
     for i in range(CapPaletteObject.count):
         palette = CapsulePallette.from_table(CapPaletteObject.address, i)
         palette.write()
     for i in range(OverPaletteObject.count):
         raise NotImplementedError("")
+
 
 def test_sprites():
     for _i in range(CapSpritePTRObject.count):
@@ -193,6 +203,7 @@ def test_sprites():
         raise NotImplementedError("")
     for _i in range(OverSpriteObject.count):
         raise NotImplementedError("")
+
 
 def test_characters():
     for i in range(CharacterObject.count):
@@ -208,6 +219,7 @@ def test_characters():
         level = CharacterLevel.from_pointer(i)
         level.write()
 
+
 def test_attacks():
     for i in range(CapAttackObject.count):
         capsule_attack = CapsuleAttack.from_table(CapAttackObject.address, i)
@@ -215,6 +227,7 @@ def test_attacks():
     for i in IPAttackObject.pointers:
         ip_attack = IPAttack.from_pointer(i)
         ip_attack.write()
+
 
 def test_formations():
     for i in range(BossFormationObject.count):
@@ -228,6 +241,7 @@ def test_formations():
         pointer = find_table_pointer(MapFormationsObject.address, i)
         formation = BattleFormation.from_pointer(pointer)
         formation.write()
+
 
 def test_chests():
     for i in range(AncientChest1Object.count):

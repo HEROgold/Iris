@@ -3,7 +3,9 @@ from tables.frue import (
     FormationObject,
     MapEventObject,
     EventInstObject,
-    ChestObject, AncientChest1Object, AncientChest2Object,
+    ChestObject,
+    AncientChest1Object,
+    AncientChest2Object,
     TownSpriteObject,
     OverSpriteObject,
     BossFormationObject,
@@ -26,7 +28,7 @@ from structures.shop import Shop
 from structures.reward import RewardItem
 from structures.npc import RoamingNPC
 from structures.monster import Monster
-from structures.maiden import Lisa, Marie, Clare 
+from structures.maiden import Lisa, Marie, Clare
 from structures.item import Item
 from structures.ip_attack import IPAttack
 from structures.chest import AddressChest, PointerChest
@@ -45,12 +47,14 @@ def test_bosses():
         with open(original_file, "rb") as rf, open(new_file, "rb") as wf:
             assert rf.read() == wf.read()
 
+
 def test_formations():
     for i in range(FormationObject.count):
         formation = BattleFormation.from_table(FormationObject.address, i)
         formation.write()
         with open(original_file, "rb") as rf, open(new_file, "rb") as wf:
             assert rf.read() == wf.read()
+
 
 def test_map_formations():
     for i in range(MapFormationsObject.count):
@@ -136,7 +140,7 @@ def test_npcs():
 
 
 def test_priests():
-    pass # TODO: Implement PriestObject/From npc?
+    pass  # TODO: Implement PriestObject/From npc?
 
 
 def test_rewards():
