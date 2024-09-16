@@ -33,3 +33,10 @@ def update_pointer_table(address: int, index: int, offset: int) -> None:
 
 def read_little_int(file: BufferedReader, size: int) -> int:
     return int.from_bytes(file.read(size), "little")
+
+
+def bytes_overwrite(old: bytes, index: int, patch: bytes) -> bytes:
+    size = len(patch)
+
+    patched_code = old[:index] + patch + old[index+size:]
+    return patched_code
