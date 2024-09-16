@@ -7,7 +7,7 @@ from patcher import (
     start_engine,
     test_translate_genie_code_chars,
 )
-from patches.custom import arty_to_artea, ax_to_axe, fix_boltfish, gorem_to_golem, set_rom_name, swap_pierre_danielle_sprites
+from patches.custom import arty_to_artea, ax_to_axe, fix_boltfish, gorem_to_golem, guy_the_mage, set_rom_name, swap_pierre_danielle_sprites
 
 from structures.zone import Zone
 
@@ -98,7 +98,7 @@ def main() -> None:
     if args.unlock_gift_mode:
         apply_patch_name("unlock_gift_mode")
     if args.custom_spawn_city:
-        set_spawn_location(Zone.from_name("Elcid"), 0x02)
+        set_spawn_location(Zone.from_name("Elcid"), entrance_cutscene=0x02)
         # set_spawn_location(ZoneObject.from_name(args.spawn_location))
     if args.start_engine:
         start_engine()
@@ -129,6 +129,7 @@ def main() -> None:
     arty_to_artea()
     gorem_to_golem()
     swap_pierre_danielle_sprites()
+    guy_the_mage()
 
     # Randomize the game
     # randomize_all_spells()
