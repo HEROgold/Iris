@@ -106,7 +106,7 @@ parser.add_argument("--world", action="store_true", help="Create an open-world s
 parser.add_argument("--vanilla", action="store_true", help="Randomize nothing. (dummy flag to create vanilla seeds). Takes precedence over all other flags.")
 parser.add_argument("--randomness", type=float, choices=range(0, 1), default=0.5, help="Set the randomness of the seed. Default is 0.5.")
 parser.add_argument("--no-patch", action="store_true", help="Do not apply any patches. (Needs to be explicitly set). Default patch is Frue.")
-parser.add_argument("--fixxxer", action="store_true", help="Apply the Fixxxer Lufia patch.\n" + CANNOT_PATCH_TOGETHER)
+parser.add_argument("--fixxxer", action="store_true", help="Apply the Fixxxer Lufia patch.\n" + CANNOT_PATCH_TOGETHER)  # TODO: Remove, and use Frue.
 parser.add_argument("--frue", action="store_true", help="Apply the Frue Lufia patch.\n" + CANNOT_PATCH_TOGETHER)
 parser.add_argument("--spekkio", action="store_true", help="Apply the Spekkio Lufia patch.\n" + CANNOT_PATCH_TOGETHER)
 parser.add_argument("--kureji", action="store_true", help="Apply the Kureji Lufia patch.\n" + CANNOT_PATCH_TOGETHER)
@@ -181,8 +181,9 @@ elif args.spekkio:
     args.selected_patch = Patch.SPEKKIO
 elif args.frue:
     args.selected_patch = Patch.FRUE
-elif args.fixxxer:
-    args.selected_patch = Patch.FIXXXER
+    args.ancient_cave_items = False
+elif args.fixxxer:  # TODO: Remove, and use Frue.
+    args.selected_patch = Patch.FIXXXER # TODO: Remove, and use Frue.
 elif args.no_patch or args.vanilla:
     args.selected_patch = Patch.VANILLA
 else:
