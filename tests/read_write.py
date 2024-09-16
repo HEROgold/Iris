@@ -24,9 +24,10 @@ from structures.monster import Monster
 from structures.npc import RoamingNPC
 from structures.shop import Shop, ShopKureji
 from structures.spell import Spell
-from structures.sprites import CapsulePallette
+from structures.sprites import CapsulePallette, CapsuleSprite, OverPallette, OverSprite, SpriteMeta, TownSprite
 from structures.word import Word
 from structures.zone import Zone
+from structures.events import Event
 
 from tables import (
     ZoneObject,
@@ -88,13 +89,13 @@ def read_write_all():
         test_chests,
         test_formations,
         test_attacks,
-        # test_palettes, # FIXME
-        # test_sprites, # FIXME
+        test_palettes,
+        test_sprites,
         test_capsules,
         test_characters,
         test_initial_equipment,
         test_items,
-        # test_maps, # FIXME
+        test_maps, # FIXME
         test_monsters,
         test_shops,
         test_spells,
@@ -143,12 +144,13 @@ def test_monsters():
 
 
 def test_maps():
+    for i in range(EventInstObject.count):
+        event = Event.from_index(i)
+        event.write()
     # TODO: This needs to be created, and then tested.
     for i in range(ZoneObject.count):
         zone = Zone.from_index(i)
         zone.write()
-    for i in range(EventInstObject.count):
-        raise NotImplementedError("")
     for i in range(MapEventObject.count):
         raise NotImplementedError("")
         map_event = MapEvent.from_index(i)
@@ -188,21 +190,26 @@ def test_capsules():
 
 def test_palettes():
     for i in range(CapPaletteObject.count):
-        palette = CapsulePallette.from_table(CapPaletteObject.address, i)
+        palette = CapsulePallette.from_index(i)
         palette.write()
     for i in range(OverPaletteObject.count):
-        raise NotImplementedError("")
+        over_pallette = OverPallette.from_index(i)
+        over_pallette.write()
 
 
 def test_sprites():
-    for _i in range(CapSpritePTRObject.count):
-        raise NotImplementedError("")
-    for _i in range(SpriteMetaObject.count):
-        raise NotImplementedError("")
-    for _i in TownSpriteObject.pointers:
-        raise NotImplementedError("")
-    for _i in range(OverSpriteObject.count):
-        raise NotImplementedError("")
+    for i in range(CapSpritePTRObject.count):
+        capsule_sprite = CapsuleSprite.from_index(i)
+        capsule_sprite.write()
+    for i in range(SpriteMetaObject.count):
+        sprite_meta = SpriteMeta.from_index(i)
+        sprite_meta.write()
+    for i in TownSpriteObject.pointers:
+        town_sprite = TownSprite.from_pointer(i)
+        town_sprite.write()
+    for i in range(OverSpriteObject.count):
+        over_sprite = OverSprite.from_index(i)
+        over_sprite.write()
 
 
 def test_characters():
