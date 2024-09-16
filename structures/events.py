@@ -1,4 +1,3 @@
-from enum import Enum
 import logging
 from _types.objects import Cache
 from config import POINTER_SIZE
@@ -14,14 +13,11 @@ from tables import EventInstObject
 if TYPE_CHECKING:
     from structures.zone import Zone
 
-# Structure
-# class EventInstObject:
-#     reference_pointer = 2
-#     address = 0x4A14
-#     count = 205
 
-
+# TODO: find out what this is used for.
 class Event(TablePointer):
+    _event_script: "EventScript | None"
+
     def __init__(self, address: int, index: int) -> None:
         super().__init__(address, index)
 
@@ -32,12 +28,12 @@ class Event(TablePointer):
     @classmethod
     def from_table(cls, address: int, index: int) -> Self:
         pointer = address + index * POINTER_SIZE
+        inst = cls(pointer, index)
         read_file.seek(pointer)
-        return cls(pointer, index)
+        return inst
 
     def write(self):
         return
-        self.event_script.write()
 
 
 MAP_EVENT_SIZE = sum(
@@ -100,18 +96,18 @@ class MapEvent(TablePointer):
         return inst
 
     def _gen_scripts(self) -> None:
-        read_file.seek(self.event_list_pointer) # 249391
-        _unknown = read_file.read(2) # TODO: find out what this is.
-        assert _unknown == b"PH"
+        read_file.seek(self.event_list_pointer)
+        identifier = read_file.read(2)
+        assert identifier == b"PH"
 
-        npc_scripts = EventScript(self.npc_pointer)
+        self._npc_script = EventScript(self.base_pointer, self.npc_offset)
 
         for _ in range(6):
             offset = int.from_bytes(read_file.read(2), byteorder='little')
             event_list = EventList(self.event_list_pointer, offset)
             self._event_lists.append(event_list)
 
-        npc_scripts.read()
+        self._npc_script.read()
         for event in self._event_lists:
             event.read()
 
@@ -149,9 +145,12 @@ class MapEvent(TablePointer):
         assert self.event_list_pointer == pointer
 
     @property
+    def npc_offset(self) -> int:
+        return int.from_bytes(self._npc_lowbytes, "little") | (int.from_bytes(self._npc_highbyte) << 15)
+
+    @property
     def npc_pointer(self) -> int:
-        pointer = int.from_bytes(self._npc_lowbytes, "little") | (int.from_bytes(self._npc_highbyte) << 15)
-        return self.base_pointer + pointer
+        return self.base_pointer + self.npc_offset
 
     @npc_pointer.setter
     def npc_pointer(self, pointer: int) -> None:
@@ -159,6 +158,10 @@ class MapEvent(TablePointer):
         self._npc_highbyte = (temp >> 15).to_bytes(1)
         self._npc_lowbytes = (temp & 0x7fff).to_bytes(1)
         assert self.npc_pointer == pointer
+
+    def write(self):
+        return
+
 
 class EventList:
     # TODO: add caching?
@@ -179,8 +182,7 @@ class EventList:
                 break
 
             offset = read_little_int(read_file, 2)
-            event_pointer = self.pointer + offset
-            script = EventScript(event_pointer)
+            script = EventScript(self.pointer, offset)
             self._events.append(script)
 
 
@@ -194,10 +196,6 @@ class OpCode(TypedDict):
     params: int
     comment: str
 
-class Args(Enum):
-    TEXT = 0xFF
-    POINTERS = 0xFE
-    VARIABLE = 0xFD
 
 
 # Refer to L2_ScriptEvents.txt for more information.
@@ -222,8 +220,8 @@ op_codes: dict[int, OpCode] = {
     0x11: {"params": 0, "comment": "=> BRK"}, # No params? or 1 param?
     0x12: {"params": 2, "comment": "XX YY (P1 P1, ...) => ??? YY = the number of pointers"},
     0x13: {"params": 1, "comment": "XX => Character XX speaks spontaneously"},
-    0x14: {"params": 1, "comment": """XX ... ? => ??? (0x14 FF => 2-bytes long instruction)"""},
-    0x15: {"params": 3, "comment":"""XX YY YY => If the event flag number XX is set  => JUMP TO [script start offset + ZZYY]"""},
+    0x14: {"params": 1, "comment": """XX ... ? => ??? (0x14 FF => 2-bytes long instruction)"""}, # If flag is set, don't jump to offset.
+    0x15: {"params": 3, "comment":"""XX YY ZZ => If the event flag number XX is set  => JUMP TO [script start offset + ZZYY]"""},
     0x16: {"params": 3, "comment":"""XX YY ZZ => (EXIT) go to map number XX; jump to part YY of the script (?); "screen at position" ZZ (???)"""} ,
     0x17: {"params": 1, "comment":"""XX =>  XX: - 0x00 => rest (at an inn)"""} ,
     0x18: {"params": 1, "comment":"""XX => Enter shop menu, XX: shop number (Elcid's item shop, Narvick's spell shop, ...)"""} ,
@@ -447,15 +445,21 @@ class TextScript:
 # create a tree like structure to represent the script.
 # So EventPatchParser should contain children of Self.
 class EventScript:
-    def __init__(self, pointer: int) -> None:
+    _seen: list[int]
+
+    def __init__(self, base_pointer: int, offset: int) -> None:
         self.logger = logging.getLogger(f"{iris.name}.{__class__.__name__}")
-        self.pointer = pointer
+        self.base_pointer = base_pointer
+        self.offset = offset
         self._script: list[bytes] = []
         self._pretty_script: list[tuple[str, bytes, str]] = []
         self._children = []
         self._parent: Self | None = None
         self._text_mode = False
 
+    @property
+    def pointer(self) -> int:
+        return self.base_pointer + self.offset
     @property
     def size(self) -> int:
         child_size = sum([child.size for child in self.children])
@@ -478,6 +482,9 @@ class EventScript:
 
     @restore_pointer
     def read(self, offset: int = 0):
+        # TODO: Rethink the reading of teh script?
+        if not hasattr(self, "_seen"):
+            self._seen = [self.pointer + offset]
         self._stack: list[int] = []
         read_file.seek(self.pointer)
 
@@ -492,12 +499,15 @@ class EventScript:
 
             if "BRK" in description:
                 self.logger.warning(f"BRK found in EventScript {self.pointer} at {offset=}, Address: {self.pointer + offset}")
+            if self.pointer + offset in self._seen:
+                self.logger.warning(f"Repeat detected in EventScript {self.pointer=} at {offset=}, Address: {self.base_pointer + offset}")
+                break
 
             self._script.append(byte)
             self._script.append(args)
             self._pretty_script.append((hex(op_code), args, description))
 
-            if op_code in [0x10, 0x08, 0x12, 0x15, 0x1c, 0x6A]:
+            if op_code in [0x10, 0x12]:
                 print(f"To Implement: {op_code=}, {args=}")
 
             if op_code in ENTER_TEXT_MODE and self._text_mode is False:
@@ -515,6 +525,11 @@ class EventScript:
                 if args[1] != 0x20:
                     # What is args[1] == 0x0A? (relative pointer jump)
                     print(args) # Figure out the meaning when arg[1] != 0x20
+            elif op_code == 0x08:
+                text = TextScript(self.pointer + offset) # TODO: figure out how to set uncompressed text.
+                b = text.read()
+                offset += len(b)
+                read_file.seek(self.pointer + offset)
             elif op_code == 0x0A:
                 # TODO: verify jump address
                 jump = self.pointer + int.from_bytes(args, byteorder='little')
@@ -526,16 +541,17 @@ class EventScript:
                     self._stack.append(pointer)
                     offset += POINTER_SIZE
             elif op_code == 0x14:
-                self.instruction_parsing(offset, args)
+                offset = self.instruction_parsing(offset, args)
+            elif op_code == 0x15:
+                jump = int.from_bytes(args[1:], byteorder='little')
+                self._branch(jump)
             elif op_code == 0x16:
                 # TODO: find out if this has a jump?
                 # stack.append(self.pointer + args[1])
                 pass
-            elif op_code in [0x15, 0x1C, 0x6A]:
-                jump = self.pointer + int.from_bytes(args, byteorder='little')
-                # self._branch(jump)
-                # TODO: jumps might require the same parsing as 0x14.
-                # TODO: Find out how to identify this. (op_code based?)
+            elif op_code in [0x1C, 0x6A]:
+                jump = int.from_bytes(args, byteorder='little')
+                self._branch(jump)
             elif op_code in [0x13, 0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67, 0x6D, 0x6E, 0x9E]:
                 if op_code == 0x13:
                     _npc_index = args[0] # Excess? Debug code.
@@ -618,10 +634,17 @@ class EventScript:
                 read = read_file.read(1)
                 offset += 1
                 self._script.append(read)
+        return offset
 
-
+    @restore_pointer
     def _branch(self, jump: int):
-        epp = EventScript(jump)
-        epp.parent = self
-        epp.read()
-        self._children.append(epp)
+        branch_pointer = self.base_pointer + jump
+        if branch_pointer in self._seen:
+            self.logger.warning(f"Repeat at branch detected in EventScript {self.pointer=} at {jump=}")
+            return
+        self._seen.append(self.base_pointer + jump)
+        child = EventScript(self.base_pointer, jump)
+        child.parent = self
+        child._seen = self._seen
+        child.read()
+        self._children.append(child)
