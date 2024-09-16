@@ -9,6 +9,7 @@ from helpers.bits import read_little_int
 from helpers.name import read_as_decompressed_name
 from tables import MapEventObject
 from logger import iris
+from tables import EventInstObject
 
 if TYPE_CHECKING:
     from structures.zone import Zone
@@ -21,13 +22,22 @@ if TYPE_CHECKING:
 
 
 class Event(TablePointer):
-    def __init__(self, op_code: bytes, args: bytes) -> None:
-        self.op_code = op_code
-        self.args = args
+    def __init__(self, address: int, index: int) -> None:
+        super().__init__(address, index)
 
-    def __repr__(self) -> str:
-        return f" {self.op_code} > {self.args}"
+    @classmethod
+    def from_index(cls, index: int) -> Self:
+        return cls.from_table(EventInstObject.address, index)
 
+    @classmethod
+    def from_table(cls, address: int, index: int) -> Self:
+        pointer = address + index * POINTER_SIZE
+        read_file.seek(pointer)
+        return cls(pointer, index)
+
+    def write(self):
+        return
+        self.event_script.write()
 
 
 MAP_EVENT_SIZE = sum(
