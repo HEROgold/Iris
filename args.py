@@ -46,7 +46,7 @@ class Args(argparse.Namespace):
     # Difficulty patches
     selected_patch: Patch = Patch.VANILLA
     no_patch: bool
-    fixxxer: bool
+    fixxxer: bool   # TODO: Remove, and use Frue.
     frue: bool
     spekkio: bool
     kureji: bool
