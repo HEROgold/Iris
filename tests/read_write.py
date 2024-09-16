@@ -152,7 +152,6 @@ def test_maps():
         zone = Zone.from_index(i)
         zone.write()
     for i in range(MapEventObject.count):
-        raise NotImplementedError("")
         map_event = MapEvent.from_index(i)
         map_event.write()
     for i in range(MapMetaObject.count):
