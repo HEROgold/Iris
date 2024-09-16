@@ -37,7 +37,7 @@ class Zone:
 
 
     def __repr__(self) -> str:
-        return f"<Zone: {self.index}, {self.name}>"
+        return f"<Zone: {self.index}, {self.clean_name}>"
 
 
     @classmethod
