@@ -1,0 +1,7 @@
+name: CI Ruff
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: jakebailey/pyright-action@v2
