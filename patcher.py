@@ -46,9 +46,7 @@ def apply_patch(patch: Patch) -> Path:
     if patch == Patch.VANILLA:
         return new_file
     patch_dir = Path(__file__).parent/"patches"
-    if patch == Patch.FIXXXER:
-        patch_file = patch_dir/"L2_US_FixxxerDX_1-0beta.ips"
-    elif patch == Patch.FRUE:
+    if patch == Patch.FRUE:
         patch_dir = patch_dir/"Lufia2_-_Frue_Lufia_v7"
         patch_file = patch_dir/"Frue_Lufia_v7.ips"
     elif patch == Patch.SPEKKIO:
