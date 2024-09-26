@@ -140,7 +140,7 @@ def randomize_chest_items():
 
 
 def shuffle_chest_items():
-    # TODO: Find out what an item contains, that causes some chests to appear
+    # TODO: Find out what happens, that causes some chests to appear
     # as if they're opened already. When they still contain an item.
     iris.info("Shuffling chest items.")
     chests = get_chests()
