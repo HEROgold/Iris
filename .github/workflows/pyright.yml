@@ -1,4 +1,4 @@
-name: CI Ruff
+name: CI Pyright
 on: push
 jobs:
   build:
