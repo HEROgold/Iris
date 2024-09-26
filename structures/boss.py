@@ -38,7 +38,7 @@ class Boss(Pointer):
         write_file.write(bytes(self.battle_bgm))
 
 
-class BossLocation:
+class BossLocation(Pointer):
     def __init__(
         self,
         name: str,
