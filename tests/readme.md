@@ -3,7 +3,7 @@
 ## Command
 
 cd src
-pytest .\tests\ --file c:\\Users\\marti\\Documents\\GitHub\\Iris\\rom.smc
+pytest .\tests\ --file (rom file)
 
 ## Required Information
 
