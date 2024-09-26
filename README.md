@@ -6,7 +6,7 @@ Furthermore there's a lot of lines that could use some refactoring, or fixing.
 
 ## State of project
 
-Due to Universitry this project is being put to a pause.
+Due to University this project is being put to a pause.
 there is however still plenty of time to review Pr's of fix some issues.
 
 Most of this project/toolkit is in a usable state.
