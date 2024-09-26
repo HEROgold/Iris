@@ -1,0 +1,294 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Amon
+
+HP:   120000
+MP:   infinite
+
+ATP:  1500
+DFP:  2000
+
+AGL:  510
+INT:  510
+GUT:  510
+MGR:  510
+
+DROP: ---
+RATE: ---
+
+EXP:  125000
+GOLD: 125000
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+---
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 0
+------------------------------
+
+If in Phase 3 and HP <= 58000:
+  Heal 2000 HP secretly (33%)
+
+------------------------------
+TURN 1
+------------------------------
+
+If in Round 1 or every six rounds later:
+  Chaos Wave (100%)
+
+Else:
+  Black Hole (33%)
+  Thunder (17%)
+  Ice Valk (17%)
+  Star Lancer (17%)
+  Galactic Lancer (8%)
+  Bloody Tears (8%)
+
+------------------------------
+TURN 2
+------------------------------
+
+If in Round 1 or every six rounds later:
+  Star Lancer (66%)
+  Big Bang A (34%)
+
+Else if in turn 1 is performed Galactic Lancer or Bloody Tears:
+  Big Bang B (100%)
+
+Else:
+  Bloody Tears (33%)
+  Galactic Lancer (33%)
+  Big Bang A (34%)
+
+------------------------------
+TURN 3
+------------------------------
+
+If in Round 4 or every six rounds later - but not in Phase 1:
+  Magi Blaster (100%)
+
+Else:
+  Chaos Black (100%)
+
+------------------------------
+TURN 4
+------------------------------
+
+If in Phase 1 and HP <= 90000:
+  "You'd better worshipped us!" (100%) / Go to Phase 2
+
+Else if in Phase 2 and HP <= 60000:
+  "JUST HOW ORGULOUS ARE YOU?!" (100%) / Go to Phase 3
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Chaos Wave:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 1750
+
+- Wind + Soil elemental
+- Poisoning 100%
+- Silence 100%
+- Instant Death 100%
+- Paralysis 100%
+- Confusion 100%
+- Sleep 100%
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+Black Hole:
+------------------------------
+
+- Target one random foe
+- Beforehand set target HP to 200 (unless the target HP is less)
+- Special physical attack
+- Base DMG = 4000
+- Reduce MP to 0
+
+- Shadow elemental
+- Silence 100%
+- Confusion 100%
+- Sleep 100%
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+Thunder:
+------------------------------
+
+- Target all living foes
+- Special magic attack
+- Base DMG = 480
+
+- Thunder elemental
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+Ice Valk:
+------------------------------
+
+- Target all living foes
+- Special magic attack
+- Base DMG = 420
+
+- Ice elemental
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+Star Lancer:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 1000
+
+- Critical hit rate: 100%
+- Critical DMG multiplier: 0.5
+
+- Shadow elemental
+- Silence 100%
+- Confusion 100%
+- Sleep 100%
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+Galactic Lancer:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 1250
+
+- Anti-Hard elemental
+- Silence 100%
+- Confusion 100%
+- Sleep 100%
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+Bloody Tears:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 2500
+
+- Shadow elemental
+- Sleep 100%
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+Big Bang (A):
+------------------------------
+
+- Target one random foe
+- Special physical attack (but with fluctuation like a regular attack)
+- Base DMG = 1000
+
+- Critical hit rate: 100%
+- Critical DMG multiplier: 1
+
+- Target gains no IP from the attack
+
+- Anti-Hard elemental
+- Sleep 100% (to all living foes)
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+Big Bang (B):
+------------------------------
+
+- Target one random foe
+- Special physical attack
+- Base DMG = 4000
+
+- Target gains no IP from the attack
+
+- Shadow elemental
+- Sleep 100% (to all living foes)
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+Magi Blaster:
+------------------------------
+
+- Target all living foes
+- Reduce MP to 0
+
+- Non-elemental
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+Chaos Black:
+------------------------------
+
+- Target all living foes
+
+- Non-elemental
+- Mirror 100%
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+"You'd better worshipped us!":
+------------------------------
+
+- Target self
+- Remove all buffs and debuffs
+- Set AGL to ~30000 (repeated in every round)
+- Go to Phase 2
+
+------------------------------
+"JUST HOW ORGULOUS ARE YOU?!":
+------------------------------
+
+- Go to Phase 3
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+- Protection against Mirror
+- Protection against healing HP (besides the own healing)
+
+- Weak against Dual Blade
+- Immune to everything else

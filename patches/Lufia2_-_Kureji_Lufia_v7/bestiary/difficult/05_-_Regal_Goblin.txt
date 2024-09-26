@@ -1,0 +1,113 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Regal Goblin
+
+HP:   800
+MP:   1000
+
+ATP:  100
+DFP:  60
+
+AGL:  150
+INT:  40
+GUT:  40
+MGR:  80
+
+DROP: ---
+RATE: ---
+
+EXP:  1800
+GOLD: 500
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+The Regal Goblin will attack twice every round.
+The first attack isn't really a regular one
+unlike the second. However, without ATP lowering
+moves you won't see any difference.
+
+Furthermore, he will call for Goblin Mages and
+Goblins every round. Whenever there's empty
+space the Regal Goblin won't hesitate
+to fill in the gap.
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 0
+------------------------------
+
+Always:
+  Calls companions (100%)
+
+------------------------------
+TURN 1
+------------------------------
+
+Always:
+  Regular attack A (100%)
+
+------------------------------
+TURN 2
+------------------------------
+
+Always:
+  Regular attack B (100%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Calls companions:
+------------------------------
+
+- If possible call
+  - 1 Goblin Mage
+  - 1 Goblin
+  - 1 Goblin Mage
+
+------------------------------
+Regular attack (A):
+------------------------------
+
+- Target one random foe
+- Special physical attack (but with fluctuation like a regular attack)
+- Base DMG = 100
+
+- Neutral elemental
+
+------------------------------
+Regular attack (B):
+------------------------------
+
+- Target one random foe
+- Regular attack
+
+- Neutral elemental
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep

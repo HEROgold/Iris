@@ -1,0 +1,152 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Silver Dragon
+
+HP:   5000
+MP:   5000
+
+ATP:  500/750
+DFP:  500
+
+AGL:  450
+INT:  376
+GUT:  350
+MGR:  350
+
+DROP: Sea Ring
+RATE: 10%/12.5%
+
+EXP:  20280
+GOLD: 20200
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+The Silver Dragons lurk around at the deepest
+bottom of the Ancient Cave just to shatter
+all the effort to make it all the way
+within a few seconds.
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 1
+------------------------------
+
+If HP <= 2500:
+  Champion (100%)
+
+Else:
+  Courage (23%)
+  Diamond Dust (18%)
+  Dread (14%)
+  Regular attack (45%)
+
+------------------------------
+TURN 2
+------------------------------
+
+If HP <= 2500:
+  Champion (100%)
+
+Else:
+  Courage (23%)
+  Diamond Dust (18%)
+  Dread (14%)
+  Regular attack (45%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Champion:
+------------------------------
+
+- Target self
+- Regular Champion spell
+- Heal 1375 HP
+
+- In case of failure perform
+    Courage (23%)
+    Diamond Dust (18%)
+    Dread (14%)
+    Regular attack (45%)
+
+------------------------------
+Courage:
+------------------------------
+
+- Target own group
+- Regular Courage spell
+- Raise DFP by 30%
+
+- In case of failure perform
+    Diamond Dust (41%)
+    Regular attack (59%)
+
+------------------------------
+Diamond Dust:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 800
+
+- Ice elemental
+
+------------------------------
+Dread:
+------------------------------
+
+- Target all living foes
+- Regular Dread spell
+- Lower DFP by 10%
+
+- In case of failure perform
+    Diamond Dust (100%)
+
+------------------------------
+Regular attack:
+------------------------------
+
+- Target one random foe
+- Regular attack
+
+- Neutral elemental
+- Paralysis 100%
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+
+- Weak against Shadow
+- Weak against Anti-Flying
+- Weak against Anti-Dragon
+- Strong against Fire
+- Strong against Water
+- Strong against Thunder
+- Immune to Ice
+- Immune to Light
+- Immune to Earth

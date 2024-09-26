@@ -1,0 +1,113 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Red Jelly
+
+HP:   6
+MP:   9
+
+ATP:  12
+DFP:  14
+
+AGL:  6
+INT:  4
+GUT:  4
+MGR:  6
+
+DROP: ---
+RATE: ---
+
+EXP:  2
+GOLD: 2
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+In Spekkio Lufia the red jellies have a completely
+different behaviour compared to all the other versions.
+Instead of just attacking regularly, now they will
+fully heal themselves the first three times they get
+a chance to perform their own action (in contrast to
+actions induced by status ailments).
+
+After that they will use an attack on themselves which
+will high likely just kill them. However, if they survive,
+they will just flee instead. (Though, the only real way
+for the latter to happen is quite some intervening
+from the player's side.)
+
+The reason for this change of behaviour is in order to
+prepare you at least a little bit for the Master Jelly
+at the end of the Ancient Cave. (However, the other
+different-coloured jellies stay with attacking you normally.)
+
+Also, when you encounter Tia in the Lake Cave you fight
+a bile jelly which is accompanied by three red jellies.
+This bile jelly has the same stats as the goblin you would
+have fought there normally (aside from having 12 MP).
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 1
+------------------------------
+
+If the Red Jelly hasn't already used Sweet Seduction 3 times:
+  Sweet Seduction (100%)
+
+Else:
+  Regular attack + Escape (100%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Sweet Seduction:
+------------------------------
+
+- Target self
+- Regular Strong spell
+- Heal 24 HP
+
+- In case of failure perform
+    Regular attack + Escape (100%)
+
+------------------------------
+Regular attack:
+------------------------------
+
+- Target self
+- Special magic attack
+- Base DMG = 12
+
+- Neutral elemental
+
+------------------------------
+Escape:
+------------------------------
+
+- Escapes
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+---

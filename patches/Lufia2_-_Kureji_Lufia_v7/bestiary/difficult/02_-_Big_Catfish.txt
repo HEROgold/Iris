@@ -1,0 +1,132 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Big Catfish
+
+HP:   300
+MP:   1000
+
+ATP:  45
+DFP:  35
+
+AGL:  150
+INT:  20
+GUT:  40
+MGR:  80
+
+DROP: Catfish Rock
+RATE: 100%
+
+EXP:  500
+GOLD: 500
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+The Big Catfish can - besides attacking you twice
+regularly - use Mega Quake or Flash which both
+might hurt you very badly.
+
+There is also no restriction any more which
+prevents him using Flash two rounds in a row.
+
+Furthermore, this is the first boss with the
+ability to heal. If he is low on HP, he will
+use Strong every round followed by one
+regular attack.
+
+The Eagle Rock might be really handy here.
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 1
+------------------------------
+
+If HP <= 50:
+  Strong (100%)
+
+Else:
+  Flash (17%)
+  Mega Quake (17%)
+  Regular attack (66%)
+
+------------------------------
+TURN 2
+------------------------------
+
+If in turn 1 is performed Strong or a regular attack:
+  Regular attack (100%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Strong:
+------------------------------
+
+- Target self
+- Regular Strong spell
+- Heal 40 HP
+
+- In case of failure perform
+    Mega Quake (100%)
+
+------------------------------
+Flash:
+------------------------------
+
+- Target one random foe
+- Regular Flash spell
+- Base DMG = 65
+
+- Thunder elemental
+
+- In case of failure perform
+    Mega Quake (100%)
+
+------------------------------
+Mega Quake:
+------------------------------
+
+- Target one random foe
+- Special physical attack
+- Base DMG = 100
+
+- Neutral elemental
+
+------------------------------
+Regular attack:
+------------------------------
+
+- Target one random foe
+- Regular attack
+
+- Water elemental
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+
+- Strong against Water

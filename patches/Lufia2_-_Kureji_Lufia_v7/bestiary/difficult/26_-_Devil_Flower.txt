@@ -1,0 +1,147 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Devil Flower
+
+HP:   10000
+MP:   0
+
+ATP:  400
+DFP:  450
+
+AGL:  450
+INT:  350
+GUT:  300
+MGR:  300
+
+DROP: ---
+RATE: ---
+
+EXP:  12000
+GOLD: 20000
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+The Devil Flower uses attacks like Thorn
+which poisons the party and Sneezespreader
+which puts the party to sleep.
+
+It also has a move called Pollen Lash
+which can paralyse the whole party and,
+of course, does some nice damage as well.
+
+However, an aftereffect of Pollen Lash is
+that on the whole battlefield is spread
+some kind of dust.
+
+This dust will cancel all the ATP buffs and
+debuffs of both the heroes and the Devil
+Flower itself. This effect comes into play
+every round at the end of Devil Flower's
+actions.
+
+Also note that the dust will increase the
+ATP and therefore the attack power of
+Pollen Lash slightly every round.
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 1
+------------------------------
+
+Always:
+  Thorn (50%)
+  Sneezespreader (50%)
+
+------------------------------
+TURN 2
+------------------------------
+
+Always:
+  Pollen Lash (100%)
+
+------------------------------
+TURN 3
+------------------------------
+
+Always:
+  "Dust is spread everywhere." (100%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Thorn:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 350
+
+- Neutral elemental
+- Poisoning 100%
+
+------------------------------
+Sneezespreader:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 350
+
+- Neutral elemental
+- Sleep 100%
+
+------------------------------
+Pollen Lash:
+------------------------------
+
+- Target all living foes
+- Regular attack
+
+- Neutral elemental
+- Paralysis 50%
+
+------------------------------
+"Dust is spread everywhere.":
+------------------------------
+
+- Target all living foes
+- Beforehand remove all ATP buffs and debuffs
+
+- Non-elemental
+- Lower ATP by 50%
+
+- Remove own ATP buffs and debuffs as well
+- If in Round x, set own ATP buff to min(200,2x)
+  - The overall ATP value will be in-between 400 and 600
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+
+- Weak against Fire
+- Strong against Water

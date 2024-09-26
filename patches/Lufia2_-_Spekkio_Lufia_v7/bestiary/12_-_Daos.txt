@@ -1,0 +1,228 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Daos
+
+HP:   50000
+MP:   10000
+
+ATP:  1500
+DFP:  1000
+
+AGL:  510
+INT:  510
+GUT:  510
+MGR:  510
+
+DROP: ---
+RATE: ---
+
+EXP:  50000
+GOLD: 50000
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+As the final boss Daos won't go easy
+on you, of course. His Terror Wave
+is damage-wise on par with Amon's
+Galactic Lancer or Erim's Slaughter
+Wave and has a very high chance to
+inflict several status ailments now.
+
+His Dark Zap is absolutely the same
+as the one used by Erim. Therefore,
+its strength is depending on the highest
+party member level. And, of course,
+there's as well that nasty MP draining
+effect.
+
+Instead of his predictability from the
+original version, now he can use his
+Dark Reflector more unpredictably
+and it can reflect enemy attacks two
+times. (And it can go up to eight
+times in case someone is at level 99.)
+
+If he already has the full power of
+the Reflector activated when trying to
+cast it, he will instead cast the Mirror
+spell (which won't decrease the counter
+for his Reflector).
+
+He also can use Zap now as well as a very
+strong regular attack which is on par
+with Egg Dragon's Scrambled Egg from the
+original version. And after using this
+regular attack, he will also defend in
+the same round as well.
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 1
+------------------------------
+
+If in Round 1 or every four rounds later:
+  Terror Wave (100%)
+
+Else:
+  Dark Zap (36%)
+  Dark Reflector (23%)
+  Zap (15%)
+  Attack & Defend (26%)
+  Mirror (0%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Terror Wave:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 900
+
+- Neutral elemental
+- Poisoning 100%
+- Confusion 50%
+- Sleep 50%
+
+------------------------------
+Dark Zap:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = max(1000,((highest level of a party member)*10+510))
+  - If the highest level of a party member is smaller 50, the base DMG always is 1000
+  - If the highest level is 50 or higher, the base DMG will be: (level * 10) + 510
+  - If the highest level of a party member is 99, the base DMG is 1500
+
+- Shadow elemental
+
+- Remove also MP depending on the highest level of a party member
+  - If the highest level of a party member is smaller 50, don't remove MP
+  - If the highest level is 50 or higher, remove ((level - 49) * 10) MP
+  - If the highest level of a party member is 99, remove 500 MP
+
+- The "MP remove"-effect pierces through all reflecting counter-moves
+- If the target's MP are above 32767 (after the MP removement), remove all MP
+
+------------------------------
+Dark Reflector:
+------------------------------
+
+- Target self
+- Set up a shield that reflects the next 2 attacks (excluding healing and some items)
+  - The count will be set to 2
+
+- The shield effect will wear as long as the count is bigger than 0
+- For every time an attack is reflected the count will be lowered by 1
+
+- The effect does not stack (i. e. the count will never be higher than 2)
+  - Unless someone is at level 99, then the count can stack up to 8 - as every usage of Mirror can increase it
+
+- Other attacks reflected back at Daos might also lower the count by 1
+  - excluding his Wind + Soil elemental regular attacks which also don't inflict any damage on him
+
+- If the count is bigger than 0 and Daos is hit with a Wind + Soil elemental action
+  and his HP are < 32768, then set his HP to 32767
+
+- Attacks reflected back at him don't consider any elemental strengths or weaknesses
+  if the Dark Reflector counter is bigger than 0 (the exception being Shadow)
+
+- If an attack is pure light elemental, the reflected attack will also affect MP
+  by doing half of the HP damage (not considering discrepancies due to DFP and MGR)
+  - However, if the target dies, the MP won't get affected at all
+
+- Also gain 9999 GUT (only show if his HP are < 32768)
+
+- In case of the count already being 2 or higher perform
+    Mirror (100%)
+
+------------------------------
+Zap:
+------------------------------
+
+- Target all living foes
+- Regular Zap spell
+- Base DMG = 600
+
+- Light elemental
+
+- In case of failure perform
+    Dark Zap (100%)
+
+------------------------------
+Attack & Defend:
+------------------------------
+
+- Target one random foe
+- Regular attack
+
+- Neutral elemental
+
+- Depending on the highest level of a party member instead switch to Wind + Soil elemental
+  - If the highest level of a party member is smaller 50, don't switch at all
+  - If the highest level is 50 or higher, switch with a ((level - 49) * 1.5)% chance
+  - If the highest level of a party member is 99, switch with a 75% chance
+
+- Depending on the highest level make a Wind + Soil elemental attack a critical hit with DMG multiplier 1
+  - If the highest level of a party member is smaller 75, no critical hit chance at all
+  - If the highest level is 75 or higher, the critical hit chance is ((level - 74) * 2.67)%
+  - If the highest level is 99, the critical hit chance is 66.67% (50% altogether - including neutral attacks)
+
+- After the attack Daos defends as well
+
+------------------------------
+Mirror:
+------------------------------
+
+- Target self
+- Regular Mirror spell
+
+- Mirror 100% (on a single target)
+
+- The usage of mirror won't decrease his Dark Reflector count
+  - In case of someone being at level 99 further increase the count
+    - by 1, if his HP are > 32767
+    - by 2, if his HP are < 32768
+  - However, the count never will be higher than 8
+
+- In case of failure perform
+    Dark Zap (100%)
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+- Protection against healing HP
+
+- Weak against Light
+- Strong against Shadow
+- Strong against Fire
+- Strong against Thunder
+- Strong against Water
+- Strong against Ice

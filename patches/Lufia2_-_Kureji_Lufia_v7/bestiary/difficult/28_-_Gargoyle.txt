@@ -1,0 +1,151 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Gargoyle
+
+HP:   4000
+MP:   2000
+
+ATP:  400
+DFP:  400
+
+AGL:  450
+INT:  350
+GUT:  300
+MGR:  300
+
+DROP: ---
+RATE: ---
+
+EXP:  3000
+GOLD: 3000
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+The Gargoyles are the boss battle that you face
+at the Mountain of No Return.
+
+Like the Soldiers they will attack twice per
+round. Either with a regular attack which confuses
+its target or with Bite - a single-targeted attack
+that also poisons its victim.
+
+After using the regular attack they might change
+their target, however, after using Bite they like
+to attack the same target again - and they won't
+use anything other than Bite again.
+
+After (and only after) using Bite in the second turn,
+they might decide to defend afterwards optionally
+so that they take less damage by all the following
+attacks in the remaining part of the battle round.
+
+Nevertheless, the most dangerous thing is that
+they will always call for other Gargoyles as new
+companions whenever a single one of them perishes
+in order to fill the battle field with as much new
+Gargoyles as there is empty space for them.
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 0
+------------------------------
+
+Always:
+  Calls companions (100%)
+
+------------------------------
+TURN 1
+------------------------------
+
+Always:
+  Bite (50%)
+  Regular attack (50%)
+
+------------------------------
+TURN 2
+------------------------------
+
+If in turn 1 is performed Bite:
+  Bite (100%)
+
+Else:
+  Bite (50%)
+  Regular attack (50%)
+
+------------------------------
+TURN 3
+------------------------------
+
+If in turn 2 is performed Bite:
+  Defend (67%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Calls companions:
+------------------------------
+
+- If possible call
+  - 3 Gargoyles
+
+------------------------------
+Regular attack:
+------------------------------
+
+- Target one random foe
+- Regular attack
+
+- Neutral elemental
+- Confusion 100%
+
+------------------------------
+Bite:
+------------------------------
+
+- Target one random foe
+- After Bite in turn 1, don't retarget in turn 2 unless the target from turn 1 is dead
+- Special physical attack
+- Base DMG = 500
+
+- Neutral elemental
+- Poisoning 100%
+
+------------------------------
+Defend:
+------------------------------
+
+- Defends
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+
+- Weak against Anti-Hard
+- Weak against Anti-Flying
+- Strong against Neutral
+- Immune to Earth

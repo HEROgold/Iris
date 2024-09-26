@@ -1,0 +1,149 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Mary Celeste
+
+HP:   10000
+MP:   5000
+
+ATP:  500
+DFP:  300
+
+AGL:  102
+INT:  164
+GUT:  164
+MGR:  154
+
+DROP: Old Armor
+RATE: 15%
+
+EXP:  30000
+GOLD: 50000
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+The ghost ship Mary Celeste now can summon her allies
+without having to waste the whole round for it.
+Besides, she now calls for Sirens instead of the
+swords - and that is, with quite a higher frequency.
+
+Furthermore her Doomcry is a multi-targeting move,
+she dropped Confuse in favor of the Coma spell
+and she also got a new move called Groundshock.
+She's also more resistant to healing her to death
+as well as strong against neutral elemental attacks.
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 0
+------------------------------
+
+Always:
+  Calls companions A (90%)
+
+If Calls companions A was successful:
+  Calls companions B (36%)
+
+If Calls companions A was successful:
+  Calls companions C (36%)
+
+------------------------------
+TURN 1
+------------------------------
+
+Always:
+  Groundshock (50%)
+  Coma (25%)
+  Denatured Doomcry (25%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Calls companions (A):
+------------------------------
+
+- If possible call
+  - 1 Siren
+
+------------------------------
+Calls companions (B):
+------------------------------
+
+- If possible call
+  - 1 Dark Skull
+
+------------------------------
+Calls companions (C):
+------------------------------
+
+- If possible call
+  - 1 Death Skull
+
+------------------------------
+Groundshock:
+------------------------------
+
+- Target one random foe
+- Special physical attack (but with fluctuation like a regular attack)
+- Base DMG = 600
+
+- Neutral elemental
+- Paralysis 100%
+
+------------------------------
+Coma:
+------------------------------
+
+- Target all living foes
+- Regular Coma spell
+
+- Sleep 80% (on a single target)
+
+- In case of failure perform
+    Denatured Doomcry (100%)
+
+------------------------------
+Denatured Doomcry:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 500
+
+- Neutral elemental
+- Instant Death 40%
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+
+- Weak against Light
+- Weak against Fire
+- Strong against Ice
+- Strong against Neutral
+- Immune to Shadow
+- Takes (reduced) damage through healing

@@ -1,0 +1,220 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Tank
+
+HP:   40000
+MP:   30000
+
+ATP:  1200
+DFP:  1000
+
+AGL:  500
+INT:  510
+GUT:  500
+MGR:  500
+
+DROP: ---
+RATE: ---
+
+EXP:  40000
+GOLD: 50000
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+The Tank is the outcome of the creative genius
+of the marvellous Prince Klaus of Gratze. Spending
+several man-years in the development, his ultimate
+war machine shall have not even a single weakness.
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 1
+------------------------------
+
+If Anti-Hard-Counter > 0:
+  Counter-Strike (100%) / Subtract 1 from Anti-Hard-Counter
+
+Else:
+  Machine-Gun Attack (100%)
+
+------------------------------
+TURN 2
+------------------------------
+
+If in turn 1 is performed Counter-Strike:
+  Machine-Gun Attack (100%)
+
+Else:
+  Incendiary Bomb (50%)
+  Magic Seal Bullet (50%)
+
+------------------------------
+TURN 3
+------------------------------
+
+If HP <= 10000 and in the last round isn't performed Repair:
+  Repair (100%)
+
+Else if HP <= 10000:
+  Repair (64%)
+  Machine-Gun Attack (16%)
+  Soft Slumber Shot (6%)
+  Piercer (14%)
+
+Else:
+  Machine-Gun Attack (43%)
+  Soft Slumber Shot (17%)
+  Piercer (40%)
+
+------------------------------
+TURN 4
+------------------------------
+
+If the Fire + Ice/Water combo is exploited at least once:
+  "Gratze for the win!!!" (50%)
+
+Else:
+  "Fools! There is no weakness!" (50%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Counter-Strike:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 2400
+
+- Anti-Hard elemental
+- Paralysis 100%
+
+- Lower INT by 25%
+
+------------------------------
+Machine-Gun Attack:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 800
+
+- Neutral elemental
+- Confusion 100%
+
+------------------------------
+Magic Seal Bullet:
+------------------------------
+
+- Target one random foe
+- Special physical attack
+- Base DMG = 1000
+
+- Neutral elemental
+- Silence 100%
+
+------------------------------
+Repair:
+------------------------------
+
+- Target self
+- Regular Champion spell
+- Heal 1509 HP
+
+- All non-Anti-Hard damage will be halved until next turn 1 in the following round
+- All (pure) Anti-Hard damage will be doubled until next turn (including a Counter-Strike)
+
+- Also adds mirror status
+
+- In case of failure perform
+    Machine-Gun Attack (43%)
+    Soft Slumber Shot (17%)
+    Piercer (40%)
+
+------------------------------
+Incendiary Bomb:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 800
+
+- Anti-Sea elemental
+- Poisoning 100%
+
+------------------------------
+Soft Slumber Shot:
+------------------------------
+
+- Target one random foe
+- Special physical attack
+- Base DMG = 1000
+
+- Neutral elemental
+- Sleep 100%
+
+------------------------------
+Piercer:
+------------------------------
+
+- Target one random foe
+- Special physical attack
+- Base DMG = 1200
+
+- Anti-Hard elemental
+- Paralysis 100%
+
+------------------------------
+"Fools! There is no weakness!":
+------------------------------
+
+- Checking situation
+
+------------------------------
+"Gratze for the win!!!":
+------------------------------
+
+- Checking situation
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+
+- Doubled strong against Fire
+  - But every (pure) Fire attack of the party prepares the combo attack
+
+- Doubled strong against Water - unless the very last attack is an aforementioned fire move
+  - But weak against (pure) Water if the very last attack IS an aforementioned fire move
+
+- Doubled strong against Ice - unless the very last attack is an aforementioned fire move
+  - But weak against (pure) Ice if the very last attack IS an aforementioned fire move
+
+- Doubled strong against Thunder
+
+- Immune to everything else except Anti-Hard
+- Whenever attacked by Anti-Hard, add 1 to Anti-Hard-Counter

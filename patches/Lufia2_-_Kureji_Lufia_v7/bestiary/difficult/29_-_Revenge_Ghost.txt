@@ -1,0 +1,226 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Revenge Ghost
+
+HP:   20000
+MP:   20000
+
+ATP:  800
+DFP:  600
+
+AGL:  500
+INT:  450
+GUT:  400
+MGR:  400
+
+DROP: ---
+RATE: ---
+
+EXP:  25000
+GOLD: 50000
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+The Revenge Ghost is the manifestation
+of pure hatred and unrestrained vengefulness.
+If you don't find a way to sustain all its
+anger and rage, even the strongest and
+bravest heroes won't find anything other
+than their guaranteed doom.
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 0
+------------------------------
+
+If in Phase 1 or 2 and hit for at least 999 HP (excluding reflected Hatred) since his last action:
+  "Ouch! That REALLY hurts!!!" (100%) / Go to Phase 3
+
+Else if in Phase 1 and hit for at least 666 HP (excluding reflected Hatred) since his last action:
+  "Ouch! That hurts!" (100%) / Go to Phase 2
+
+------------------------------
+TURN 1
+------------------------------
+
+If in Phase 1:
+  Hatred A (100%)
+
+Else if in Phase 2:
+  Hatred B (100%)
+
+Else if in Phase 3:
+  Hatred C (100%)
+
+------------------------------
+TURN 2
+------------------------------
+
+If in Phase 2 or in Phase 3:
+  Doomcry (62%)
+  Regular attack (38%)
+
+Else:
+  Thunder (17%)
+  Firebird (17%)
+  Doomcry (41%)
+  Regular attack (25%)
+
+------------------------------
+TURN 3
+------------------------------
+
+If in Phase 2 or in Phase 3:
+  Doomcry (62%)
+  Regular attack (38%)
+
+Else:
+  Thunder (17%)
+  Firebird (17%)
+  Doomcry (41%)
+  Regular attack (25%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+"Ouch! That REALLY hurts!!!":
+------------------------------
+
+- Checking situation
+- Go to Phase 3
+
+------------------------------
+"Ouch! That hurts!":
+------------------------------
+
+- Checking situation
+- Go to Phase 2
+
+------------------------------
+Hatred (A):
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = ((30000 - Current HP)/25)
+  - The lower the HP, the higher the Base DMG
+  - The Base DMG lies in-between 400 and 1200
+
+- Fire elemental
+- Silence 100%
+- Instant Death 50%
+- Confusion 100%
+
+------------------------------
+Hatred (B):
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 1600
+
+- Thunder elemental
+- Silence 100%
+- Instant Death 75%
+- Confusion 100%
+
+------------------------------
+Hatred (C):
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 2400
+
+- Thunder elemental
+- Silence 100%
+- Instant Death 100%
+- Confusion 100%
+
+------------------------------
+Thunder:
+------------------------------
+
+- Target all living foes
+- Regular Thunder spell
+- Base DMG = 480
+
+- Thunder elemental
+
+- In case of failure perform
+    Firebird (20%)
+    Doomcry (50%)
+    Regular attack (30%)
+
+------------------------------
+Firebird:
+------------------------------
+
+- Target all living foes
+- Regular Firebird spell
+- Base DMG = 360
+
+- Fire elemental
+
+- In case of failure perform
+    Doomcry (62%)
+    Regular attack (38%)
+
+------------------------------
+Doomcry:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 800
+
+- Water elemental
+- Instant Death 50%
+
+------------------------------
+Regular attack:
+------------------------------
+
+- Target one random foe
+- Regular attack
+
+- Neutral elemental
+- Instant Death 100%
+- Paralysis 100%
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+- Protection against healing HP
+
+- Weak against Light
+- Strong against Ice
+- Strong against Thunder
+- Strong against Neutral
+- Strong against Anti-Hard
+- Immune to Shadow

@@ -1,0 +1,121 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Shinigami
+
+HP:   10000
+MP:   0
+
+ATP:  500
+DFP:  500
+
+AGL:  450
+INT:  400
+GUT:  400
+MGR:  400
+
+DROP: Old Shield
+RATE: 100%
+
+EXP:  1000
+GOLD: 1000
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+The green Shinigami are also apparitions
+out of this world.
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 1
+------------------------------
+
+If HP < 7500:
+  Blank + "Ha, ha, ha! Burn in hell!" (50%)
+  Jackpot (50%)
+
+Else if already attacked by any kind of move:
+  Blank + "Ha, ha, ha! Burn in hell!" (100%)
+
+Else:
+  Defend (100%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Blank:
+------------------------------
+
+- First part of the Blank move
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 2400
+
+- Remove all AGL buffs and debuffs
+
+- Fire elemental
+- Silence 100%
+
+------------------------------
+"Ha, ha, ha! Burn in hell!":
+------------------------------
+
+- Second part of the Blank move
+
+- Target own group
+- Regular attack
+
+- Neutral elemental
+- Instant Death 100%
+
+------------------------------
+Jackpot:
+------------------------------
+
+- Target own group
+- Special physical attack
+- Base DMG = 3200
+
+- Critical hit rate: 100%
+- Critical DMG multiplier: 2
+
+- Remove all AGL buffs and debuffs
+
+- Fire + Earth elemental
+- Instant Death 100%
+
+------------------------------
+Defend:
+------------------------------
+
+- Defends
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+
+- Strong against everything except Neutral

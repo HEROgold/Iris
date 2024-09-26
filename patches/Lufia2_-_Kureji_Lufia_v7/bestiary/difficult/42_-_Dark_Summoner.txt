@@ -1,0 +1,177 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Dark Summoner
+
+HP:   666
+MP:   666
+
+ATP:  333
+DFP:  333
+
+AGL:  400
+INT:  300
+GUT:  200
+MGR:  200
+
+DROP: ---
+RATE: ---
+
+EXP:  4897
+GOLD: 5720
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+The Dark Summoners lurk around at the deepest
+bottom of the Ancient Cave just to deride
+your puny efforts to overcome their
+insurmountable defence.
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 1
+------------------------------
+
+Always:
+  Calls companions A (50%)
+  Calls companions B (25%)
+  Calls companions C (12.5%)
+  Bolt (2.875%)
+  Dark Aura (2.25%)
+  Destroy (1.75%)
+  Regular attack (5.625%)
+
+------------------------------
+TURN 2
+------------------------------
+
+Always:
+  Calls companions A (50%)
+  Calls companions B (25%)
+  Calls companions C (12.5%)
+  Bolt (2.875%)
+  Dark Aura (2.25%)
+  Destroy (1.75%)
+  Regular attack (5.625%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Calls companions (A):
+------------------------------
+
+- If possible call
+  - 1 King Hydra (non-buffed version) / Lucifer (buffed version)
+
+- In case of failure perform
+    Bolt (23%)
+    Dark Aura (18%)
+    Destroy (14%)
+    Regular attack (45%)
+
+------------------------------
+Calls companions (B):
+------------------------------
+
+- If possible call
+  - 1 Kraken (non-buffed version) / Hades (buffed version)
+
+- In case of failure perform
+    Bolt (23%)
+    Dark Aura (18%)
+    Destroy (14%)
+    Regular attack (45%)
+
+------------------------------
+Calls companions (C):
+------------------------------
+
+- If possible call
+  - 1 Anglerfish (non-buffed version) / Ice Devil (buffed version)
+
+- In case of failure perform
+    Bolt (23%)
+    Dark Aura (18%)
+    Destroy (14%)
+    Regular attack (45%)
+
+------------------------------
+Bolt:
+------------------------------
+
+- Target all living foes
+- Regular Bolt spell
+- Base DMG = 160
+
+- Thunder elemental
+
+- In case of failure perform
+    Dark Aura (23%)
+    Destroy (18%)
+    Regular attack (59%)
+
+------------------------------
+Dark Aura:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 333
+
+- Neutral elemental
+
+------------------------------
+Destroy:
+------------------------------
+
+- Target all living foes
+- Regular Destroy spell
+
+- Instant Death 50% (on a single target)
+
+- In case of failure perform
+    Regular attack (100%)
+
+------------------------------
+Regular attack:
+------------------------------
+
+- Target one random foe
+- Regular attack
+
+- Neutral elemental
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+- When DFP will be taken into account: DMG = DMG / 10
+
+- If HP >= 333:
+  - All enemy attacks will be reflected back
+
+- If HP <= 332:
+  - Immune to everything except Anti-Hard

@@ -1,0 +1,95 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Zealot
+
+HP:   1500
+MP:   2000
+
+ATP:  300
+DFP:  300
+
+AGL:  250
+INT:  330
+GUT:  200
+MGR:  250
+
+DROP: Magic Fruit
+RATE: 100%
+
+EXP:  100
+GOLD: 250
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+The Zealots are called by Idura in his
+second and third battle.
+
+They can either cast Stronger on the
+whole group or attack a single target
+which will be put to sleep then.
+
+Compared to their predecessors they are
+by far the most dangerous of their kind.
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 1
+------------------------------
+
+Always:
+  Stronger (36%)
+  Regular attack (64%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Stronger:
+------------------------------
+
+- Target own group
+- Regular Stronger spell
+- Heal 450 HP
+
+- In case of failure perform
+    Regular attack (100%)
+
+------------------------------
+Regular attack:
+------------------------------
+
+- Target one random foe
+- Regular attack
+
+- Neutral elemental
+- Sleep 100%
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+
+- Weak against Fire

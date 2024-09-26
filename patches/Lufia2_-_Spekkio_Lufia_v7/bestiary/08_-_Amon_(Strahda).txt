@@ -1,0 +1,139 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Amon
+
+HP:   10000
+MP:   5000
+
+ATP:  800
+DFP:  200
+
+AGL:  400
+INT:  300
+GUT:  184
+MGR:  400
+
+DROP: Kraken Rock
+RATE: 100%
+
+EXP:  50000
+GOLD: 50000
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+You'll fight this version of Amon at the
+Sealed Tower. It's basically the same as in
+the original. However, he now has ice and
+thunder protection, a stronger Chaos Wave
+and a somewhat stronger Galactic Lancer.
+And he is as fast as Gades was at the
+Ancient Tower.
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 1
+------------------------------
+
+If in Round 1 or every four rounds later:
+  Chaos Wave (100%)
+
+Else:
+  Thunder (36%)
+  Ice Valk (23%)
+  Galactic Lancer (15%)
+  Regular attack (26%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Chaos Wave:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 700
+
+- Neutral elemental
+- Confusion 45%
+
+------------------------------
+Thunder:
+------------------------------
+
+- Target all living foes
+- Regular Thunder spell
+- Base DMG = 480
+
+- Thunder elemental
+
+- In case of failure perform
+    Ice Valk (36%)
+    Galactic Lancer (23%)
+    Regular attack (41%)
+
+------------------------------
+Ice Valk:
+------------------------------
+
+- Target all living foes
+- Regular Ice Valk spell
+- Base DMG = 420
+
+- Ice elemental
+
+- In case of failure perform
+    Galactic Lancer (36%)
+    Regular attack (64%)
+
+------------------------------
+Galactic Lancer:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 800
+
+- Neutral elemental
+
+------------------------------
+Regular attack:
+------------------------------
+
+- Target one random foe
+- Regular attack
+
+- Neutral elemental
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+
+- Weak against Light
+- Strong against Shadow
+- Strong against Ice
+- Strong against Thunder

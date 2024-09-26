@@ -1,0 +1,35 @@
+
+
+ Notable non-bugfixing and non-translation changes:
+
+
+
+  Item changes:
+
+   - Miracles heal 16383 instead of only 999 HP/MP
+
+   - the Ancient Cave red chest distribution is fixed (for sure a bug, but totally worth the special mention)
+
+
+  Equipment changes:
+
+   - Flame Jewel is a blue chest item just like these other elemental stones
+
+   - some of the dummied out IP moves are included
+     - Dragon Fury (Rage/Fury Knife)
+     - Double Slash (Deadly/Killer Sword)
+     - Sanity (Deadly/Killer Armor)
+     - Illumination (Mage Shield)
+     - Water Guard (Gold Shield)
+     - Weakener (Safety First)
+
+
+  Enemy changes:
+
+   - Pierre and Daniele can use multi-targeted attacks in case of lacking MP
+
+   - Tank's Piercer is fire elemental instead of neutral
+
+   - Gold Dragons have 3500 HP and Stardust Blow is light elemental instead of neutral
+
+   - Erim and Daos are a bit faster

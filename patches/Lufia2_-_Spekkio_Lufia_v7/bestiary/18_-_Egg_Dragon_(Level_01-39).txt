@@ -1,0 +1,142 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Egg Dragon
+
+HP:   65535
+MP:   infinite
+
+ATP:  1500
+DFP:  2000
+
+AGL:  510
+INT:  510
+GUT:  510
+MGR:  510
+
+DROP: Myth Blade
+RATE: 1%
+
+EXP:  60000
+GOLD: 60000
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+In the Spekkio Lufia patch the Egg Dragon
+chooses his whole behaviour depending on
+the highest level of a party member
+(just like Spekkio from Chrono Trigger).
+
+This is the version of the Egg Dragon
+that you will fight if the highest level
+of a party member is below 40.
+
+It's basically the same fight as in the
+original version. However, his Zap and
+Over Easy moves are slightly stronger
+as well as Over Easy's probability
+of inflicting confusion is slightly
+higher, too.
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 1
+------------------------------
+
+Always:
+  Sunny Side Up (36%)
+  Zap (15%)
+  Over Easy (17%)
+  Scrambled Egg (32%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Sunny Side Up:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 1000
+
+- Fire elemental
+
+------------------------------
+Zap:
+------------------------------
+
+- Target all living foes
+- Regular Zap spell
+- Base DMG = 600
+
+- Light elemental
+
+- No failure due to infinite MP
+
+------------------------------
+Over Easy:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 500
+
+- Critical hit rate: 1%
+- Critical DMG multiplier: 0.5
+
+- Neutral elemental
+- Confusion 60%
+
+------------------------------
+Scrambled Egg:
+------------------------------
+
+- Target one random foe
+- Regular attack
+
+- Fire elemental
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+- Protection against healing HP
+
+- Weak against Shadow
+- Weak against Anti-Flying
+- Weak against Anti-Dragon
+- Strong against Fire
+- Strong against Thunder
+- Strong against Water
+- Strong against Ice
+- Strong against Light
+- Immune to Earth
+
+- Unaffected by Battle Fury if his HP are close to the maximum
+- Before the Egg Dragon gets his very first turn, he won't take any HP damage at all
+
+- If he's hit with a Wind + Soil elemental action and his HP are < 32768,
+  his MP are removed until his own very next action

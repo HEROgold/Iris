@@ -1,0 +1,158 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Gades
+
+HP:   60000
+MP:   infinite
+
+ATP:  1250
+DFP:  2000
+
+AGL:  510
+INT:  510
+GUT:  510
+MGR:  510
+
+DROP: Blood Sword
+RATE: 100%
+
+EXP:  62500
+GOLD: 62500
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+After all the mischief caused by the previous
+abominations this battle against Gades seems
+way too easy?
+
+So are you ready now for Doom Island...?
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 1
+------------------------------
+
+If in Round 1:
+  Destructo Wave (100%)
+
+Else:
+  Curse (25%)
+  Anger (50%)
+  Destructo Wave (25%)
+
+------------------------------
+TURN 2
+------------------------------
+
+If in turn 1 is performed Destructo Wave:
+  Devastation (100%)
+
+Else:
+  Destructo Wave (67%)
+  Devastation (33%)
+
+------------------------------
+TURN 3
+------------------------------
+
+If in turn 2 is performed Devastation:
+  Octo-Strike (100%)
+
+Else:
+  Devastation (50%)
+  Octo-Strike (50%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Curse:
+------------------------------
+
+- Target one random foe
+- Reduces HP to 1
+
+- Non-elemental
+- Poisoning 100%
+- Paralysis 100%
+
+- The "HP to 1"-effect pierces through all reflecting counter-moves
+
+------------------------------
+Anger:
+------------------------------
+
+- Target one random foe
+- Regular attack
+
+- Neutral elemental
+- Paralysis 100%
+
+------------------------------
+Destructo Wave:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 1000
+
+- Soil elemental
+- Poisoning 100%
+- Paralysis 100%
+
+------------------------------
+Devastation:
+------------------------------
+
+- Target one random foe
+- Special physical attack
+- Base DMG = 1250
+
+- Shadow elemental
+
+------------------------------
+Octo-Strike:
+------------------------------
+
+- Target one random foe
+- 8 attacks in a row with retargeting
+- Special physical attack (but with fluctuation like a regular attack)
+- Base DMG = 500
+
+- Critical hit rate: 25%
+- Critical DMG multiplier: 0.5
+
+- Anti-Hard elemental
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+- Protection against Mirror
+- Protection against healing HP
+
+- Weak against Light
+- Immune to everything else

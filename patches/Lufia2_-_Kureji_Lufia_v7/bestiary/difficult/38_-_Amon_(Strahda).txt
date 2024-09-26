@@ -1,0 +1,265 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Amon
+
+HP:   60000
+MP:   infinite
+
+ATP:  1250
+DFP:  2000
+
+AGL:  510
+INT:  510
+GUT:  510
+MGR:  510
+
+DROP: Blood Rod
+RATE: 100%
+
+EXP:  62500
+GOLD: 62500
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+After all the mischief caused by the previous
+abominations this battle against Amon seems
+way too easy?
+
+So are you ready now for Doom Island...?
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 1
+------------------------------
+
+If in Round 1:
+  Chaos Wave (100%)
+
+Else:
+  Melancholy (25%)
+  Thunder A (8.5%)
+  Thunder B (8.5%)
+  Ice Valk A (8.5%)
+  Ice Valk B (8.5%)
+  Firebird A (8%)
+  Firebird B (8%)
+  Chaos Wave (25%)
+
+------------------------------
+TURN 2
+------------------------------
+
+If in Round 1:
+  Thunder A (25%)
+  Thunder B (25%)
+  Ice Valk A (25%)
+  Ice Valk B (25%)
+
+Else if in turn 1 is performed Chaos Wave:
+  Thunder A (17%)
+  Thunder B (17%)
+  Ice Valk A (17%)
+  Ice Valk B (17%)
+  Dragon A (16%)
+  Dragon B (16%)
+
+Else:
+  Chaos Wave (67%)
+  Thunder A (5.625%)
+  Thunder B (5.625%)
+  Ice Valk A (5.625%)
+  Ice Valk B (5.625%)
+  Dragon A (5.25%)
+  Dragon B (5.25%)
+
+------------------------------
+TURN 3
+------------------------------
+
+If in Round 1:
+  Galactic Lancer (100%)
+
+Else if in turn 2 is not performed Chaos Wave:
+  Galactic Lancer (50%)
+  Thunder B (25%)
+  Ice Valk B (25%)
+
+Else:
+  Galactic Lancer (25%)
+  Thunder A (8.5%)
+  Thunder B (21%)
+  Ice Valk A (8.5%)
+  Ice Valk B (21%)
+  Dragon A (8%)
+  Dragon B (8%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Melancholy:
+------------------------------
+
+- Target one random foe
+- Beforehand set target HP to 250 (unless the target HP is less)
+- Regular attack
+- Reduces MP to 0
+
+- Neutral elemental
+- Silence 100%
+- Confusion 100%
+
+- The "HP to 250"-effect pierces through all reflecting counter-moves
+- The "MP to 0"-effect pierces through all reflecting counter-moves
+
+------------------------------
+Chaos Wave:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 1000
+
+- Wind elemental
+- Silence 100%
+- Confusion 100%
+
+------------------------------
+Galactic Lancer:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 1200
+
+- Anti-Hard elemental
+- Confusion 100%
+
+------------------------------
+Thunder (A):
+------------------------------
+
+- Target one random foe
+- Regular Thunder spell
+- Base DMG = 480
+
+- Thunder elemental
+
+- No failure due to infinite MP
+
+------------------------------
+Thunder (B):
+------------------------------
+
+- Target all living foes
+- Regular Thunder spell
+- Base DMG = 480
+
+- Thunder elemental
+
+- No failure due to infinite MP
+
+------------------------------
+Ice Valk (A):
+------------------------------
+
+- Target one random foe
+- Regular Ice Valk spell
+- Base DMG = 420
+
+- Ice elemental
+
+- No failure due to infinite MP
+
+------------------------------
+Ice Valk (B):
+------------------------------
+
+- Target all living foes
+- Regular Ice Valk spell
+- Base DMG = 420
+
+- Ice elemental
+
+- No failure due to infinite MP
+
+------------------------------
+Dragon (A):
+------------------------------
+
+- Target one random foe
+- Regular Dragon spell
+- Base DMG = 390
+
+- Water elemental
+
+- No failure due to infinite MP
+
+------------------------------
+Dragon (B):
+------------------------------
+
+- Target all living foes
+- Regular Dragon spell
+- Base DMG = 390
+
+- Water elemental
+
+- No failure due to infinite MP
+
+------------------------------
+Firebird (A):
+------------------------------
+
+- Target one random foe
+- Regular Firebird spell
+- Base DMG = 360
+
+- Fire elemental
+
+- No failure due to infinite MP
+
+------------------------------
+Firebird (B):
+------------------------------
+
+- Target all living foes
+- Regular Firebird spell
+- Base DMG = 360
+
+- Fire elemental
+
+- No failure due to infinite MP
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+- Protection against Mirror
+- Protection against healing HP
+
+- Weak against Light
+- Immune to everything else

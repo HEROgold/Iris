@@ -1,0 +1,188 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Amon
+
+HP:   10000
+MP:   5000
+
+ATP:  800
+DFP:  200
+
+AGL:  184
+INT:  300
+GUT:  184
+MGR:  400
+
+DROP: Myth Blade
+RATE: 100%
+
+EXP:  50000
+GOLD: 50000
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+You'll fight this version of Amon inside
+the Spirit Shrine. However, because the
+party lacks the ability to use their full
+potential of their energy waves at this point
+of the game, they get overwhelmed by Amon's
+powerful Chaos Wave here.
+
+Therefore, the Chaos Wave has some nasty
+special effects in this battle (which will
+disappear in the later battles due to the
+party getting more experienced regarding
+energy waves).
+
+Besides Confusion, Chaos Wave not only inflicts
+Mirror at perfect accuracy, as soon as it's used
+for the first time, it will also turn every
+damage inflicted by attacking moves in healing
+for the duration of the whole battle.
+
+Knowing this, he uses his wave every two rounds -
+in contrast to every four rounds in later battles
+when he doesn't have all these advantages
+regarding the energy waves anymore.
+
+Amon has the very same battle stats and the very
+same attacks power-wise as in the original
+version. The only difference here are the
+additional effects of his wave and the way
+in which he uses his attacks.
+
+The battle takes place at the end of the shrine
+right before Karyn sacrifices herself. Like the
+very first battle against Gades you don't have
+to win in order to proceed further, but of
+course you can win and get a reward.
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 1
+------------------------------
+
+If in Round 1 or every two rounds later:
+  Chaos Wave (100%)
+
+Else if HP > 5000:
+  Galactic Lancer (36%)
+  Regular attack (64%)
+
+Else if ATP buffed by more than 200:
+  "Ha, ha, ha, ha, ha!" (100%)
+
+Else:
+  Thunder (50%)
+  Ice Valk (50%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Chaos Wave:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 350
+
+- Neutral elemental
+- Confusion 35%
+- Mirror 100%
+
+- Go to Defence State 2
+
+------------------------------
+Galactic Lancer:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 600
+
+- Neutral elemental
+
+------------------------------
+Regular attack:
+------------------------------
+
+- Target one random foe
+- Regular attack
+
+- Critical hit rate: 1%
+- Critical DMG multiplier: 0.125
+
+- Neutral elemental
+
+------------------------------
+"Ha, ha, ha, ha, ha!":
+------------------------------
+
+- Target one random foe
+- Regular attack
+
+- Neutral elemental
+
+------------------------------
+Thunder:
+------------------------------
+
+- Target all living foes
+- Regular Thunder spell
+- Base DMG = 480
+
+- Thunder elemental
+
+- In case of failure perform
+    Ice Valk (100%)
+
+------------------------------
+Ice Valk:
+------------------------------
+
+- Target all living foes
+- Regular Ice Valk spell
+- Base DMG = 420
+
+- Ice elemental
+
+- In case of failure perform
+    Galactic Lancer (36%)
+    Regular attack (64%)
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+
+- If in Defence State 1:
+  - Weak against Light
+  - Strong against Shadow
+
+- If in Defence State 2:
+  - Gets healed by damaging attacks instead
+  - Takes (heavily reduced) damage through healing

@@ -1,0 +1,378 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Egg Dragon
+
+HP:   65535
+MP:   infinite
+
+ATP:  1500
+DFP:  2000
+
+AGL:  510
+INT:  510
+GUT:  510
+MGR:  510
+
+DROP: Myth Blade
+RATE: 1%
+
+EXP:  60000
+GOLD: 60000
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+In the Spekkio Lufia patch the Egg Dragon
+chooses his whole behaviour depending on
+the highest level of a party member
+(just like Spekkio from Chrono Trigger).
+
+This is the version of the Egg Dragon
+that you will fight if the highest level
+of a party member is in-between 90 and 98.
+
+His Fierce Song and Dread spell are gone,
+but unfortunately they are replaced by
+better substitutes.
+
+His Over Easy is not only damage-wise on par
+with Stardust Blow from the Gold Dragons, it
+also has the same chance of inflicting silence
+than Fierce Song had - and the chance of
+inflicting confusion is even higher now.
+
+Oh, and speaking of Stardust Blow, guess what
+he will use now as well. Yeah, exactly...
+And it is very, very powerful - the puny
+version of the Gold Dragons is nothing
+compared to this. Luckily he won't use it
+more than one time per round.
+
+The Dread spell is replaced now by Egg Slicer
+which lowers the DFP even a little bit more.
+And it's as powerful as Over Easy. So he might
+not use his Stardust Blow more than once, but
+nevertheless he can use three attacks with the
+strength of the Gold Dragons' regular Stardust
+Blow in one round.
+
+His Scrambled Egg - aside from being ridiculously
+powerful - now also sets your HP to 1 before the
+attack inflicts damage. This might be relevant
+when you use some reflecting IP moves as this
+effect can't be prevented (just like the MP to 0
+effect which, of course, still is present, too).
+
+There's also a new attack called Sparkling Light.
+Although it doesn't do so much damage, it has
+the side effect of lowering your ATP.
+
+And his defense got better now as well. So he is
+now strong against neutral elemental attacks.
+This for example means that attacks like Battle
+Fury will do only around half as much damage as
+they did in all the previous battles (unless if
+his HP are close to the maximum where Battle
+Fury does and did absolutely no damage, anyway).
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 1
+------------------------------
+
+Always:
+  Stardust Blow (12%)
+  Diamond Dust (6%)
+  Cinder Blast (6%)
+  Sunny Side Up (12%)
+  Zap B (32%)
+  Scrambled Egg (32%)
+
+------------------------------
+TURN 2
+------------------------------
+
+Always:
+  Egg Slicer (34%)
+  Zap A (11%)
+  Zap B (11%)
+  Thunder A (5.5%)
+  Thunder B (5.5%)
+  Ice Valk A (5.5%)
+  Ice Valk B (5.5%)
+  Dragon A (5.5%)
+  Dragon B (5.5%)
+  Firebird A (5.5%)
+  Firebird B (5.5%)
+
+------------------------------
+TURN 3
+------------------------------
+
+Always:
+  Over Easy (66%)
+  Sparkling Light (34%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Stardust Blow:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 1600
+
+- Light elemental
+
+------------------------------
+Diamond Dust:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 1400
+
+- Ice elemental
+
+------------------------------
+Cinder Blast:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 1200
+
+- Thunder elemental
+
+------------------------------
+Sunny Side Up:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 1500
+
+- Fire elemental
+
+------------------------------
+Scrambled Egg:
+------------------------------
+
+- Target one random foe
+- Beforehand set target HP to 1
+- Special physical attack
+- Base DMG = 10000
+
+- Reduces MP to 0
+- Reduces IP to 0
+
+- Critical hit rate: 50%
+- Critical DMG multiplier: 1
+
+- Anti-Hard elemental
+
+- The "HP to 1"-effect pierces through all reflecting counter-moves
+- The "MP to 0"-effect pierces through all reflecting counter-moves
+- The "IP to 0"-effect pierces through all reflecting counter-moves
+
+------------------------------
+Egg Slicer:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 800
+
+- Anti-Hard elemental
+- Lower DFP by 12.5%
+
+------------------------------
+Zap (A):
+------------------------------
+
+- Target one random foe
+- Regular Zap spell
+- Base DMG = 600
+
+- Light elemental
+
+- No failure due to infinite MP
+
+------------------------------
+Zap (B):
+------------------------------
+
+- Target all living foes
+- Regular Zap spell
+- Base DMG = 600
+
+- Light elemental
+
+- No failure due to infinite MP
+
+------------------------------
+Thunder (A):
+------------------------------
+
+- Target one random foe
+- Regular Thunder spell
+- Base DMG = 480
+
+- Thunder elemental
+
+- No failure due to infinite MP
+
+------------------------------
+Thunder (B):
+------------------------------
+
+- Target all living foes
+- Regular Thunder spell
+- Base DMG = 480
+
+- Thunder elemental
+
+- No failure due to infinite MP
+
+------------------------------
+Ice Valk (A):
+------------------------------
+
+- Target one random foe
+- Regular Ice Valk spell
+- Base DMG = 420
+
+- Ice elemental
+
+- No failure due to infinite MP
+
+------------------------------
+Ice Valk (B):
+------------------------------
+
+- Target all living foes
+- Regular Ice Valk spell
+- Base DMG = 420
+
+- Ice elemental
+
+- No failure due to infinite MP
+
+------------------------------
+Dragon (A):
+------------------------------
+
+- Target one random foe
+- Regular Dragon spell
+- Base DMG = 390
+
+- Water elemental
+
+- No failure due to infinite MP
+
+------------------------------
+Dragon (B):
+------------------------------
+
+- Target all living foes
+- Regular Dragon spell
+- Base DMG = 390
+
+- Water elemental
+
+- No failure due to infinite MP
+
+------------------------------
+Firebird (A):
+------------------------------
+
+- Target one random foe
+- Regular Firebird spell
+- Base DMG = 360
+
+- Fire elemental
+
+- No failure due to infinite MP
+
+------------------------------
+Firebird (B):
+------------------------------
+
+- Target all living foes
+- Regular Firebird spell
+- Base DMG = 360
+
+- Fire elemental
+
+- No failure due to infinite MP
+
+------------------------------
+Over Easy:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 800
+
+- Earth elemental
+- Confusion 100%
+- Silence 80%
+
+------------------------------
+Sparkling Light:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 400
+
+- Fire + Light elemental
+- Lower ATP by 12.5%
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+- Protection against healing HP
+
+- Weak against Shadow
+- Weak against Anti-Flying
+- Weak against Anti-Dragon
+- Strong against Fire
+- Strong against Thunder
+- Strong against Water
+- Strong against Ice
+- Strong against Light
+- Strong against Neutral
+- Strong against Anti-Hard
+- Immune to Earth
+
+- Unaffected by Battle Fury if his HP are close to the maximum
+- Before the Egg Dragon gets his very first turn, he won't take any HP damage at all
+
+- If he's hit with a Wind + Soil elemental action and his HP are < 32768,
+  his MP are removed until his own very next action

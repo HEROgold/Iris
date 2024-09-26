@@ -1,0 +1,71 @@
+Aside from differences in case of Ancient Cave only-monsters, every regular enemy is buffed the following way:
+
+HP: increased by factor 2
+MP: increased by factor 2
+
+ATP: increased by factor 1.5
+DFP: no increase
+
+AGL: increased by factor 1.5 (capped at 510)
+INT: increased by factor 2 (capped at 510)
+GUT: no increase
+MGR: no increase
+
+special physical attacks: increased by factor 1.5 (however, the power of multi-targeting attacks is capped at 800)
+special magical attacks: no increase (as their power already is increased by raising INT)
+
+
+Furthermore HP borders regarding behaviour changes in case of losing enough HP are also multiplied by factor 2.
+In a few cases instead of 2 the INT is increased by 2.25, 2.5, 2.75, 3, 3.25, 3.5, 4, 4.25, 5.5, 7, 7.25 or 8.
+And Nosferatu's unique Contact move is increased by factor 1.5 from absorbing 120 to 180 HP.
+And critical hit rates are changed for some late game enemies (Shade Warrior to 20%, T-Rex to 25%, Blue-Roy to 75%).
+
+
+Unique changes of Ancient Cave only-monsters:
+
+Blue Mimic:
+- no unique changes
+
+Ghost Ship:
+- summons other companions (King Hydras, Krakens and Anglerfishs)
+
+Orochi:
+- HP increased only by factor 1.75
+- higher item drop rate in the difficult version
+
+Great Cocka:
+- ATP increased by factor 2
+- critical hit rate of Beak Bash increased to 100%
+
+Flame/Well/Wind/Earth Genie:
+- the power of their special attacks ranges from 770 over 780 to 800 (instead from 750 to 840)
+- defending is replaced by normal attacking
+
+Ice Devil:
+- HP and AGL increased by factor 4.25
+- Destroy is replaced by Deflect/Silence
+- attack power of Cruel Storm increased to 692 (so that the overall attack power is 692 + 508 = 1200)
+- regular attack also lowers AGL by 25%
+- DFP and MGR are slightly increased as well
+
+Hades:
+- HP and AGL increased by factor 2.25
+- a second turn enabling mirror is added
+- attack power of Energy Shock increased by factor 2.5 up to 1090 as well as higher chance to use it
+- regular attack also lowers INT by 25%
+- DFP and MGR are slightly increased as well
+
+Lucifer:
+- HP and AGL increased by factor 2.25
+- attack power of Gloomy increased by factor 1.75 to 420
+- instead of paralysis the regular attack now has a chance of sleep (with a probability of 50%)
+- regular attack also lowers ATP by 25%
+- DFP and MGR are slightly increased as well
+
+Copper/Silver/Gold Dragon:
+- they were already heavily buffed beforehand, so no additional buffs
+- aside from slightly increasing their ATP (and item drop rate in the difficult version)
+
+Dark Summoner:
+- they were already heavily buffed beforehand, so no additional buffs
+- aside from summoning other companions (Lucifers, Hadeses and Ice Devils)

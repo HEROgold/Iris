@@ -1,0 +1,152 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Tank
+
+HP:   10000
+MP:   0
+
+ATP:  1100
+DFP:  300
+
+AGL:  120
+INT:  0
+GUT:  0
+MGR:  200
+
+DROP: ---
+RATE: ---
+
+EXP:  40000
+GOLD: 1
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+The Tank now is able to use its strongest moves
+for three consecutive rounds after using
+"Missile load." instead of only once. Besides,
+its Piercer will always poison you aside from
+hitting hard and it's also a little bit faster
+as well as strong against neutral elemental attacks.
+
+If it lost a certain amount of HP, whenever
+preparing its missile attacks it will also call
+for a mimic-type helper called Boxy.
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 1
+------------------------------
+
+If Missile-Counter > 0:
+  Piercer (34%)
+  Magic Seal Bullet (33%)
+  Incendiary Bomb (33%)
+
+Else if HP <= 7500:
+  Machine-Gun Attack (17%)
+  "Missile load." + Calls companions (83%)
+
+Else:
+  Machine-Gun Attack (17%)
+  "Missile load." (83%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Piercer:
+------------------------------
+
+- Target one random foe
+- Special physical attack
+- Base DMG = 1100
+
+- Anti-Sea elemental
+- Poisoning 100%
+
+- Subtract 1 from Missile-Counter
+
+------------------------------
+Magic Seal Bullet:
+------------------------------
+
+- Target one random foe
+- Special physical attack
+- Base DMG = 900
+
+- Neutral elemental
+- Silence 50%
+
+- Subtract 1 from Missile-Counter
+
+------------------------------
+Incendiary Bomb:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 700
+
+- Fire elemental
+
+- Subtract 1 from Missile-Counter
+
+------------------------------
+Machine-Gun Attack:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 500
+
+- Neutral elemental
+
+------------------------------
+"Missile load.":
+------------------------------
+
+- Checking situation
+
+- Set Missile-Counter to 3 (from initially 0)
+
+------------------------------
+Calls companions:
+------------------------------
+
+- If possible call
+  - 1 Boxy
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+
+- Weak against Anti-Hard
+- Strong against Fire
+- Strong against Thunder
+- Strong against Water
+- Strong against Ice
+- Strong against Neutral

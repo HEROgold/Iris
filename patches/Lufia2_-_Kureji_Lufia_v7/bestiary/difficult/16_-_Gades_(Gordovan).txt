@@ -1,0 +1,123 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Gades
+
+HP:   10000
+MP:   0
+
+ATP:  600
+DFP:  200
+
+AGL:  184
+INT:  192
+GUT:  184
+MGR:  400
+
+DROP: ---
+RATE: ---
+
+EXP:  50000
+GOLD: 50000
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+The next enemy is none other than Gades, the
+God of Destruction. The battle at the top of
+the Gordovan tower is considered as one of
+the toughest fights as it's supposed to be lost,
+anyway.
+
+Of course this fight is modified as well and now
+the party has to fight against a really formidable
+foe. Some people may know that there's an unused
+stronger version of Gades in the game's source code
+who has the nickname "Frue Gades" in the internet.
+
+This version has 10000 HP, overall better stats
+and stronger attacks than all the versions of Gades
+that you fight in the regular game.
+
+The party has now to fight against Frue Gades
+who is able to kill every level 50 character almost
+with a single blow of his Devastation attack.
+
+He might even be able to (at least almost) wipe out
+the whole party with his Destructo Wave right
+at the beginning of the fight.
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 1
+------------------------------
+
+If in Round 1 or every four rounds later:
+  Destructo Wave (100%)
+
+Else:
+  Devastation (50%)
+  Regular attack (50%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Destructo Wave:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 800
+
+- Neutral elemental
+
+------------------------------
+Devastation:
+------------------------------
+
+- Target one random foe
+- Special physical attack
+- Base DMG = 1100
+
+- Shadow elemental
+
+------------------------------
+Regular attack:
+------------------------------
+
+- Target one random foe
+- Regular attack
+
+- Neutral elemental
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+
+- Weak against Light
+- Strong against Shadow
+- Strong against Ice
+- Strong against Thunder

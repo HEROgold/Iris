@@ -1,0 +1,95 @@
+
+
+            ******************************************************
+            *                                                    *
+            *        Protection against status ailments:         *
+            *                                                    *
+            ******************************************************
+
+
+ Protection against Poisoning:
+ - Bright Armor (All)
+ - Bright Cloth/Diamond Gown (Lexis only)
+ - Bunny Suit (Selan, Artea, Tia)
+ - Camu Armor (Guy, Dekar)
+ - Crystal Mail (Maxim, Guy, Dekar)
+ - Crystal Robe (Selan, Artea, Tia)
+ - Holy Robe/God Robe (Selan, Artea, Tia)
+ - Holy Wings/Angel Wings (Selan, Tia)
+ - Lab Coat (Lexis only)
+ - Old Armor (Guy, Dekar)
+ - Pearl Armor/Divine Armor (Maxim only)
+ - Pearl Brace (Selan, Tia)
+ - Quilted Silk (Selan, Tia)
+ - Royal Dress (Selan, Tia)
+ - Seethru/Sheer Cape (Selan, Tia)
+ - Seethru/Sheer Silk (Selan, Tia)
+ - Silk Robe (Selan, Artea, Tia)
+ - Silk Toga (Selan, Tia)
+ - Silver Armor (Maxim, Guy, Dekar)
+ - Silver Mail (Maxim, Guy, Artea, Dekar, Lexis)
+ - Silver Robe (Selan, Artea, Tia)
+
+ Protection against Silence:
+ - Bunny Tray (Selan, Artea, Tia)
+ - Hairpin/Yasha Pin (Selan, Tia)
+ - Long Robe/Cotehardie (Selan, Tia) (This is not full protection, but the chance is 1/2)
+ - Mage Shield (Maxim, Selan, Artea, Tia, Lexis)
+ - Old Shield (Guy, Artea, Dekar)
+ - Pearl Shield/Divine Targe (Maxim only)
+ - Royal Dress (Selan, Tia)
+ - Rune Gloves (Artea only)
+ - S-Myst/S-Curio Ring (All)
+ - Seethru/Sheer Cape (Selan, Tia)
+ - Seethru/Sheer Silk (Selan, Tia)
+ - Silk Toga (Selan, Tia)
+
+ Protection against Instant Death:
+ - Bright Cloth/Diamond Gown (Lexis only)
+ - Bunny Ring (Selan, Artea, Tia)
+ - Dark Mirror (uncursed) (All)
+ - Ghost Ring (All)
+ - Holy Robe/God Robe (Selan, Artea, Tia)
+ - Holy Wings/Angel Wings (Selan, Tia)
+ - Jute Helmet/Warding Helm (Maxim, Guy, Dekar)
+ - Pearl Armor/Divine Armor (Maxim only)
+ - Ruse Armor/Lucina Armor (Selan, Tia)
+ - Undead Ring (All)
+
+ Protection against Paralysis:
+ - Bright Armor (All)
+ - Bunny Suit (Selan, Artea, Tia)
+ - Holy Robe/God Robe (Selan, Artea, Tia)
+ - Magic Bikini (Selan, Tia)
+ - Miracle Plate/Mail (Maxim, Guy, Dekar) (+ Lexis, Artea - in Spekkio Lufia only)
+ - Old Armor (Guy, Dekar)
+ - Pearl Armor/Divine Armor (Maxim only)
+ - Pearl Brace (Selan, Tia)
+ - Seethru/Sheer Cape (Selan, Tia)
+ - Seethru/Sheer Silk (Selan, Tia)
+
+ Protection against Confusion:
+ - Brill Helm/Radiant Helm (All)
+ - Bunny Ears (Selan, Artea, Tia)
+ - Ghostclothes/Soul Clothes(All)
+ - Jute Helmet/Warding Helm (Maxim, Guy, Dekar)
+ - Legend Helm/Creator Helm (Maxim, Guy, Dekar)
+ - Old Helmet (Guy, Dekar)
+ - Pearl Helmet/Divine Helm (Maxim only)
+ - Power Brace/Spirit Brace (Maxim, Selan, Artea, Tia, Lexis)
+ - Safety Hat/Safety First (Lexis only)
+ - Seethru/Sheer Cape (Selan, Tia)
+ - Seethru/Sheer Silk (Selan, Tia)
+
+ Protection against Sleep:
+ - Agony Helm/Agni Helm (Maxim, Guy, Dekar)
+ - Anger Brace/Fury Brace (All)
+ - Boom Turban/Indra Turban (Selan, Artea, Tia, Lexis)
+ - Bunny Ears (Selan, Artea, Tia)
+ - Fury Helmet (Maxim, Guy, Dekar)
+ - Fury Ribbon (Selan, Artea, Tia)
+ - Ice Hairband (Selan, Tia)
+ - Mystery/Curio Ring (All)
+ - S-Myst/S-Curio Ring (All)
+ - Seethru/Sheer Cape (Selan, Tia)
+ - Seethru/Sheer Silk (Selan, Tia)

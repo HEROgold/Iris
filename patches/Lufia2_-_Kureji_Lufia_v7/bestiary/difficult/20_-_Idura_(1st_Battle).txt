@@ -1,0 +1,145 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Idura
+
+HP:   6000
+MP:   5000
+
+ATP:  300
+DFP:  300
+
+AGL:  400
+INT:  300
+GUT:  200
+MGR:  300
+
+DROP: ---
+RATE: ---
+
+EXP:  5000
+GOLD: 1000
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+In his first battle Idura tries to deplete
+your MP so that you can't use spells anymore.
+
+Aside from his regular attacks and his
+Idura-Thunder (which is just a Bolt spell
+in fact) he will use Absorb every round.
+
+The regular attack in turn 1 is for the case
+that he doesn't have any MP to cast Absorb.
+
+Furthermore, he will call for one Follower
+every round.
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 0
+------------------------------
+
+Always:
+  Calls companions (100%)
+
+------------------------------
+TURN 1
+------------------------------
+
+Always:
+  Absorb (100%)
+  Regular attack A (0%)
+
+------------------------------
+TURN 2
+------------------------------
+
+Always:
+  Idura-Thunder (50%)
+  Regular attack A (25%)
+  Regular attack B (25%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Calls companions:
+------------------------------
+
+- If possible call
+  - 1 Follower
+
+------------------------------
+Absorb:
+------------------------------
+
+- Target all living foes
+- Regular Absorb spell
+- Absorb MP
+
+- In case of failure perform
+    Regular attack A (100%)
+
+------------------------------
+Idura-Thunder:
+------------------------------
+
+- Target all living foes
+- Regular Bolt spell
+- Base DMG = 160
+
+- Thunder elemental
+
+- In case of failure perform
+    Regular attack A (50%)
+    Regular attack B (50%)
+
+------------------------------
+Regular attack (A):
+------------------------------
+
+- Target one random foe
+- Regular attack
+
+- Thunder elemental
+
+------------------------------
+Regular attack (B):
+------------------------------
+
+- Target all living foes
+- Regular attack
+
+- Thunder elemental
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+
+- Weak against Ice
+- Weak against Anti-Hard
+- Strong against Thunder

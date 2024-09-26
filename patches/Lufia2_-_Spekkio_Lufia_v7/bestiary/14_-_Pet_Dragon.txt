@@ -1,0 +1,143 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Pet Dragon
+
+HP:   7500
+MP:   5000
+
+ATP:  1000
+DFP:  1000
+
+AGL:  320
+INT:  510
+GUT:  510
+MGR:  510
+
+DROP: Engage Ring
+RATE: 100%
+
+EXP:  1000
+GOLD: 1000
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+The Pet Dragon appears if you defeat La Puella
+and there are still Lady Spiders left being able
+to call for him.
+
+Therefore, you basically have to beat La Puella
+before she can use her Miracle. Considering how
+hard this is to do, the Pet Dragon is a quite
+weak foe and not the beast you might expect.
+
+He basically is a weaker version of La Puella
+with the main difference that his attacks inflict
+instant death instead of paralysis and that his
+Mystic Flame lowers INT and MGR instead of AGL.
+
+His main purpose is to bring some Queen Spiders
+on the field when La Puella failed to do so.
+However, because of his size there's just enough
+space for one of them at the same time.
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 0
+------------------------------
+
+Always:
+  Calls companions (100%)
+
+------------------------------
+TURN 1
+------------------------------
+
+If HP < 7500:
+  Valor (50%)
+  Mystic Flame (25%)
+  Regular attack (25%)
+
+Else:
+  Mystic Flame (50%)
+  Regular attack (50%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Calls companions:
+------------------------------
+
+- If possible call
+  - 3 Queen Spiders
+
+------------------------------
+Valor:
+------------------------------
+
+- Target self
+- Regular Valor spell
+- Heal 2000 HP
+
+- Cure Death 100% (on a single target)
+
+- In case of failure perform
+    Mystic Flame (50%)
+    Regular attack (50%)
+
+------------------------------
+Mystic Flame:
+------------------------------
+
+- Target all living foes
+- Special magic attack
+- Base DMG = 800
+
+- Neutral elemental
+- Lower INT by 25%
+- Lower MGR by 25%
+
+------------------------------
+Regular attack:
+------------------------------
+
+- Target one random foe
+- Regular attack
+
+- Critical hit rate: 5%
+- Critical DMG multiplier: 0.5
+
+- Neutral elemental
+- Instant Death 100%
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+
+- Weak against Anti-Dragon
+- Weak against Anti-Flying
+- Immune to Earth

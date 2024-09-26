@@ -1,0 +1,230 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Ghost Ship
+
+HP:   30000
+MP:   30000
+
+ATP:  1200
+DFP:  800
+
+AGL:  500
+INT:  510
+GUT:  450
+MGR:  450
+
+DROP: ---
+RATE: ---
+
+EXP:  30000
+GOLD: 50000
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+The Ghost Ship is a phantasmal apparition
+out of this world. Everything mundane will
+just deflagrate without leaving any kind
+of distress.
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 0
+------------------------------
+
+If HP <= 17500:
+  Calls companions A (100%)
+
+Else:
+  Calls companions B (100%)
+
+------------------------------
+TURN 1
+------------------------------
+
+If HP <= 5000:
+  Champion (100%)
+  Regular attack (0%)
+
+Else:
+  Doomcry (100%)
+
+------------------------------
+TURN 2
+------------------------------
+
+If in turn 1 is performed Champion or a regular attack:
+  Doomcry (100%)
+
+Else if MP <= 10000:
+  Absorb (100%)
+
+Else:
+  Myrologion (75%)
+  Absorb (25%)
+
+------------------------------
+TURN 3
+------------------------------
+
+Always:
+  Doomcry (50%)
+  Ice Valk A (12.5%)
+  Ice Valk B (12.5%)
+  Dragon A (12.5%)
+  Dragon B (12.5%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Calls companions (A):
+------------------------------
+
+- If possible call
+  - 2 Shinigami (green)
+
+------------------------------
+Calls companions (B):
+------------------------------
+
+- If possible call
+  - 2 Shinigami (blue)
+
+------------------------------
+Champion:
+------------------------------
+
+- Target self
+- Regular Champion spell
+- Heal 1509 HP
+
+- In case of failure perform
+    Regular attack (100%)
+
+------------------------------
+Regular attack:
+------------------------------
+
+- Target own group
+- Regular attack
+
+- Neutral elemental
+
+------------------------------
+Doomcry:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 800
+
+- Neutral elemental
+- Instant Death 100%
+
+------------------------------
+Absorb:
+------------------------------
+
+- Target all living foes
+- Regular Absorb spell
+- Absorb MP
+
+- In case of failure perform
+    Myrologion (100%)
+
+------------------------------
+Myrologion:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 500
+
+- Anti-Hard elemental
+- Confusion 100%
+- Sleep 100%
+
+- Lower MGR by 25%
+
+------------------------------
+Ice Valk (A):
+------------------------------
+
+- Target one random foe
+- Regular Ice Valk spell
+- Base DMG = 420
+
+- Ice elemental
+
+- In case of failure perform
+    Doomcry (100%)
+
+------------------------------
+Ice Valk (B):
+------------------------------
+
+- Target all living foes
+- Regular Ice Valk spell
+- Base DMG = 420
+
+- Ice elemental
+
+- In case of failure perform
+    Doomcry (100%)
+
+------------------------------
+Dragon (A):
+------------------------------
+
+- Target one random foe
+- Regular Dragon spell
+- Base DMG = 390
+
+- Water elemental
+
+- In case of failure perform
+    Doomcry (100%)
+
+------------------------------
+Dragon (B):
+------------------------------
+
+- Target all living foes
+- Regular Dragon spell
+- Base DMG = 390
+
+- Water elemental
+
+- In case of failure perform
+    Doomcry (100%)
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+
+- Weak against Fire + Earth
+- Immune to everything else

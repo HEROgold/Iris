@@ -1,0 +1,95 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Servant
+
+HP:   500
+MP:   1000
+
+ATP:  120
+DFP:  80
+
+AGL:  40
+INT:  30
+GUT:  40
+MGR:  40
+
+DROP: ---
+RATE: ---
+
+EXP:  100
+GOLD: 250
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+The Servants are called by Camu
+in order to support him during the battle.
+
+They either just attack normally or they
+cast Stronger on the whole group.
+However, when low on HP they lack the
+ability to concentrate and to use magic.
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 1
+------------------------------
+
+If HP <= 166:
+  Regular attack (100%)
+
+Else:
+  Stronger (36%)
+  Regular attack (64%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Stronger:
+------------------------------
+
+- Target own group
+- Regular Stronger spell
+- Heal 150 HP
+
+- In case of failure perform
+    Regular attack (100%)
+
+------------------------------
+Regular attack:
+------------------------------
+
+- Target one random foe
+- Regular attack
+
+- Neutral elemental
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+
+- Weak against Ice

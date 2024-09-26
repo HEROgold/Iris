@@ -1,0 +1,317 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Daos
+
+HP:   120000
+MP:   infinite
+
+ATP:  2000
+DFP:  2500
+
+AGL:  510
+INT:  510
+GUT:  510
+MGR:  510
+
+DROP: ---
+RATE: ---
+
+EXP:  125000
+GOLD: 125000
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+---
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 0
+------------------------------
+
+If in Phase 3 and HP <= 58000:
+  Heal 2000 HP secretly (33%)
+
+------------------------------
+TURN 1
+------------------------------
+
+If in Round 1 or every six rounds later:
+  Terror Wave (100%)
+
+Else if Counter for Heavenly Inferno > 0 (begin of a new phase):
+  Heavenly Inferno (100%) / Subtract 1 from Counter for Heavenly Inferno
+
+Else:
+  Dark Zap (100%)
+
+------------------------------
+TURN 2
+------------------------------
+
+If in Round 4 or every six rounds later:
+  Mystery (100%)
+
+Else if in turn 1 is performed Heavenly Inferno:
+  Hopeless Scream (100%)
+
+Else if in Round 1 or every six rounds later:
+  Hopeless Scream (50%)
+  Flare (50%)
+
+Else:
+  Absolute Zero A (33%)
+  Hopeless Scream (33%)
+  Flare (34%)
+
+------------------------------
+TURN 3
+------------------------------
+
+If in Round 1 or every six rounds later:
+  Dark Reflector (40%)
+  Merciless (60%)
+
+Else:
+  Dark Reflector (17%)
+  Merciless (25%)
+  Absolute Zero B (58%)
+
+------------------------------
+TURN 4
+------------------------------
+
+If in Phase 1 and Merciless fails:
+  Absolute Zero A (100%)
+
+Else if Merciless fails:
+  Final Judgment (100%)
+
+------------------------------
+TURN 5
+------------------------------
+
+If in Phase 1 and HP <= 90000:
+  "Ha! My power is limitless!!!" (100%) / Go to Phase 2
+
+Else if in Phase 2 and HP <= 60000:
+  "BOW DOWN IN FRONT OF GOD!!!" (100%) / Go to Phase 3
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Terror Wave:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 2500
+- Reduce MP to 0
+
+- Wind + Soil elemental
+- Poisoning 100%
+- Silence 100%
+- Instant Death 100%
+- Paralysis 100%
+- Confusion 100%
+- Sleep 100%
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+Heavenly Inferno:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 2000
+
+- Anti-Hard elemental
+- Instant Death 100%
+- Sleep 100%
+
+- After the attack reduce MP and IP to 0
+  - This effect also affects fallen party members
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+Dark Zap:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 3000
+
+- Shadow elemental
+- Instant Death 100%
+- Sleep 100%
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+Mystery:
+------------------------------
+
+- Target self
+- DFP +750
+
+- The temporary DFP will not surpass 30000
+
+- Go into Mystery Mode until Daos attacks in the next round
+
+------------------------------
+Flare:
+------------------------------
+
+- Target front row (regardless of death)
+- Reduce MP to 0
+- Reduce IP to 0
+
+- Non-elemental
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+Hopeless Scream:
+------------------------------
+
+- Target one random foe
+- Reduce HP to 1
+- Reduce IP to 0
+
+- Non-elemental
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+Absolute Zero (A):
+------------------------------
+
+- Target one random foe
+  - But don't retarget after Merciless
+- Special magic attack
+- Base DMG = 1200
+
+- Wind elemental
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+Absolute Zero (B):
+------------------------------
+
+- Target all living foes
+- Special magic attack
+- Base DMG = 1200
+
+- Wind elemental
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+Merciless:
+------------------------------
+
+- Target one random foe
+- Regular attack
+- Attack as long until the target dies
+
+- Critical hit rate: 36% (not for the first attack)
+- Critical DMG multiplier: 3
+
+- Shadow elemental for the first attack
+- Anti-Hard elemental for the following attacks
+
+- Instant Death 100% (for the first attack)
+- Sleep 100% (for the first attack)
+- If the target has a positive MGR buff, divide it by 2 (for the following attacks)
+
+- If the first attack does no damage, then instead of further attacking do
+  - Absolute Zero A (Phase 1)
+  - Final Judgment (Phase 2 & 3)
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+Final Judgment:
+------------------------------
+
+- Don't retarget after Merciless
+- Beforehand set target HP to 1
+- Special physical attack
+- Base DMG = 10000
+
+- Critical hit rate: 100%
+- Critical DMG multiplier: 3
+
+- Anti-Hard elemental
+- Instant Death 100%
+- Sleep 100%
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+Dark Reflector:
+------------------------------
+
+- Target self
+- Set up a shield that reflects the next attacks which inflict at least 1 HP damage
+  - If never attacked in Mystery Mode, 2 Reflectors will be added to the count
+  - If n times attacked in Mystery Mode, 2+n Reflectors will be added to the count
+  - However, the maximum number which can be added to the count in one step is 64
+
+- The shield effect will wear as long as the count is bigger than 0
+- For every time an attack is reflected the count will be lowered by 1
+
+- The effect does stack (the count can rise until around 30000)
+
+------------------------------
+"Ha! My power is limitless!!!":
+------------------------------
+
+- Target self
+- Remove all buffs and debuffs
+- Set AGL to ~30000 (repeated in every round)
+- Add 1 to Counter for Heavenly Inferno
+- Go to Phase 2
+
+------------------------------
+"BOW DOWN IN FRONT OF GOD!!!":
+------------------------------
+
+- Add 1 to Counter for Heavenly Inferno
+- Go to Phase 3
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+- Protection against Mirror
+- Protection against healing HP (besides the own healing)
+
+- Weak against Dual Blade
+- Immune to everything else

@@ -1,0 +1,296 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Erim
+
+HP:   120000
+MP:   infinite
+
+ATP:  2000
+DFP:  2000
+
+AGL:  510
+INT:  510
+GUT:  510
+MGR:  510
+
+DROP: ---
+RATE: ---
+
+EXP:  125000
+GOLD: 125000
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+---
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 0
+------------------------------
+
+If in Phase 3 and HP <= 58000:
+  Heal 2000 HP secretly (33%)
+
+------------------------------
+TURN 1
+------------------------------
+
+If in Round 1 or every six rounds later:
+  Slaughter Wave (100%)
+
+Else if Counter for Mystic Light > 0 (begin of a new phase):
+  Mystic Light (100%) / Set Counter for Mystic Light to 0
+
+Else:
+  Dark Zap (100%)
+
+------------------------------
+TURN 2
+------------------------------
+
+If in Round 1 or every six rounds later:
+  Noble Blood (20%)
+  Flare (80%)
+
+Else if in Phase 1:
+  Zap (17%)
+  Noble Blood (17%)
+  Flare (66%)
+
+Else:
+  Ball Lightning A (17%)
+  Noble Blood (17%)
+  Flare (66%)
+
+------------------------------
+TURN 3
+------------------------------
+
+If in Round 4 or every six rounds later:
+  Miracle Song (100%)
+
+Else if in Round 1 or every six rounds later and in Phase 1:
+  Final Guardian (34%)
+  Ball Lightning A (66%)
+
+Else if in Round 1 or every six rounds later:
+  Final Guardian (34%)
+  Divine Force (66%)
+
+Else if in Phase 1:
+  Final Guardian (10%)
+  Ball Lightning A (20%)
+  Ball Lightning B (70%)
+
+Else:
+  Final Guardian (10%)
+  Divine Force (20%)
+  Ball Lightning B (70%)
+
+------------------------------
+TURN 4
+------------------------------
+
+If in Phase 1 and HP <= 90000:
+  "You are really awesome..." (100%) / Go to Phase 2
+
+Else if in Phase 2 and HP <= 60000:
+  "Now let's get a conclusion!" (100%) / Go to Phase 3
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Slaughter Wave:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 2000
+
+- Wind + Soil elemental
+- Poisoning 100%
+- Silence 100%
+- Instant Death 100%
+- Paralysis 100%
+- Confusion 100%
+- Sleep 100%
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+Mystic Light:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 1750
+
+- Anti-Hard elemental
+- Instant Death 100%
+- Sleep 100%
+- Remove all DFP, INT and MGR buffs and debuffs
+  - This effect also affects fallen party members
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+Dark Zap:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 2500
+
+- Shadow elemental
+- Instant Death 100%
+- Sleep 100%
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+Flare:
+------------------------------
+
+- Target front row (regardless of death)
+- Reduce MP to 0
+- Reduce IP to 0
+
+- Non-elemental
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+Noble Blood:
+------------------------------
+
+- Target one random foe
+- Reduce HP to 1
+- Reduce MP to 0
+
+- Non-elemental
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+Zap:
+------------------------------
+
+- Target one random foe
+- Special magic attack
+- Base DMG = 600
+
+- Light elemental
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+Ball Lightning (A):
+------------------------------
+
+- Target one random foe
+- Special magic attack
+- Base DMG = 800
+
+- Soil elemental
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+Ball Lightning (B):
+------------------------------
+
+- Target all living foes
+- Special magic attack
+- Base DMG = 800
+
+- Soil elemental
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+Miracle Song:
+------------------------------
+
+- Target all living foes
+- Reduce IP to 0
+
+- Non-elemental
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+Divine Force:
+------------------------------
+
+- Target one random foe
+- Beforehand set target HP to 0
+- Special physical attack
+- Base DMG = 10000
+
+- Critical hit rate: 100%
+- Critical DMG multiplier: 2
+
+- Anti-Hard elemental
+- Instant Death 100%
+- Sleep 100%
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+Final Guardian:
+------------------------------
+
+- Target self
+- Set up a shield that reflects back everything until Erim attacks in the next round
+  - The exception being healing and some items
+
+------------------------------
+"You are really awesome...":
+------------------------------
+
+- Target self
+- Remove all buffs and debuffs
+- Set AGL to ~30000 (repeated in every round)
+- Set Counter for Mystic Light to 1
+- Go to Phase 2
+
+------------------------------
+"Now let's get a conclusion!":
+------------------------------
+
+- Set Counter for Mystic Light to 1
+- Go to Phase 3
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+- Protection against Mirror
+- Protection against healing HP (besides the own healing)
+
+- Weak against Dual Blade
+- Immune to everything else

@@ -1,0 +1,86 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Money Spider
+
+HP:   500
+MP:   1000
+
+ATP:  160
+DFP:  90
+
+AGL:  40
+INT:  40
+GUT:  40
+MGR:  40
+
+DROP: Wind Jewel
+RATE: 100%
+
+EXP:  120
+GOLD: 182
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+The Money Spiders are called by Tarantula
+during the battle.
+
+They can only use regular attacks, but
+they might poison the target or even put
+it to sleep.
+
+Besides, they drop another item than Tarantula.
+But: First come, first served! Therefore, the
+first defeated enemy determines the actual drop.
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 1
+------------------------------
+
+Always:
+  Regular attack (100%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Regular attack:
+------------------------------
+
+- Target one random foe
+- Regular attack
+
+- Neutral elemental
+- Poisoning 75%
+- Sleep 25%
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+
+- Weak against Fire
+- Weak against Anti-Insect

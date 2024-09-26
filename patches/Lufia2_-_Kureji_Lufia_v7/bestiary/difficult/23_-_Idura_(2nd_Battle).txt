@@ -1,0 +1,132 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Idura
+
+HP:   9000
+MP:   7500
+
+ATP:  350
+DFP:  400
+
+AGL:  450
+INT:  350
+GUT:  300
+MGR:  300
+
+DROP: ---
+RATE: ---
+
+EXP:  10000
+GOLD: 10000
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+Did you miss Plasma Blaster during the first battle?
+Well, now his Plasma Blaster is replaced with
+Mind Blaster which is truly mind-blowing. It hits
+the whole party and has a good chance to inflict
+confusion.
+
+If he doesn't use his Idura-Thunder, he uses a regular
+attack which hits everybody and confuses as well.
+
+Besides, every round he will call for a Zealot.
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 0
+------------------------------
+
+Always:
+  Calls companions (100%)
+
+------------------------------
+TURN 1
+------------------------------
+
+Always:
+  Mind Blaster (100%)
+
+------------------------------
+TURN 2
+------------------------------
+
+Always:
+  Idura-Thunder (64%)
+  Regular attack (36%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Calls companions:
+------------------------------
+
+- If possible call
+  - 1 Zealot
+
+------------------------------
+Mind Blaster:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 350
+
+- Light elemental
+- Confusion 50%
+
+------------------------------
+Idura-Thunder:
+------------------------------
+
+- Target all living foes
+- Regular Bolt spell
+- Base DMG = 160
+
+- Thunder elemental
+
+- In case of failure perform
+    Regular attack (100%)
+
+------------------------------
+Regular attack:
+------------------------------
+
+- Target all living foes
+- Regular attack
+
+- Neutral elemental
+- Confusion 50%
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+
+- Weak against Ice
+- Weak against Anti-Hard
+- Strong against Thunder

@@ -1,0 +1,204 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Erim
+
+HP:   45000
+MP:   10000
+
+ATP:  1500
+DFP:  1000
+
+AGL:  510
+INT:  510
+GUT:  510
+MGR:  510
+
+DROP: ---
+RATE: ---
+
+EXP:  50000
+GOLD: 50000
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+Erim now is a worthy Death Goddess.
+Her Slaughter Wave not only is as
+strong as Amon's Galactic Lancer now,
+it also has a way much higher rate
+of inflicting Instant Death and an
+additional chance of paralysis as well.
+
+Her Dark Zap is now dependent on the
+highest level of your party members.
+Whereas the strength is always the same
+for levels under 50, it gets steadily
+stronger for every additional level
+surpassing level 49. Also notable is
+that it can remove MP as well at levels
+higher than 49.
+
+She also has some of the strongest spells
+like Thunder and Zap and not to forget
+her Mystic Light which removes all your
+status buffs. Besides, Mystic Light also
+removes your mirror status and the
+debuffing effect is completely unblockable.
+And it has some nasty effects regarding
+the damage she will take as well.
+
+If low on MP, she'll use some kind of
+regular attack which behaves exactly like
+her Thunder spell - considering her affinity
+for Thunder in Lufia & The Fortress of Doom
+this shouldn't be completely surprising.
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 1
+------------------------------
+
+If in Round 1 or every four rounds later:
+  Slaughter Wave (100%)
+
+Else:
+  Dark Zap (36%)
+  Mystic Light (23%)
+  Zap (15%)
+  Thunder (26%)
+  Regular attack (0%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Slaughter Wave:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 900
+
+- Neutral elemental
+- Instant Death 50%
+- Paralysis 50%
+
+------------------------------
+Dark Zap:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = max(1000,((highest level of a party member)*10+510))
+  - If the highest level of a party member is smaller 50, the base DMG always is 1000
+  - If the highest level is 50 or higher, the base DMG will be: (level * 10) + 510
+  - If the highest level of a party member is 99, the base DMG is 1500
+
+- Shadow elemental
+
+- Remove also MP depending on the highest level of a party member
+  - If the highest level of a party member is smaller 50, don't remove MP
+  - If the highest level is 50 or higher, remove ((level - 49) * 10) MP
+  - If the highest level of a party member is 99, remove 500 MP
+
+- The "MP remove"-effect pierces through all reflecting counter-moves
+- If the target's MP are above 32767 (after the MP removement), remove all MP
+
+------------------------------
+Mystic Light:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 900
+
+- Anti-Insect elemental
+- Remove mirror status
+- Remove all buffs and debuffs
+  - This effect also affects fallen party members
+  - This effect also pierces through all reflecting counter-moves
+
+- If reflected back at her, no damage is inflicted and her buffs and debuffs are removed
+
+- Neutral attacks won't do full damage to her from now on until Erim will attack two rounds later
+  - If attacked by it during that period, the hit may prolong the duration for one more round
+  - However, the maximum duration will never surpass three rounds
+  - Every new usage of Mystic Light before the effect wears off will reset the duration to two rounds again
+
+  - Every non-neutral damage will be halved until one round before the overall effect wears off
+  - Every neutral damage will be
+    - halved if it's one round before the effect wears off - and a hit will NOT prolong the duration
+    - quartered if it's two rounds before the effect wears off - and a hit will prolong the duration
+    - eighthered if it's three rounds before the effect wears off and no party member is at level 99
+    - completely nullified if it's three rounds before the effect wears off and someone is at level 99
+
+------------------------------
+Zap:
+------------------------------
+
+- Target all living foes
+- Regular Zap spell
+- Base DMG = 600
+
+- Light elemental
+
+- In case of failure perform
+    Dark Zap (100%)
+
+------------------------------
+Thunder:
+------------------------------
+
+- Target all living foes
+- Regular Thunder spell
+- Base DMG = 480
+
+- Thunder elemental
+
+- In case of failure perform
+    Regular attack (100%)
+
+------------------------------
+Regular attack:
+------------------------------
+
+- Target all living foes
+- Special magic attack
+- Base DMG = 480
+
+- Thunder elemental
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+- Protection against healing HP
+
+- Weak against Light
+- Strong against Shadow
+- Strong against Fire
+- Strong against Thunder
+- Strong against Water
+- Strong against Ice

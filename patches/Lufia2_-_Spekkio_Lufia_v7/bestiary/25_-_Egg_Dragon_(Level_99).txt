@@ -1,0 +1,491 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Egg Dragon
+
+HP:   65535
+MP:   infinite
+
+ATP:  1500
+DFP:  2000
+
+AGL:  510
+INT:  510
+GUT:  510
+MGR:  510
+
+DROP: Myth Blade
+RATE: 1%
+
+EXP:  60000
+GOLD: 60000
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+In the Spekkio Lufia patch the Egg Dragon
+chooses his whole behaviour depending on
+the highest level of a party member
+(just like Spekkio from Chrono Trigger).
+
+So this finally is the version of the Egg Dragon
+that you will fight if the highest level
+of a party member is none other than 99.
+
+His attacks now are even worse than everything
+else you can encounter in the Spekkio Lufia patch.
+Scrambled Egg and Stardust Blow are as strong
+as before and Sunny Side Up isn't any longer
+weaker than Stardust Blow.
+
+His Zap spell in the first turn now is replaced
+by a magic attack called Onsen Tamago which
+is quite a bit more dangerous, of course.
+
+His Egg Slicer now is as strong as his Sunny
+Side Up was in the original fight and it not only
+lowers DFP even more than before, it also lowers
+ATP quite a bit. Egg Pricker is almost the same,
+only with reversed roles of ATP and DFP - thus
+more focusing on lowering ATP instead of DFP.
+
+Over Easy is still as powerful as before and now
+inflicts both confusion and silence with perfect
+accuracy.
+
+However, most notable is his Kinder Sorpresa which
+he performs every four rounds starting with Round 1.
+Instead of having a fixed weakness he will change it
+every four rounds - and of course all the other
+elements will do piss-poor damage.
+
+Besides, after losing some HP he will either get
+a ridiculously strong physical or a ridiculously
+strong magical defense whenever he uses Kinder
+Sorpresa, so you better should take care of this.
+
+And to make it even worse, neutral elemental attacks
+will do completely no damage now. Therefore, stuff
+like Battle Fury is completely useless.
+
+Finally, when he has lost most of his HP, he will
+replace a few of his most powerful multi-target moves
+in favor of his final trump card - Egg of the Century.
+This very last resort is as strong as Stardust Blow
+or Sunny Side Up and cannot get reflected back under
+any circumstances.
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 1
+------------------------------
+
+If HP > 16384:
+  Stardust Blow (12%)
+  Diamond Dust (6%)
+  Cinder Blast (6%)
+  Sunny Side Up (12%)
+  Onsen Tamago B (32%)
+  Scrambled Egg (32%)
+
+Else:
+  Egg of the Century (36%)
+  Onsen Tamago B (32%)
+  Scrambled Egg (32%)
+
+------------------------------
+TURN 2
+------------------------------
+
+Always:
+  Egg Slicer (17%)
+  Egg Pricker (17%)
+  Zap A (11%)
+  Zap B (11%)
+  Thunder A (5.5%)
+  Thunder B (5.5%)
+  Ice Valk A (5.5%)
+  Ice Valk B (5.5%)
+  Dragon A (5.5%)
+  Dragon B (5.5%)
+  Firebird A (5.5%)
+  Firebird B (5.5%)
+  Onsen Tamago A (0%)
+  Onsen Tamago B (0%)
+
+------------------------------
+TURN 3
+------------------------------
+
+If in Round 1 or every four rounds later:
+  Kinder Sorpresa (100%)
+
+Else:
+  Over Easy (100%)
+
+------------------------------
+TURN 4
+------------------------------
+
+If in turn 3 is performed Kinder Sorpresa:
+  Defend (100%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Stardust Blow:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 1600
+
+- Light elemental
+
+------------------------------
+Diamond Dust:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 1400
+
+- Ice elemental
+
+------------------------------
+Cinder Blast:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 1200
+
+- Thunder elemental
+
+------------------------------
+Sunny Side Up:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 1600
+
+- Fire elemental
+
+------------------------------
+Egg of the Century:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 1600
+
+- Anti-Insect elemental
+- Lower ATP by 12.5%
+- Lower DFP by 12.5%
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+Onsen Tamago (A):
+------------------------------
+
+- Target one random foe
+- Special magic attack
+- Base DMG = 1000
+
+- Wind + Soil elemental
+
+- Also affects MP by doing half of the HP damage (not considering discrepancies due to DFP and MGR)
+  - If it's used the second time within a round, it's the full HP damage instead of just the half
+  - However, if the target dies, the MP won't get affected at all
+
+------------------------------
+Onsen Tamago (B):
+------------------------------
+
+- Target all living foes
+- Special magic attack
+- Base DMG = 1000
+
+- Wind + Soil elemental
+
+- Also affects MP by doing half of the HP damage (not considering discrepancies due to DFP and MGR)
+  - If it's used the second time within a round, it's the full HP damage instead of just the half
+  - However, if the target dies, the MP won't get affected at all
+
+------------------------------
+Scrambled Egg:
+------------------------------
+
+- Target one random foe
+- Beforehand set target HP to 1
+- Special physical attack
+- Base DMG = 10000
+
+- Reduces MP to 0
+- Reduces IP to 0
+
+- Critical hit rate: 50%
+- Critical DMG multiplier: 2
+
+- Anti-Hard elemental
+
+- The "HP to 1"-effect pierces through all reflecting counter-moves
+- The "MP to 0"-effect pierces through all reflecting counter-moves
+- The "IP to 0"-effect pierces through all reflecting counter-moves
+
+------------------------------
+Egg Slicer:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 1000
+
+- Wind elemental
+- Lower ATP by 12.5%
+- Lower DFP by 25%
+
+------------------------------
+Egg Pricker:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 1000
+
+- Soil elemental
+- Lower ATP by 25%
+- Lower DFP by 12.5%
+
+------------------------------
+Zap (A):
+------------------------------
+
+- Target one random foe
+- Regular Zap spell
+- Base DMG = 600
+
+- Light elemental
+
+- No failure due to infinite MP
+- In case of Onsen Tamago being reflected at him right before
+  if his HP are < 32768, instead perform
+    Onsen Tamago A (100%)
+
+------------------------------
+Zap (B):
+------------------------------
+
+- Target all living foes
+- Regular Zap spell
+- Base DMG = 600
+
+- Light elemental
+
+- No failure due to infinite MP
+- In case of Onsen Tamago being reflected at him right before
+  if his HP are < 32768, instead perform
+    Onsen Tamago B (100%)
+
+------------------------------
+Thunder (A):
+------------------------------
+
+- Target one random foe
+- Regular Thunder spell
+- Base DMG = 480
+
+- Thunder elemental
+
+- No failure due to infinite MP
+- In case of Onsen Tamago being reflected at him right before
+  if his HP are < 32768, instead perform
+    Onsen Tamago A (100%)
+
+------------------------------
+Thunder (B):
+------------------------------
+
+- Target all living foes
+- Regular Thunder spell
+- Base DMG = 480
+
+- Thunder elemental
+
+- No failure due to infinite MP
+- In case of Onsen Tamago being reflected at him right before
+  if his HP are < 32768, instead perform
+    Onsen Tamago B (100%)
+
+------------------------------
+Ice Valk (A):
+------------------------------
+
+- Target one random foe
+- Regular Ice Valk spell
+- Base DMG = 420
+
+- Ice elemental
+
+- No failure due to infinite MP
+- In case of Onsen Tamago being reflected at him right before
+  if his HP are < 32768, instead perform
+    Onsen Tamago A (100%)
+
+------------------------------
+Ice Valk (B):
+------------------------------
+
+- Target all living foes
+- Regular Ice Valk spell
+- Base DMG = 420
+
+- Ice elemental
+
+- No failure due to infinite MP
+- In case of Onsen Tamago being reflected at him right before
+  if his HP are < 32768, instead perform
+    Onsen Tamago B (100%)
+
+------------------------------
+Dragon (A):
+------------------------------
+
+- Target one random foe
+- Regular Dragon spell
+- Base DMG = 390
+
+- Water elemental
+
+- No failure due to infinite MP
+- In case of Onsen Tamago being reflected at him right before
+  if his HP are < 32768, instead perform
+    Onsen Tamago A (100%)
+
+------------------------------
+Dragon (B):
+------------------------------
+
+- Target all living foes
+- Regular Dragon spell
+- Base DMG = 390
+
+- Water elemental
+
+- No failure due to infinite MP
+- In case of Onsen Tamago being reflected at him right before
+  if his HP are < 32768, instead perform
+    Onsen Tamago B (100%)
+
+------------------------------
+Firebird (A):
+------------------------------
+
+- Target one random foe
+- Regular Firebird spell
+- Base DMG = 360
+
+- Fire elemental
+
+- No failure due to infinite MP
+- In case of Onsen Tamago being reflected at him right before
+  if his HP are < 32768, instead perform
+    Onsen Tamago A (100%)
+
+------------------------------
+Firebird (B):
+------------------------------
+
+- Target all living foes
+- Regular Firebird spell
+- Base DMG = 360
+
+- Fire elemental
+
+- No failure due to infinite MP
+- In case of Onsen Tamago being reflected at him right before
+  if his HP are < 32768, instead perform
+    Onsen Tamago B (100%)
+
+------------------------------
+Over Easy:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 800
+
+- Earth elemental
+- Confusion 100%
+- Silence 100%
+
+------------------------------
+Kinder Sorpresa:
+------------------------------
+
+- Target self
+- Determine weak spot for the next four rounds from the following elements:
+    Light, Shadow, Fire, Thunder, Water, Ice, Anti-Flying, Anti-Dragon
+
+- Remove all ATP, DFP and MGR buffs and debuffs
+
+- If HP < 32768, either set DFP or set MGR to 10000 (fifty-fifty chance)
+
+------------------------------
+Defend:
+------------------------------
+
+- Defends
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+- Protection against healing HP
+
+- Variable weakness - weak against one and only one of the following elements:
+    Light, Shadow, Fire, Thunder, Water, Ice, Anti-Flying, Anti-Dragon
+
+- Doubled strong against Anti-Flying - unless it's the actual weakness
+- Doubled strong against Anti-Dragon - unless it's the actual weakness
+- Quadrupled strong against Fire - unless it's the actual weakness
+- Quadrupled strong against Thunder - unless it's the actual weakness
+- Quadrupled strong against Water - unless it's the actual weakness
+- Quadrupled strong against Ice - unless it's the actual weakness
+- Quadrupled strong against Light - unless it's the actual weakness
+- Quadrupled strong against Shadow - unless it's the actual weakness
+
+- Doubled strong against Anti-Hard
+- Immune to Neutral
+- Immune to Earth
+- Doubled strong against everything else
+
+- Before the Egg Dragon gets his very first turn, he won't take any HP damage at all
+- During his very first turn his weakness is Anti-Dragon until he uses Kinder Sorpresa
+
+- If he's hit with a Wind + Soil elemental action and his HP are < 32768,
+  his MP are removed until his own very next action

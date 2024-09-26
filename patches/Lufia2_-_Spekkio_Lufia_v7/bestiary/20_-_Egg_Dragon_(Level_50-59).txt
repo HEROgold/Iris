@@ -1,0 +1,215 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Egg Dragon
+
+HP:   65535
+MP:   infinite
+
+ATP:  1500
+DFP:  2000
+
+AGL:  510
+INT:  510
+GUT:  510
+MGR:  510
+
+DROP: Myth Blade
+RATE: 1%
+
+EXP:  60000
+GOLD: 60000
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+In the Spekkio Lufia patch the Egg Dragon
+chooses his whole behaviour depending on
+the highest level of a party member
+(just like Spekkio from Chrono Trigger).
+
+This is the version of the Egg Dragon
+that you will fight if the highest level
+of a party member is in-between 50 and 59.
+
+Now the Egg Dragon gets two turns per round
+and he will cast the powerful spells Thunder,
+Ice Valk, Dragon and Firebird which give
+him quite an elementary variety.
+
+His Scrambled Egg doesn't get weaker, of course.
+And it isn't fire elemental any more so that
+fire protection won't help any longer.
+
+He also uses Cinder Blast known from the
+Copper Dragons and it's really powerful -
+especially considering your current level.
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 1
+------------------------------
+
+Always:
+  Cinder Blast (9%)
+  Sunny Side Up (27%)
+  Zap (32%)
+  Scrambled Egg (32%)
+
+------------------------------
+TURN 2
+------------------------------
+
+Always:
+  Over Easy (34%)
+  Thunder (16.5%)
+  Ice Valk (16.5%)
+  Dragon (16.5%)
+  Firebird (16.5%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Cinder Blast:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 1200
+
+- Thunder elemental
+
+------------------------------
+Sunny Side Up:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 1000
+
+- Fire elemental
+
+------------------------------
+Zap:
+------------------------------
+
+- Target all living foes
+- Regular Zap spell
+- Base DMG = 600
+
+- Light elemental
+
+- No failure due to infinite MP
+
+------------------------------
+Scrambled Egg:
+------------------------------
+
+- Target one random foe
+- Special physical attack
+- Base DMG = 2500
+
+- Anti-Hard elemental
+
+------------------------------
+Over Easy:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 600
+
+- Neutral elemental
+- Confusion 80%
+
+------------------------------
+Thunder:
+------------------------------
+
+- Target all living foes
+- Regular Thunder spell
+- Base DMG = 480
+
+- Thunder elemental
+
+- No failure due to infinite MP
+
+------------------------------
+Ice Valk:
+------------------------------
+
+- Target all living foes
+- Regular Ice Valk spell
+- Base DMG = 420
+
+- Ice elemental
+
+- No failure due to infinite MP
+
+------------------------------
+Dragon:
+------------------------------
+
+- Target all living foes
+- Regular Dragon spell
+- Base DMG = 390
+
+- Water elemental
+
+- No failure due to infinite MP
+
+------------------------------
+Firebird:
+------------------------------
+
+- Target all living foes
+- Regular Firebird spell
+- Base DMG = 360
+
+- Fire elemental
+
+- No failure due to infinite MP
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+- Protection against healing HP
+
+- Weak against Shadow
+- Weak against Anti-Flying
+- Weak against Anti-Dragon
+- Strong against Fire
+- Strong against Thunder
+- Strong against Water
+- Strong against Ice
+- Strong against Light
+- Immune to Earth
+
+- Unaffected by Battle Fury if his HP are close to the maximum
+- Before the Egg Dragon gets his very first turn, he won't take any HP damage at all
+
+- If he's hit with a Wind + Soil elemental action and his HP are < 32768,
+  his MP are removed until his own very next action

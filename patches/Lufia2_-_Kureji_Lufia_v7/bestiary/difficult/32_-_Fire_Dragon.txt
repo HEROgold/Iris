@@ -1,0 +1,190 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Fire Dragon
+
+HP:   25000
+MP:   25000
+
+ATP:  1000
+DFP:  800
+
+AGL:  500
+INT:  450
+GUT:  450
+MGR:  450
+
+DROP: ---
+RATE: ---
+
+EXP:  30000
+GOLD: 50000
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+The Fire Dragon is known as the Incarnation
+of Fire. His fiery temper and burning passion
+will turn even the greatest warriors into
+nothing more than a laughable pile of ash.
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 1
+------------------------------
+
+If in Phase 3:
+  Red Flame (50%)
+  White Flame (50%)
+
+Else:
+  Darkwing (50%)
+  Tailspin (50%)
+
+------------------------------
+TURN 2
+------------------------------
+
+Always:
+  Darkwing (50%)
+  Tailspin (50%)
+
+------------------------------
+TURN 3
+------------------------------
+
+If in Phase 3:
+  Darkwing (50%) / Go back to Phase 1
+  Tailspin (50%) / Go back to Phase 1
+
+Else if HP <= 10000:
+  "GROOOOOOOOOOOOAR!!!" + "Accumulating fire..." (100%) / Go to Phase 3
+
+Else if in Phase 2:
+  "Accumulating fire..." (100%) / Go to Phase 3
+
+Else if in Phase 1:
+  "Accumulating fire..." (100%) / Go to Phase 2
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Red Flame:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 2400, 2000, 1600 or 1200
+
+- Fire elemental
+
+- If hit with pure water or pure ice attacks in (the directly previous) Phase 2 or 3,
+  it will be counted in order to lower (only) this Red Flame attack
+  - For 0 hits the Base DMG will be 2400
+  - For 1 or 2 hits the Base DMG will be 2000
+  - For 3, 4 or 5 hits the Base DMG will be 1600
+  - For 6 or more hits the Base DMG will be 1200
+
+------------------------------
+White Flame:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 2400, 2000, 1600 or 1200
+
+- Light elemental
+
+- If hit with pure water or pure ice attacks in (the directly previous) Phase 2 or 3,
+  it will be counted in order to lower (only) this White Flame attack
+  - For 0 hits the Base DMG will be 2400
+  - For 1 or 2 hits the Base DMG will be 2000
+  - For 3, 4 or 5 hits the Base DMG will be 1600
+  - For 6 or more hits the Base DMG will be 1200
+
+------------------------------
+Darkwing:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 800
+
+- Thunder elemental
+- Silence 100%
+- Confusion 100%
+- Sleep 100%
+
+- Lower AGL by 25%
+
+------------------------------
+Tailspin:
+------------------------------
+
+- Target one random foe
+- Beforehand reduce IP to 0 - only if his HP are <= 15000
+- Regular attack
+
+- Neutral elemental
+- Poisoning 100%
+- Paralysis 100%
+
+- The "IP to 0"-effect pierces through all reflecting counter-moves
+
+------------------------------
+"GROOOOOOOOOOOOAR!!!":
+------------------------------
+
+- Checking situation
+- Red Flame/White Flame will be used the next round
+
+- Also defends
+
+------------------------------
+"Accumulating fire...":
+------------------------------
+
+- Target self
+- Set INT to 450 + 50 = 500
+- Raise MGR by 50%
+
+- Preparation for using Red Flame/White Flame in one or two rounds
+- Only if this is used the first time after a previous flame attack (or at all),
+  pure water or pure ice attacks can lower the base DMG of the next flame attack
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+
+- Weak against Anti-Dragon
+- Strong against Fire
+- Strong against Thunder
+- Strong against Water
+- Strong against Ice
+- Strong against Light
+- Strong against Shadow
+- Immune to Neutral
+- Immune to Earth

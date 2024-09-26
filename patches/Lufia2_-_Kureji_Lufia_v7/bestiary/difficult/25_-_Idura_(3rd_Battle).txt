@@ -1,0 +1,235 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Idura
+
+HP:   15000
+MP:   15000
+
+ATP:  400
+DFP:  500
+
+AGL:  500
+INT:  400
+GUT:  350
+MGR:  350
+
+DROP: ---
+RATE: ---
+
+EXP:  10000
+GOLD: 20000
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+In his final battle Idura is stronger and more
+powerful than ever. His Mind Blaster now inflicts
+confusion with an awfully high precision.
+
+Idura-Thunder is much more dangerous as well -
+considering that it's now a Thunder spell
+instead of Bolt like in the previous encounters.
+
+And there's a new move called Idura-Strike
+which is a quite strong single-targeted
+attack that will paralyse you.
+
+After losing some HP he'll get an additional
+turn for Desperation Cry - just like Camu. It's
+stronger than Mind Blaster and, of course, will
+silence the whole party.
+
+After losing almost all HP he will try to
+suicide-bomb the party to death in a final
+move showing all his desperation and hatred.
+However, it takes some preparation time luckily.
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 0
+------------------------------
+
+If HP <= 3000 and he didn't already say "I won't go down alone!!!":
+  "I won't go down alone!!!" (100%)
+
+If he said "1..." in the last round:
+  Self-Destruct + "Ha, ha, ha, ha, ha!" (100%)
+
+Else if he did not say "1..." in the last round:
+  Calls companions (100%)
+
+------------------------------
+TURN 1
+------------------------------
+
+If HP <= 9000 or he already said "I won't go down alone!!!":
+  Desperation Cry (100%)
+
+------------------------------
+TURN 2
+------------------------------
+
+Always:
+  Mind Blaster (100%)
+
+------------------------------
+TURN 3
+------------------------------
+
+Always:
+  Idura-Thunder (64%)
+  Idura-Strike (36%)
+
+------------------------------
+TURN 4
+------------------------------
+
+If he said "2..." in the last round:
+  "1..." (100%)
+
+Else if he said "3..." in the last round:
+  "2..." (100%)
+
+Else if he said "I won't go down alone!!!" in this round:
+  "3..." (100%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+"I won't go down alone!!!":
+------------------------------
+
+- Checking situation
+- The countdown to Self-Destruct starts
+
+------------------------------
+Self-Destruct:
+------------------------------
+
+- First part of the Self-Destruct move
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 2400
+
+- Fire elemental
+
+------------------------------
+"Ha, ha, ha, ha, ha!":
+------------------------------
+
+- Second part of the Self-Destruct move
+
+- Beforehand set own HP to 1
+- Target own group
+- Special physical attack
+- Base DMG = 2400
+
+- Fire elemental
+
+------------------------------
+Calls companions:
+------------------------------
+
+- If possible call
+  - 2 Zealots
+
+------------------------------
+Desperation Cry:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 400
+
+- Neutral elemental
+- Silence 100%
+
+------------------------------
+Mind Blaster:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 350
+
+- Light elemental
+- Confusion 100%
+
+------------------------------
+Idura-Thunder:
+------------------------------
+
+- Target all living foes
+- Regular Thunder spell
+- Base DMG = 480
+
+- Thunder elemental
+
+- In case of failure perform
+    Idura-Strike (100%)
+
+------------------------------
+Idura-Strike:
+------------------------------
+
+- Target one random foe
+- Special physical attack (but with fluctuation like a regular attack)
+- Base DMG = 600
+
+- Neutral elemental
+- Paralysis 100%
+
+------------------------------
+"3...":
+------------------------------
+
+- Checking situation
+- Self-Destruct will be used three rounds later
+
+------------------------------
+"2...":
+------------------------------
+
+- Checking situation
+- Self-Destruct will be used two rounds later
+
+------------------------------
+"1...":
+------------------------------
+
+- Checking situation
+- Self-Destruct will be used in the next round
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+
+- Weak against Ice
+- Weak against Anti-Hard
+- Strong against Thunder
+- Strong against Neutral

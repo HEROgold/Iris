@@ -1,0 +1,156 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Pierre
+
+HP:   2500
+MP:   2500
+
+ATP:  250
+DFP:  150
+
+AGL:  300
+INT:  180
+GUT:  120
+MGR:  200
+
+DROP: ---
+RATE: ---
+
+EXP:  2300
+GOLD: 4000
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+This is the serious and real fight
+against Pierre. Now he has more HP,
+overall better stats and, because he
+thinks that he's so funny, he will
+tell you a joke every round.
+
+However Pierre's jokes are really lame.
+So lame that you might fall asleep
+because of them.
+
+He also has a move called French Kiss
+that lets him absorb HP from his target.
+If he's low on HP, he will use it
+every round.
+
+The seemingly never used regular attack
+will come into play only if there's too
+less MP to cast a chosen spell.
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 1
+------------------------------
+
+If HP <= 750:
+  French Kiss (100%)
+
+Else:
+  Fireball (33%)
+  Bolt (33%)
+  French Kiss (34%)
+  Regular attack (0%)
+
+------------------------------
+TURN 2
+------------------------------
+
+Always:
+  Lame Joke (100%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+French Kiss:
+------------------------------
+
+- Target one random foe
+- Special physical attack
+- Base DMG = 250
+
+- Neutral elemental
+
+- User absorbs HP from target
+- Absorbed HP = (potentially) inflicted damage * 2.5
+- Potentially inflicted damage in case of the target dying
+
+------------------------------
+Fireball:
+------------------------------
+
+- Target one random foe
+- Regular Fireball spell
+- Base DMG = 120
+
+- Fire elemental
+
+- In case of failure perform
+    Regular attack (100%)
+
+------------------------------
+Bolt:
+------------------------------
+
+- Target all living foes
+- Regular Bolt spell
+- Base DMG = 160
+
+- Thunder elemental
+
+- In case of failure perform
+    Regular attack (100%)
+
+------------------------------
+Regular attack:
+------------------------------
+
+- Target one random foe
+- Regular attack
+
+- Thunder elemental
+
+------------------------------
+Lame Joke:
+------------------------------
+
+- Target all living foes
+
+- Non-elemental
+- Sleep 35%
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+
+- Weak against Fire
+- Weak against Thunder
+- Strong against Ice
+- If an attack doesn't hit a weak spot, the damage gets nullified with a 23% chance

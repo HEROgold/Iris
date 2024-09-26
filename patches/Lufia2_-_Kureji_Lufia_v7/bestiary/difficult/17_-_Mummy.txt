@@ -1,0 +1,85 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Mummy
+
+HP:   650
+MP:   0
+
+ATP:  180
+DFP:  200
+
+AGL:  150
+INT:  100
+GUT:  100
+MGR:  200
+
+DROP: ---
+RATE: ---
+
+EXP:  100
+GOLD: 500
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+The Mummies are sent to you by Idura
+in order to kill you.
+
+However, they only attack you once
+per round and the poisoning might be
+annoying, but it's nothing to really
+worry about.
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 1
+------------------------------
+
+Always:
+  Regular attack (100%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Regular attack:
+------------------------------
+
+- Target one random foe
+- Regular attack
+
+- Shadow elemental
+- Poisoning 100%
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+
+- Weak against Fire
+- Weak against Water
+- Weak against Light
+- Immune to Shadow
+- Takes damage through healing

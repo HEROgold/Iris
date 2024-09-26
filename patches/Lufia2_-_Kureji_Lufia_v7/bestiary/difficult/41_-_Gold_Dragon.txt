@@ -1,0 +1,163 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Gold Dragon
+
+HP:   5000
+MP:   5000
+
+ATP:  500/750
+DFP:  500
+
+AGL:  450
+INT:  376
+GUT:  350
+MGR:  350
+
+DROP: Tweak Ring
+RATE: 10%/12.5%
+
+EXP:  26980
+GOLD: 26700
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+The Gold Dragons lurk around at the deepest
+bottom of the Ancient Cave just to shatter
+all the effort to make it all the way
+within a mere wink.
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 1
+------------------------------
+
+If HP <= 2500:
+  Champion (100%)
+
+Else:
+  Energy Steroid (23%)
+  Stardust Blow (18%)
+  Zap (14%)
+  Regular attack (45%)
+
+------------------------------
+TURN 2
+------------------------------
+
+If HP <= 2500:
+  Champion (100%)
+
+Else:
+  Energy Steroid (23%)
+  Stardust Blow (18%)
+  Zap (14%)
+  Regular attack (45%)
+
+------------------------------
+TURN 3
+------------------------------
+
+If HP <= 2500:
+  Champion (100%)
+
+Else:
+  Energy Steroid (23%)
+  Stardust Blow (18%)
+  Zap (14%)
+  Regular attack (45%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Champion:
+------------------------------
+
+- Target self
+- Regular Champion spell
+- Heal 1375 HP
+
+- In case of failure perform
+    Energy Steroid (23%)
+    Stardust Blow (32%)
+    Regular attack (45%)
+
+------------------------------
+Energy Steroid:
+------------------------------
+
+- Target own group
+- Raise ATP by 50%
+
+- Also restore complete MP
+
+------------------------------
+Stardust Blow:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 800
+
+- Neutral elemental
+
+------------------------------
+Zap:
+------------------------------
+
+- Target all living foes
+- Regular Zap spell
+- Base DMG = 600
+
+- Light elemental
+
+- In case of failure perform
+    Stardust Blow (100%)
+
+------------------------------
+Regular attack:
+------------------------------
+
+- Target one random foe
+- Regular attack
+
+- Neutral elemental
+- Confusion 100%
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+
+- Weak against Shadow
+- Weak against Anti-Flying
+- Weak against Anti-Dragon
+- Strong against Fire
+- Strong against Water
+- Strong against Ice
+- Immune to Thunder
+- Immune to Light
+- Immune to Earth

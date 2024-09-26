@@ -1,0 +1,157 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Daniele
+
+HP:   2500
+MP:   2500
+
+ATP:  250
+DFP:  150
+
+AGL:  300
+INT:  180
+GUT:  120
+MGR:  200
+
+DROP: ---
+RATE: ---
+
+EXP:  2300
+GOLD: 4000
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+This is the serious and real fight
+against Daniele. Now he has more HP,
+overall better stats and, because he
+thinks that he's so funny, he will
+tell you a joke every round.
+
+However Daniele's jokes are so weird
+that no one understands them - which
+might lead to confusion for the
+listeners.
+
+He also has a move called French Kiss
+that lets him absorb HP from his target.
+If he's low on HP, he will use it
+every round.
+
+The seemingly never used regular attack
+will come into play only if there's too
+less MP to cast a chosen spell.
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 1
+------------------------------
+
+If HP <= 750:
+  French Kiss (100%)
+
+Else:
+  Blizzard (33%)
+  Vortex (33%)
+  French Kiss (34%)
+  Regular attack (0%)
+
+------------------------------
+TURN 2
+------------------------------
+
+Always:
+  Weird Joke (100%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+French Kiss:
+------------------------------
+
+- Target one random foe
+- Special physical attack
+- Base DMG = 250
+
+- Neutral elemental
+
+- User absorbs HP from target
+- Absorbed HP = (potentially) inflicted damage * 2.5
+- Potentially inflicted damage in case of the target dying
+
+------------------------------
+Blizzard:
+------------------------------
+
+- Target one random foe
+- Regular Blizzard spell
+- Base DMG = 140
+
+- Ice elemental
+
+- In case of failure perform
+    Regular attack (100%)
+
+------------------------------
+Vortex:
+------------------------------
+
+- Target all living foes
+- Regular Vortex spell
+- Base DMG = 130
+
+- Water elemental
+
+- In case of failure perform
+    Regular attack (100%)
+
+------------------------------
+Regular attack:
+------------------------------
+
+- Target one random foe
+- Regular attack
+
+- Ice elemental
+
+------------------------------
+Weird Joke:
+------------------------------
+
+- Target all living foes
+
+- Non-elemental
+- Confusion 35%
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+
+- Weak against Water
+- Weak against Ice
+- Strong against Thunder
+- If an attack doesn't hit a weak spot, the damage gets nullified with a 23% chance

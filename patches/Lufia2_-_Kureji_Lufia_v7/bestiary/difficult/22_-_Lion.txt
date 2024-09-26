@@ -1,0 +1,129 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Lion
+
+HP:   3000
+MP:   0
+
+ATP:  300
+DFP:  300
+
+AGL:  350
+INT:  200
+GUT:  200
+MGR:  250
+
+DROP: ---
+RATE: ---
+
+EXP:  5000
+GOLD: 8000
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+The Lions are the boss battle at Fabled Tree Mountain.
+
+They can attack the whole group with Scratch,
+attack one target two times in succession or
+use Bite in order to paralyse one single person.
+
+Besides, whenever one of them is beaten, the other
+one will always call for another Lion. So watch out!
+Especially considering they altogether can paralyse
+two people per round.
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 0
+------------------------------
+
+Always:
+  Calls companions (100%)
+
+------------------------------
+TURN 1
+------------------------------
+
+Always:
+  Bite (36%)
+  Scratch (23%)
+  Regular attack (41%)
+
+------------------------------
+TURN 2
+------------------------------
+
+If in turn 1 is performed a regular attack:
+  Regular attack (100%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Calls companions:
+------------------------------
+
+- If possible call
+  - 1 Lion
+
+------------------------------
+Bite:
+------------------------------
+
+- Target one random foe
+- Special physical attack
+- Base DMG = 450
+
+- Neutral elemental
+- Paralysis 100%
+
+------------------------------
+Scratch:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 300
+
+- Neutral elemental
+
+------------------------------
+Regular attack:
+------------------------------
+
+- Target one random foe
+- Don't retarget in turn 2 unless the target from turn 1 is dead
+- Regular attack
+
+- Neutral elemental
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+
+- Weak against Ice
+- Strong against Water

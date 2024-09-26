@@ -1,0 +1,123 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Copper Dragon
+
+HP:   5000
+MP:   5000
+
+ATP:  500/750
+DFP:  500
+
+AGL:  450
+INT:  376
+GUT:  350
+MGR:  350
+
+DROP: ---
+RATE: ---
+
+EXP:  18980
+GOLD: 18000
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+The Copper Dragons lurk around at the deepest
+bottom of the Ancient Cave just to shatter
+all the effort to make it all the way
+within a few minutes.
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 1
+------------------------------
+
+If HP <= 2500:
+  Champion (100%)
+
+Else:
+  Mirror (23%)
+  Cinder Blast (18%)
+  Regular attack (59%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Champion:
+------------------------------
+
+- Target self
+- Regular Champion spell
+- Heal 1375 HP
+
+- In case of failure perform
+    Mirror (23%)
+    Cinder Blast (18%)
+    Regular attack (59%)
+
+------------------------------
+Mirror:
+------------------------------
+
+- Target self
+- Regular Mirror spell
+
+- Mirror 100% (on a single target)
+
+- In case of failure perform
+    Cinder Blast (23%)
+    Regular attack (77%)
+
+------------------------------
+Cinder Blast:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 800
+
+- Thunder elemental
+
+------------------------------
+Regular attack:
+------------------------------
+
+- Target one random foe
+- Regular attack
+
+- Neutral elemental
+- Sleep 100%
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+
+- Weak against Shadow
+- Weak against Anti-Flying
+- Weak against Anti-Dragon
+- Immune to Light
+- Immune to Earth

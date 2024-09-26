@@ -1,0 +1,134 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Gades
+
+HP:   30000
+MP:   0
+
+ATP:  1000
+DFP:  1000
+
+AGL:  510
+INT:  510
+GUT:  510
+MGR:  510
+
+DROP: ---
+RATE: ---
+
+EXP:  50000
+GOLD: 50000
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+You'll fight this version of Gades at Doom Island.
+
+Now he isn't the pushover anymore like he was
+in the original version. Not only is his
+Destructo Wave damage-wise on par with attacks
+like Stardust Blow now, he also can use
+Devastation like he could at the Ancient Tower.
+Of course Devastation as well as his regular
+attack are much stronger now, too.
+
+Also, if you lower his ATP enough, instead
+of his normal regular attack he will use a
+special physical attack that looks just
+like his normal attack. However, it's
+a lot weaker compared to the initial ATP
+value (despite having the same fluctuation
+as regular physical attacks have).
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 1
+------------------------------
+
+If in Round 1 or every four rounds later:
+  Destructo Wave (100%)
+
+Else:
+  Devastation (50%)
+  Regular attack A (50%)
+  Regular attack B (0%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Destructo Wave:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 800
+
+- Neutral elemental
+
+------------------------------
+Devastation:
+------------------------------
+
+- Target one random foe
+- Special physical attack
+- Base DMG = 1100
+
+- Shadow elemental
+
+------------------------------
+Regular attack (A):
+------------------------------
+
+- Target one random foe
+- Regular attack
+
+- Neutral elemental
+
+- In case of his ATP being debuffed by more than 250 instead perform
+    Regular attack B (100%)
+
+------------------------------
+Regular attack (B):
+------------------------------
+
+- Target one random foe
+- Special physical attack (but with fluctuation like a regular attack)
+- Base DMG = 750
+
+- Neutral elemental
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+- Protection against healing HP
+
+- Weak against Light
+- Strong against Shadow
+- Strong against Fire
+- Strong against Thunder
+- Strong against Water
+- Strong against Ice

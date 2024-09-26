@@ -1,0 +1,366 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Egg Dragon
+
+HP:   180000
+MP:   infinite
+
+ATP:  2000
+DFP:  10000
+
+AGL:  510
+INT:  510
+GUT:  510
+MGR:  510
+
+DROP: Myth Blade
+RATE: 100%
+
+EXP:  125000
+GOLD: 125000
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+---
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 0
+------------------------------
+
+If Round-Counter == 13:
+  Set Round-Counter to 1
+
+If Round-Counter > 0:
+  Add 1 to Round-Counter
+
+If in Phase 3 and HP <= 58000:
+  Heal 2000 HP secretly (33%)
+
+If HP == 7777 and Round-Counter <= 7:
+  All Lucky 7s (100%)
+
+------------------------------
+TURN 1
+------------------------------
+
+If Round-Counter > 7:
+  Sunny Side Up (100%)
+
+Else:
+  Stardust Blow (25%)
+  Diamond Dust (25%)
+  Cinder Blast (25%)
+  Zap (25%)
+
+------------------------------
+TURN 2
+------------------------------
+
+If in turn 1 is performed Zap:
+  Zap (100%)
+
+------------------------------
+TURN 3
+------------------------------
+
+If in Phase 3 and Round-Counter == 7:
+  Omelette (33%)
+  Scrambled Egg (33%)
+  Meteor B (34%)
+
+Else if Round-Counter <= 7:
+  Omelette (33%)
+  Meteor A (33%)
+  Meteor B (34%)
+
+------------------------------
+TURN 4
+------------------------------
+
+If in Phase 3 and Round-Counter == 7:
+  Doom Zero (100%)
+
+Else if Round-Counter <= 7:
+  Scrambled Egg (36%)
+  Over Easy (64%)
+
+------------------------------
+TURN 5
+------------------------------
+
+If in Phase 1 and HP <= 120000:
+  "I won't hold back..." (100%) / Set Round-Counter to 6 / Go to Phase 2
+
+Else if in Phase 2 and HP <= 60000:
+  "Fiery light breaks the sea..." (100%) / Set Round-Counter to 6 / Go to Phase 3
+
+Else if Round-Counter == 7:
+  "Egg Dragon ascends to sky." (100%)
+
+Else if Round-Counter == 13:
+  "Egg Dragon descends to earth." (100%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+All Lucky 7s:
+------------------------------
+
+- Target one random foe
+- Beforehand set target HP to 0 (before every new attack)
+- 64 attacks in a row with retargeting
+- Special physical attack
+- Base DMG = 10000
+
+- Reduce MP to 0
+- Reduce IP to 0
+
+- Critical hit rate: 100%
+- Critical DMG multiplier: 3
+
+- Wind + Soil elemental
+- Poisoning 100%
+- Silence 100%
+- Instant Death 100%
+- Paralysis 100%
+- Confusion 100%
+- Sleep 100%
+- Mirror 100%
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+Sunny Side Up:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 5000
+
+- Fire elemental
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+Stardust Blow:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 1600
+
+- Anti-Flying elemental
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+Diamond Dust:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 1600
+
+- Wind elemental
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+Cinder Blast:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 1600
+
+- Soil elemental
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+Zap:
+------------------------------
+
+- Target all living foes
+- Special magic attack
+- Base DMG = 600
+
+- Light elemental
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+Meteor (A):
+------------------------------
+
+- Target one random foe
+- Special magic attack
+- Base DMG = 2000
+
+- Wind + Soil elemental
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+Meteor (B):
+------------------------------
+
+- Target all living foes
+- Special magic attack
+- Base DMG = 2000
+
+- Wind + Soil elemental
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+Omelette:
+------------------------------
+
+- Target all living foes
+- Special magic attack
+- Base DMG = 1740
+
+- Critical hit rate: 100%
+- Critical DMG multiplier: 1
+
+- Anti-Dragon elemental
+- Lower ATP by 50%
+- Lower DFP by 50%
+- Lower AGL by 25%
+- Lower GUT by 25%
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+Scrambled Egg:
+------------------------------
+
+- Target one random foe
+- Beforehand set target HP to 0
+- Special physical attack
+- Base DMG = 10000
+
+- Reduce MP to 0
+- Reduce IP to 0
+
+- Critical hit rate: 100%
+- Critical DMG multiplier: 3
+
+- Anti-Hard elemental
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+Over Easy:
+------------------------------
+
+- Target all living foes
+- Special physical attack (but with fluctuation like a regular attack)
+- Base DMG = 1000
+
+- Anti-Insect elemental
+- Poisoning 100%
+- Silence 100%
+- Instant Death 100%
+- Paralysis 100%
+- Confusion 100%
+- Sleep 100%
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+Doom Zero:
+------------------------------
+
+- Target all living foes
+- Reduce HP to 1
+- Reduce MP to 0
+- Reduce IP to 0
+
+- Non-elemental
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+"I won't hold back...":
+------------------------------
+
+- Target self
+- Remove all buffs and debuffs
+- Set AGL to ~30000 (repeated in every round)
+- Set the Round-Counter (from initially 0) to 6
+- Go to Phase 2
+
+------------------------------
+"Fiery light breaks the sea...":
+------------------------------
+
+- Set Round-Counter to 6
+- Go to Phase 3
+- Go to Defence State 3
+
+------------------------------
+"Egg Dragon ascends to sky.":
+------------------------------
+
+- Checking situation
+- Enable a permanent shield that reflects back everything
+
+------------------------------
+"Egg Dragon descends to earth.":
+------------------------------
+
+- Checking situation
+- Disable the permanent shield that reflects back everything
+- Go to Defence State 1
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+- Protection against Mirror
+- Protection against healing HP (besides the own healing)
+- Protection against buffs and debuffs (they get reset along with his next action)
+
+- If in Phase 1 or in Phase 2:
+  - Strong against Fire + Anti-Sea
+  - Immune to everything else
+
+- If in Phase 3:
+  - If in Defence State 1:
+    - Immune to everything
+    - If hit by a Fire + Light move, go to Defence State 2
+    - If hit by anything else, go to Defence State 3
+  - If in Defence State 2:
+    - Strong against Fire + Anti-Sea
+    - Immune to everything else
+    - If hit by a Fire + Anti-Sea move, go to Defence State 1
+    - If hit by anything else, go to Defence State 3
+  - If in Defence State 3:
+    - Immune to everything

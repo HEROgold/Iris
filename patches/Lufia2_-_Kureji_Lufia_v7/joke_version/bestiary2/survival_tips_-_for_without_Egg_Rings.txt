@@ -1,0 +1,86 @@
+
+
+  GENERAL INFORMATION:
+
+  - this version cannot be won without excessively grinding and farming
+
+  - there's a boss rush somewhere which is available only after the
+    final maiden joined your party - also if you take it on, you better
+    have enough free item slots for your rewards
+
+  - getting the Magma Key at Dragon Mountain actually seems to affect
+    the damage formula regarding the factor for front and back row
+    damage so that you'll get less damage in three of the four spots
+    for party members ... for some reason (this also happens in vanilla)
+
+  - do never forget to unequip all your party members before they
+    leave your party (that is, if it's feasible)
+
+  - do never forget that you cannot leave the Gratze jail once you're
+    imprisoned, so be especially careful with saving the game (there's a
+    shop with a few items, but otherwise there's no real additional help)
+
+
+
+  SHOPPING AND OBTAINABLE ITEMS:
+
+  - there's some new stuff in some shops
+
+  - there's also a new shop in the Gratze jail which sells basic stuff
+
+  - you can enter the Tanbel Tower before triggering Camu and therefore
+    grab the three chests at the top before the boss battle
+    (to a lesser extent it might be an alternative to visit
+     the Tower of Truth or Dragon Mountain earlier for some good chests)
+
+  - if you have problems with some bosses you might consider to go for the
+    newly added monster drops as they really can help greatly in some cases
+
+
+  - generally Speed Sources are really neat, but before using them
+    you better be aware that they also are some kind of double-edged sword
+
+
+
+  MISSABLES:
+
+  - the stuff sold in Chaed is no longer missable, however, now you can
+    miss the Kraken Rock drop from Squids in Gratze so if you care for
+    more of them, there won't be another time to farm them afterwards
+
+  - boss drops are basically guaranteed, but can actually get missed
+    in case your inventory is full
+
+
+  - when wishing from the Egg Dragon you should consider that you get
+    - one Old Shield as boss drop (+ more of them in the boss rush)
+    - four Magic Fruits as boss drops (+ more of them in the boss rush)
+    - S-Curio Rings as regular drops
+    - stat increasing sources by buying
+
+
+
+  BATTLES:
+
+  - some enemy moves have quite some unusual elemental property so you
+    might want to experiment a little bit with your elemental shields
+    (and helmets) in case a foe might turn out to be too overwhelming -
+    this goes not only for boss battles but also for regular enemies
+    especially in a certain cave
+
+  - and, of course, do generally experiment with your equipment a lot
+    especially regarding the automatic protection against status ailments
+
+
+
+  ANCIENT CAVE:
+
+  - better do the cave with Dekar (and Guy) in your team
+
+  - you definitely might want a good arsenal of blue chest items
+    before you really take on the cave
+
+  - against the Master every capsule monster not in final form
+    just will instantly flee (just like you lose all your IP)
+
+  - I suggest Blaze for the final battle

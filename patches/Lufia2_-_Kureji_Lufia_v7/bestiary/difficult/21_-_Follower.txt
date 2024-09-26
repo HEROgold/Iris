@@ -1,0 +1,96 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Follower
+
+HP:   1000
+MP:   2000
+
+ATP:  200
+DFP:  200
+
+AGL:  200
+INT:  180
+GUT:  100
+MGR:  200
+
+DROP: Magic Fruit
+RATE: 100%
+
+EXP:  100
+GOLD: 250
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+The Followers are called by Idura in his
+first battle.
+
+They either will cast Stronger on the
+whole group or they will use a regular
+single-targeted attack.
+
+This attack silences its target which,
+of course, supports Idura's strategy
+of disabling the enemies' magic.
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 1
+------------------------------
+
+Always:
+  Stronger (36%)
+  Regular attack (64%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Stronger:
+------------------------------
+
+- Target own group
+- Regular Stronger spell
+- Heal 300 HP
+
+- In case of failure perform
+    Regular attack (100%)
+
+------------------------------
+Regular attack:
+------------------------------
+
+- Target one random foe
+- Regular attack
+
+- Neutral elemental
+- Silence 100%
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+
+- Weak against Thunder

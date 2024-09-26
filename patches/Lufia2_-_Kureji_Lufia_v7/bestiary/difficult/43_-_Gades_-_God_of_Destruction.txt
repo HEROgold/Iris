@@ -1,0 +1,282 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Gades
+
+HP:   120000
+MP:   infinite
+
+ATP:  1500
+DFP:  2000
+
+AGL:  510
+INT:  510
+GUT:  510
+MGR:  510
+
+DROP: ---
+RATE: ---
+
+EXP:  125000
+GOLD: 125000
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+---
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 0
+------------------------------
+
+If in Phase 3 and HP <= 58000:
+  Heal 2000 HP secretly (33%)
+
+------------------------------
+TURN 1
+------------------------------
+
+If in Round 1 or every six rounds later:
+  Destructo Wave (100%)
+
+Else if in Round 4 or every six rounds later - but not in Phase 1:
+  Cutter (100%)
+
+Else:
+  End of World (67%)
+  Curse (33%)
+
+------------------------------
+TURN 2
+------------------------------
+
+If already used Energy Focus twice since the last Octo-Strike:
+  Devastation (33%)
+  Undead (67%)
+
+Else:
+  Devastation (33%)
+  Undead (33%)
+  Energy Focus (34%)
+
+------------------------------
+TURN 3
+------------------------------
+
+If in Round 1 or every six rounds later:
+  Spirit Breaker (100%)
+
+Else:
+  Spirit Breaker (33%)
+  Bloody Tears (33%)
+  Octo-Strike A (17%)
+  Octo-Strike B (17%)
+
+------------------------------
+TURN 4
+------------------------------
+
+If in Phase 1 and HP <= 90000:
+  "Not bad for mere mortals..." (100%) / Go to Phase 2
+
+Else if in Phase 2 and HP <= 60000:
+  "IMPOSSIBLE!!! I AM A GOD!!!" (100%) / Go to Phase 3
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Destructo Wave:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 1750
+
+- Wind + Soil elemental
+- Poisoning 100%
+- Silence 100%
+- Instant Death 100%
+- Paralysis 100%
+- Confusion 100%
+- Sleep 100%
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+Cutter:
+------------------------------
+
+- Target all living foes
+- Reduce HP to 50% of current value in front row
+- Reduce HP to 66% of current value in back row
+
+- Non-elemental
+
+- If the target's HP are below 2 (front) resp. 3 (back) or above 32767, the attack won't have any effect
+- Pierces through all reflecting counter-moves
+
+------------------------------
+End of World:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 1000
+
+- Earth elemental
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+Curse:
+------------------------------
+
+- Target one random foe
+- Reduce HP to 1
+
+- Non-elemental
+- Poisoning 100%
+- Paralysis 100%
+- Sleep 100%
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+Devastation:
+------------------------------
+
+- Target one random foe
+- Special physical attack
+- Base DMG = 3000
+
+- Shadow elemental
+- Sleep 100%
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+Undead:
+------------------------------
+
+- Target self
+- ATP +50
+
+- The temporary ATP will not surpass 15000
+
+------------------------------
+Energy Focus:
+------------------------------
+
+- Target self
+- Increases critical hit rate of (only) the next Octo-Strike
+  - from 25% to 30% if it's the first usage
+  - from 30% to 33% if it's the second usage
+
+------------------------------
+Spirit Breaker:
+------------------------------
+
+- Target one random foe
+- Reduce IP to 0
+
+- Non-elemental
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+Bloody Tears:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 2500
+
+- Shadow elemental
+- Sleep 100%
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+Octo-Strike (A):
+------------------------------
+
+- Target one random foe
+- 8 attacks in a row with retargeting
+- Special physical attack (but with fluctuation like a regular attack)
+- Base DMG = 500
+
+- Critical hit rate: 25%/30%/33% (depending on Energy Focus)
+- Critical DMG multiplier: 1
+
+- Anti-Hard elemental
+- Poisoning 100%
+- Paralysis 100%
+- Sleep 100%
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+Octo-Strike (B):
+------------------------------
+
+- Target one random foe
+- 8 attacks in a row with retargeting
+- Regular attack
+
+- Critical hit rate: 25%/30%/33% (depending on Energy Focus)
+- Critical DMG multiplier: 1
+
+- Shadow elemental
+- Poisoning 100%
+- Paralysis 100%
+- Sleep 100%
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+"Not bad for mere mortals...":
+------------------------------
+
+- Target self
+- Remove all buffs and debuffs
+- Set AGL to ~30000 (repeated in every round)
+- Go to Phase 2
+
+------------------------------
+"IMPOSSIBLE!!! I AM A GOD!!!":
+------------------------------
+
+- Go to Phase 3
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+- Protection against Mirror
+- Protection against healing HP (besides the own healing)
+
+- Weak against Dual Blade
+- Immune to everything else

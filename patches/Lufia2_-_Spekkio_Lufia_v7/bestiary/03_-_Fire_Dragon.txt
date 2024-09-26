@@ -1,0 +1,119 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Fire Dragon
+
+HP:   7500
+MP:   2000
+
+ATP:  900
+DFP:  400
+
+AGL:  220
+INT:  420
+GUT:  100
+MGR:  400
+
+DROP: ---
+RATE: ---
+
+EXP:  30000
+GOLD: 40000
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+The Fire Dragon now is a little bit faster
+as well as having a few more ATP, DFP and INT.
+Besides, his Incendiary is stronger and his
+Drowsy has quite some higher chance for sleep.
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 1
+------------------------------
+
+Always:
+  Incendiary (36%)
+  Firebird (15%)
+  Drowsy (17%)
+  Bite (32%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Incendiary:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 600
+
+- Fire elemental
+
+------------------------------
+Firebird:
+------------------------------
+
+- Target all living foes
+- Regular Firebird spell
+- Base DMG = 360
+
+- Fire elemental
+
+- In case of failure perform
+    Drowsy (36%)
+    Bite (64%)
+
+------------------------------
+Drowsy:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 300
+
+- Neutral elemental
+- Sleep 45%
+
+------------------------------
+Bite:
+------------------------------
+
+- Target one random foe
+- Regular attack
+
+- Fire elemental
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+
+- Weak against Anti-Dragon
+- Weak against Anti-Flying
+- Weak against Ice
+- Strong against Fire
+- Immune to Earth

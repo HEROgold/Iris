@@ -1,0 +1,224 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: La Puella
+
+HP:   30000
+MP:   10000
+
+ATP:  1000
+DFP:  1000
+
+AGL:  320
+INT:  510
+GUT:  510
+MGR:  510
+
+DROP: Spider Jewel
+RATE: 25%
+
+EXP:  50000
+GOLD: 50000
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+La Puella is a new optional boss. You can fight
+her at the throne room of Parcelyte Castle after
+beating Gades at the Ancient Tower.
+
+Of course, you can fight her at any point of the
+game now, but it's highly recommended to do it
+at the end - because a lot of the endgame equipment
+like the Divine Armor might be very, very helpful.
+
+She is basically an upgraded version of the Tarantula
+you fought earlier at the Ruby Cave, but not only are
+her moves much stronger (her multi-targeting attacks
+are on par with Stardust Blow), she also has some
+new tricks up to her sleeve.
+
+First, there are her helpers. Although she has the
+potential to call for up to three companions per
+round, there will be only enough space for two.
+She calls for Lady Spiders and later on for Queen
+Spiders who will attack once in the next round
+and afterwards they will just flee - making room
+for fellow spiderettes.
+
+She also has a new move called Encouragement which
+increases the attack power of the whole enemy party.
+Luckily the companions will only attack once with that
+power-up before they flee, but these attacks are very
+powerful now.
+
+Also La Puella is the one and only enemy who uses an
+item during the battle. If she's lost enough HP, she'll
+use a Miracle - which is the start of the second battle
+phase where she calls for Queen Spiders instead of
+Lady Spiders now. Luckily, she won't use more than one
+Miracle in the battle - I mean they're quite rare
+even for some kind of Spider Goddess, aren't they?
+
+Her last resort when low on HP is casting Valor
+which heals way more than Tarantula's Stronger.
+In order to bring her down, your party should be
+able to deliver quite a bit damage in order to
+overcome her constant healing. (Though, luckily it seems
+she got somewhat lazy over all the time she spent at
+the castle - like you can see e. g. looking at her
+'low' agility.)
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 0
+------------------------------
+
+If in Phase 1:
+  Calls companions A (100%)
+
+Else:
+  Calls companions B (100%)
+
+------------------------------
+TURN 1
+------------------------------
+
+If in Phase 1 and HP <= 15000:
+  Use a Miracle (100%) / Go to Phase 2
+
+Else if HP <= 10000:
+  Valor (50%)
+  Encouragement (12.5%)
+  Poison Shower (9%)
+  Spiderweb (9.5%)
+  Regular attack (19%)
+
+Else:
+  Encouragement (25%)
+  Poison Shower (18%)
+  Spiderweb (19%)
+  Regular attack (38%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Calls companions (A):
+------------------------------
+
+- If possible call
+  - 3 Lady Spiders
+
+------------------------------
+Calls companions (B):
+------------------------------
+
+- If possible call
+  - 3 Queen Spiders
+
+------------------------------
+Miracle:
+------------------------------
+
+- Target self
+- Use a Miracle
+  - Heal 16383 HP
+  - Heal 16383 MP
+- Go to Phase 2
+
+------------------------------
+Valor:
+------------------------------
+
+- Target self
+- Regular Valor spell
+- Heal 2000 HP
+
+- Cure Death 100% (on a single target)
+
+- In case of failure perform
+    Encouragement (25%)
+    Poison Shower (18%)
+    Spiderweb (19%)
+    Regular attack (38%)
+
+------------------------------
+Encouragement:
+------------------------------
+
+- Target own group
+- Set the temporary ATP to 50% of the base ATP
+  - The effect does not stack
+  - Everyone's combined base ATP and temporary ATP will be 1000 + 500 = 1500
+
+- Non-elemental
+
+------------------------------
+Poison Shower:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 800
+
+- Neutral elemental
+- Poisoning 100%
+
+------------------------------
+Spiderweb:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 800
+
+- Neutral elemental
+- Lower AGL by 25%
+
+------------------------------
+Regular attack:
+------------------------------
+
+- Target one random foe
+- Regular attack
+
+- Critical hit rate: 5%
+- Critical DMG multiplier: 0.5
+
+- Neutral elemental
+- Paralysis 100%
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+
+- Weak against Fire
+- Weak against Anti-Insect
+- Strong against Thunder
+- Strong against Water
+- Strong against Ice
+- Strong against Light
+- Strong against Shadow

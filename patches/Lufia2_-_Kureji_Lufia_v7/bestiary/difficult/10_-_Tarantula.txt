@@ -1,0 +1,211 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Tarantula
+
+HP:   3000
+MP:   3000
+
+ATP:  240
+DFP:  120
+
+AGL:  300
+INT:  130
+GUT:  100
+MGR:  200
+
+DROP: Spider Jewel
+RATE: 100%
+
+EXP:  4000
+GOLD: 5000
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+Tarantula is a boss who is considered to be
+one of the hardest ones in the original game.
+Of course he won't be easy here as well.
+
+His Poison Shower is a quite strong multi-
+targeting move which poisons as well and
+his regular attack will paralyse you.
+
+His Spiderweb may be weak, but it lowers
+also the AGL of the group.
+
+Moreover, Tarantula is the first boss who has
+some kind of counter move depending on your
+behaviour. If he has lost some of his HP,
+he'll perform a nasty new attack.
+
+Depending on your behaviour his Retaliation
+will be either insanely strong or just plain
+weak. Before he uses this move, he will call
+for Money Spiders as well.
+
+If he's really low on HP, he will start to use
+Stronger followed by a regular (and paralysing)
+attack.
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 1
+------------------------------
+
+If in Phase 2:
+  Calls companions + "Ha, ha, ha, ha, ha!" (100%) / Go to Phase 3
+
+Else if in Phase 3:
+  If HP changed since the start of (only this) Phase 3:
+    Retaliation A (100%) / Go back to Phase 1
+  Else:
+    Retaliation B (100%) / Go back to Phase 1
+
+------------------------------
+TURN 2
+------------------------------
+
+If HP <= 1000 and not in Phase 3:
+  Stronger (50%)
+  Spiderweb (50%)
+
+Else if not in Phase 3:
+  Spiderweb (100%)
+
+------------------------------
+TURN 3
+------------------------------
+
+If not in Phase 3 and in turn 2 is performed Stronger:
+  Regular attack (100%)
+
+Else if not in Phase 3:
+  Poison Shower (25%)
+  Regular attack (75%)
+
+------------------------------
+TURN 4
+------------------------------
+
+If not in Phase 3 and HP > 1000 and HP <= 2500:
+  "Just keep attacking..." (75%) / Go to Phase 2
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+"Ha, ha, ha, ha, ha!":
+------------------------------
+
+- Checking situation
+- Go to Phase 3
+
+- Fire and Anti-Insect moves aren't effective anymore until the next Retaliation
+
+------------------------------
+Calls companions:
+------------------------------
+
+- If possible call
+  - 2 Money Spiders
+
+------------------------------
+Retaliation (A):
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 800
+
+- Neutral elemental
+
+------------------------------
+Retaliation (B):
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 100
+
+- Neutral elemental
+
+------------------------------
+Stronger:
+------------------------------
+
+- Target self
+- Regular Stronger spell
+- Heal 250 HP
+
+- In case of failure perform
+    Spiderweb (100%)
+
+------------------------------
+Spiderweb:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 120
+
+- Neutral elemental
+- Lower AGL by 25%
+
+------------------------------
+Poison Shower:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 200
+
+- Neutral elemental
+- Poisoning 100%
+
+------------------------------
+Regular attack:
+------------------------------
+
+- Target one random foe
+- Regular attack
+
+- Neutral elemental
+- Paralysis 100%
+
+------------------------------
+"Just keep attacking...":
+------------------------------
+
+- Checking situation
+- Go to Phase 2
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+
+- Weak against Fire
+- Weak against Anti-Insect
+- Strong against Thunder

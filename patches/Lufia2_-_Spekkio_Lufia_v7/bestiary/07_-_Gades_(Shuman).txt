@@ -1,0 +1,107 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Gades
+
+HP:   10000
+MP:   0
+
+ATP:  600
+DFP:  200
+
+AGL:  184
+INT:  192
+GUT:  184
+MGR:  400
+
+DROP: Snake Rock
+RATE: 100%
+
+EXP:  50000
+GOLD: 50000
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+You'll fight this version of Gades at the
+Sealed Tower. It's the unused version of Gades
+which you also fight at the Gordovan Tower in
+Kureji Lufia. Not only are his Destructo Wave
+and regular attack much stronger, he also has
+his super strong Devastation attack as well as
+ice and thunder protection.
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 1
+------------------------------
+
+If in Round 1 or every four rounds later:
+  Destructo Wave (100%)
+
+Else:
+  Devastation (50%)
+  Regular attack (50%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Destructo Wave:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 800
+
+- Neutral elemental
+
+------------------------------
+Devastation:
+------------------------------
+
+- Target one random foe
+- Special physical attack
+- Base DMG = 1100
+
+- Shadow elemental
+
+------------------------------
+Regular attack:
+------------------------------
+
+- Target one random foe
+- Regular attack
+
+- Neutral elemental
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+
+- Weak against Light
+- Strong against Shadow
+- Strong against Ice
+- Strong against Thunder

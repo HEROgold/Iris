@@ -1,0 +1,177 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Gades
+
+HP:   10000
+MP:   10000
+
+ATP:  400
+DFP:  500
+
+AGL:  500
+INT:  400
+GUT:  300
+MGR:  300
+
+DROP: ---
+RATE: ---
+
+EXP:  10000
+GOLD: 20000
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+After the fiasco at the Gordovan tower
+it's payback-time now! But this time it's
+a serious battle for Gades, too, and after
+all he's a god. So don't expect that this
+battle will be easier. In this battle
+Gades will use three different attacks.
+
+First of all, there's the Curse attack
+(known from Lufia - The Legend returns)
+which sets one party member's HP to 1
+and poisons, too.
+
+Furthermore, his Destructo Wave - albeit
+weaker than in the previous encounter -
+is a rather strong multi-targeting attack.
+
+But his most dangerous move is his
+Octo-Strike which lets him attack
+eight times in a single turn.
+
+Depending on your actions he will use one,
+two or even three of these attacks in a
+single round. If he starts using two or more
+attacks per round, it's basically an
+instant-game over for you.
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 0
+------------------------------
+
+If in Phase 1:
+  If hit three or more times by something since his last action:
+    "Quite aggressive, aren't we?" (100%) / Go to Phase 3
+  Else if hit twice by something since his last action:
+    "Quite aggressive, aren't we?" (100%) / Go to Phase 2
+
+Else if in Phase 2:
+  If hit three or more times by something since his last action:
+    Go to Phase 3
+
+------------------------------
+TURN 1
+------------------------------
+
+If in Phase 1 and in Round 1:
+  Destructo Wave (100%)
+
+Else if in Phase 1:
+  Curse (33%)
+  Destructo Wave (33%)
+  Octo-Strike (34%)
+
+Else if in Phase 2:
+  Curse (67%)
+  Destructo Wave (33%)
+
+Else if in Phase 3:
+  Curse (100%)
+
+------------------------------
+TURN 2
+------------------------------
+
+If in Phase 2:
+  If Curse was used in turn 1:
+    Destructo Wave (50%)
+    Octo-Strike (50%)
+  Else if Destructo Wave was used in turn 1:
+    Octo-Strike (100%)
+
+Else if in Phase 3:
+  Destructo Wave (100%)
+
+------------------------------
+TURN 3
+------------------------------
+
+If in Phase 3:
+  Octo-Strike (100%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+"Quite aggressive, aren't we?":
+------------------------------
+
+- Checking situation
+- Go to Phase 2 or to Phase 3
+- Note that there's no transition message from Phase 2 to Phase 3
+
+------------------------------
+Curse:
+------------------------------
+
+- Target one random foe
+- Reduce HP to 1
+
+- Non-elemental
+- Poisoning 100%
+
+- The "HP to 1"-effect pierces through all reflecting counter-moves
+
+------------------------------
+Destructo Wave:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 600
+
+- Neutral elemental
+
+------------------------------
+Octo-Strike:
+------------------------------
+
+- Target one random foe
+- 8 attacks in a row with retargeting
+- Regular attack
+
+- Neutral elemental
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+
+- Weak against Light
+- Strong against Shadow

@@ -1,0 +1,26 @@
+
+ MSU-1 is about replacing the original soundtrack with a new version in CD-audio quality.
+
+ Credits go to:
+
+ - Conn and JUD6MENT for the hacking
+
+ - Relikk and SourJovis for the music files
+
+ - emuandco for beta testing
+
+
+
+ However, this patch only works with the proper music files and set-up.
+
+ Go to:
+ https://www.zeldix.net/
+
+ Or more specifically:
+ https://www.zeldix.net/t1833-lufia-ii-rise-of-the-sinistrals
+
+ Or google for "Lufia MSU-1" in case the links aren't up-to-date anymore.
+
+
+
+ Download the PCM files as well as follow the instructions given there.

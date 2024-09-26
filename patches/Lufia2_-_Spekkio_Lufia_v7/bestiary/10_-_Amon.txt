@@ -1,0 +1,167 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Amon
+
+HP:   30000
+MP:   10000
+
+ATP:  1000
+DFP:  1000
+
+AGL:  510
+INT:  510
+GUT:  510
+MGR:  510
+
+DROP: ---
+RATE: ---
+
+EXP:  50000
+GOLD: 50000
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+You'll fight this version of Amon at Doom Island.
+
+His Chaos Wave is as strong as Gades'
+Destructo Wave from the previous fight,
+but it also has a very high chance of
+inflicting confusion. He also has a lot
+of multi-targeting attacks such as
+Galactic Lancer which now is stronger
+than attacks like Stardust Blow.
+
+Also, if you lower his ATP, instead of
+his normal regular attack he will use a
+special physical attack that looks just
+like his normal attack. However, it's
+slightly weaker due to special attacks
+having less fluctuation compared to
+regular attacks (despite the base DMG
+being equal to the initial ATP value).
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 1
+------------------------------
+
+If in Round 1 or every four rounds later:
+  Chaos Wave (100%)
+
+Else:
+  Thunder (36%)
+  Ice Valk (23%)
+  Galactic Lancer (15%)
+  Regular attack A (26%)
+  Regular attack B (0%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Chaos Wave:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 800
+
+- Neutral elemental
+- Confusion 50%
+
+------------------------------
+Thunder:
+------------------------------
+
+- Target all living foes
+- Regular Thunder spell
+- Base DMG = 480
+
+- Thunder elemental
+
+- In case of failure perform
+    Ice Valk (36%)
+    Galactic Lancer (23%)
+    Regular attack A (41%)
+
+------------------------------
+Ice Valk:
+------------------------------
+
+- Target all living foes
+- Regular Ice Valk spell
+- Base DMG = 420
+
+- Ice elemental
+
+- In case of failure perform
+    Galactic Lancer (36%)
+    Regular attack A (64%)
+
+------------------------------
+Galactic Lancer:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 900
+
+- Neutral elemental
+
+------------------------------
+Regular attack (A):
+------------------------------
+
+- Target one random foe
+- Regular attack
+
+- Neutral elemental
+
+- In case of his ATP being debuffed instead perform
+    Regular attack B (100%)
+
+------------------------------
+Regular attack (B):
+------------------------------
+
+- Target one random foe
+- Special physical attack
+- Base DMG = 1000
+
+- Neutral elemental
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+- Protection against healing HP
+
+- Weak against Light
+- Strong against Shadow
+- Strong against Fire
+- Strong against Thunder
+- Strong against Water
+- Strong against Ice

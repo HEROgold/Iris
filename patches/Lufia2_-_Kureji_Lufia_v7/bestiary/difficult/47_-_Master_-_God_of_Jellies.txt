@@ -1,0 +1,160 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Master
+
+HP:   10100
+MP:   infinite
+
+ATP:  2000
+DFP:  1
+
+AGL:  510
+INT:  510
+GUT:  510
+MGR:  510
+
+DROP: ---
+RATE: ---
+
+EXP:  1
+GOLD: 1
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+---
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 1
+------------------------------
+
+If in Round 4:
+  "Thanks for playing!" (100%)
+
+Else:
+  Seven Sweet Seductions (100%)
+
+------------------------------
+TURN 2
+------------------------------
+
+If in Round 1:
+  "Okay, then let's play!" (100%)
+
+Else if in Round 2:
+  "Right, let's go!" (100%)
+
+Else if in Round 3:
+  "Are we ready?" (100%)
+
+Else if in Round 4:
+  "I'm out of here!" (100%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Seven Sweet Seductions:
+------------------------------
+
+- Target all foes
+- Regular Valor spell cast seven times in succession
+- Heal 2000 HP seven times in succession
+
+- Cure Death 100% (on a single target)
+
+- No failure due to infinite MP
+
+------------------------------
+"Okay, then let's play!":
+------------------------------
+
+- Target all living foes
+- Set HP to 10000 regardless of max HP
+- Set DFP and MGR to ~10000
+- Reduce IP to 0
+
+- Non-elemental
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+"Right, let's go!":
+------------------------------
+
+- Target all living foes
+- Set HP to 10000 regardless of max HP
+- Set DFP and MGR to ~10000
+- Reduce MP to 0
+- Reduce IP to 0
+
+- Non-elemental
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+"Are we ready?":
+------------------------------
+
+- Target all living foes
+- Set HP to 10000 regardless of max HP
+- Set DFP and MGR to ~10000
+- Reduce MP to 0
+- Reduce IP to 0
+
+- Non-elemental
+
+- Pierces through all reflecting counter-moves
+
+- Set own AGL to ~30000
+
+------------------------------
+"Thanks for playing!":
+------------------------------
+
+- Target all living foes
+- Heal 16383 HP (and get rid of the HP exceeding the maximum)
+- Heal 16383 MP
+
+- Neutral elemental
+
+- Pierces through all reflecting counter-moves
+
+------------------------------
+"I'm out of here!":
+------------------------------
+
+- Target self
+- Beforehand set own HP to 1
+- Regular attack
+
+- Neutral elemental
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+- Protection against Mirror

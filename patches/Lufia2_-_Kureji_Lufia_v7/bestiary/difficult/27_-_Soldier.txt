@@ -1,0 +1,124 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Soldier
+
+HP:   3000
+MP:   2000
+
+ATP:  350
+DFP:  350
+
+AGL:  400
+INT:  350
+GUT:  300
+MGR:  300
+
+DROP: ---
+RATE: ---
+
+EXP:  2500
+GOLD: 1000
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+You will face these Soldiers in three boss
+battles during the Ruby Angel and the invading
+Gratze Kingdom incident.
+
+They will attack you twice per round whereas
+they prefer to not change their target if they
+rely on single-targeted attacks.
+
+In the first turn they will either use a regular
+attack or - in the case they lost enough HP -
+the Rush attack on a single target.
+
+In the second turn they will either use Rush on
+a single party member or the Coma spell on the
+whole group. Albeit Coma isn't the baddest spell,
+there were already better moves for putting the
+enemies to sleep - like Devil Flower's Sneezespreader
+which did the job just better in every way.
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 1
+------------------------------
+
+If HP <= 2500:
+  Rush (100%)
+
+Else:
+  Regular attack (100%)
+
+------------------------------
+TURN 2
+------------------------------
+
+Always:
+  Rush (75%)
+  Coma (25%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Regular attack:
+------------------------------
+
+- Target one random foe
+- Regular attack
+
+- Neutral elemental
+
+------------------------------
+Rush:
+------------------------------
+
+- Target one random foe
+- Don't retarget in turn 2 unless the target from turn 1 is dead
+  - But retarget if Rush is second choice (after failed attempt of Coma) 
+- Special physical attack
+- Base DMG = 450
+
+- Neutral elemental
+
+------------------------------
+Coma:
+------------------------------
+
+- Target all living foes
+- Regular Coma spell
+
+- Sleep 80% (on a single target)
+
+- In case of failure perform
+    Rush (100%)
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep

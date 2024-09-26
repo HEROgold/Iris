@@ -1,0 +1,154 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Master
+
+HP:   10000
+MP:   infinite
+
+ATP:  10
+DFP:  1
+
+AGL:  510
+INT:  510
+GUT:  510
+MGR:  2
+
+DROP: ---
+RATE: ---
+
+EXP:  1
+GOLD: 1
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+The Master of the Ancient Cave now has one
+move that might make your life so much harder.
+
+Seven Sweet Seductions can heal him completely
+and therefore nullifies all your previous attempts
+to deplete his 10000 HP. (Yeah, he's got 20
+additional HP as well.) And he will use this move
+in every round except the last round where he ends
+the battle, anyway.
+
+At the end of his actions at the third round he will
+taunt you by filling up your IP (after prior filling
+up HP and MP not too farfetched, though). But, of
+course, you cannot choose any IP moves actually
+benefitting of it before the following round - which
+unfortunately is the very final battle-ending round.
+
+And don't even think about committing suicide.
+Of course, you might do that, but you might not get
+the result that you hope for. However, you might be in
+for a pleasant surprise depending on your party size.
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 1
+------------------------------
+
+If in Round 4:
+  "I'm out of here!" (100%)
+
+Else:
+  Seven Sweet Seductions (100%)
+
+------------------------------
+TURN 2
+------------------------------
+
+If in Round 1:
+  "Let's regain our strength." (100%)
+
+Else if in Round 2:
+  "Right, let's go!" (100%)
+
+Else if in Round 3:
+  "Are we ready?" (100%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Seven Sweet Seductions:
+------------------------------
+
+- Target self
+- Regular Valor spell cast seven times in succession
+- Heal 2000 HP seven times in succession
+
+- Cure Death 100% (on a single target)
+
+- No failure due to infinite MP
+
+------------------------------
+"Let's regain our strength.":
+------------------------------
+
+- Target all living foes
+- Heal 16383 HP
+
+- Neutral elemental
+
+------------------------------
+"Right, let's go!":
+------------------------------
+
+- Target all living foes
+- Heal 16383 MP
+
+- Neutral elemental
+
+------------------------------
+"Are we ready?":
+------------------------------
+
+- Target all living foes
+- Set IP to 100%
+
+- Non-elemental
+
+- The "IP to 100%"-effect pierces through all reflecting counter-moves
+
+------------------------------
+"I'm out of here!":
+------------------------------
+
+- Target self
+- Beforehand set own HP to 1
+- Regular attack
+
+- Neutral elemental
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+
+- If the hero party consists of 3 people, all damage gets multiplied by 4/3
+- If the hero party consists of 2 people, all damage gets multiplied by 2
+- If the hero party consists of only one, all damage gets multiplied by 4

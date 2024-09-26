@@ -1,0 +1,136 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Revenge Ghost
+
+HP:   7500
+MP:   2000
+
+ATP:  250
+DFP:  360
+
+AGL:  200
+INT:  200
+GUT:  100
+MGR:  300
+
+DROP: ---
+RATE: ---
+
+EXP:  20000
+GOLD: 50000
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+The Revenge Ghost basically is the same
+as in the original version. However, it
+now defends after using its Hatred move
+and it uses Dragon instead of Firebird.
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 1
+------------------------------
+
+Always:
+  Hatred + Defend (36%)
+  Doomcry (20%)
+  Confuse (10%)
+  Thunder (17%)
+  Dragon (17%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Hatred:
+------------------------------
+
+- Checking situation
+
+------------------------------
+Defend:
+------------------------------
+
+- Defends
+
+------------------------------
+Doomcry:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 250
+
+- Neutral elemental
+- Instant Death 30%
+
+------------------------------
+Confuse:
+------------------------------
+
+- Target all living foes
+- Regular Confuse spell
+
+- Confusion 50% (on a single target)
+
+- In case of failure perform
+    Doomcry (100%)
+
+------------------------------
+Thunder:
+------------------------------
+
+- Target all living foes
+- Regular Thunder spell
+- Base DMG = 480
+
+- Thunder elemental
+
+- In case of failure perform
+    Dragon (100%)
+
+------------------------------
+Dragon:
+------------------------------
+
+- Target all living foes
+- Regular Dragon spell
+- Base DMG = 390
+
+- Water elemental
+
+- In case of failure perform
+    Doomcry (100%)
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+
+- Weak against Light
+- Strong against Ice
+- Immune to Shadow
+- Takes damage through healing

@@ -1,0 +1,97 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Boxy
+
+HP:   801
+MP:   320
+
+ATP:  610
+DFP:  240
+
+AGL:  80
+INT:  510
+GUT:  0
+MGR:  40
+
+DROP: ---
+RATE: ---
+
+EXP:  0
+GOLD: 0
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+These mimic-like beings are called by the tank.
+They exist in two different colours, however,
+aside from having another attack name and animation
+they behave absolutely the same. If the tank is
+beaten, they will call for companions and just flee.
+
+Excluding HP, if you invert the digits of their
+other stats, you get the LOST numbers.
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 1
+------------------------------
+
+Always:
+  Calls companions + Escape (100%)
+  Vampire / Da-Dadah (0%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Vampire / Da-Dadah:
+------------------------------
+
+- Target all living foes
+
+- Absorb MP - based on base INT
+
+------------------------------
+Calls companions:
+------------------------------
+
+- If possible call
+  - 1 Bat
+
+- In case of failure perform
+    Vampire / Da-Dadah (100%)
+
+------------------------------
+Escape:
+------------------------------
+
+- Escapes
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+
+- Strong against everything except Neutral and Anti-Hard

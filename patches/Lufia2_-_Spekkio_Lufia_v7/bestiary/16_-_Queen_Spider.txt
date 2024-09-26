@@ -1,0 +1,119 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Queen Spider
+
+HP:   5000
+MP:   0
+
+ATP:  1000
+DFP:  1000
+
+AGL:  510
+INT:  510
+GUT:  510
+MGR:  510
+
+DROP: Spirit Brace
+RATE: 5%
+
+EXP:  1000
+GOLD: 1000
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+The Queen Spiders are called by La Puella
+every round after she used her Miracle.
+
+Like the Lady Spiders they are very hard to
+bring down, but the difference is that like
+La Puella herself they can call for other
+Queen Spiders.
+
+In fact they might be the real battle here
+due to them calling reinforcement en masse.
+They basically are what Idura so much liked
+to be when he claimed that he could send
+monster after monster towards his enemies.
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 0
+------------------------------
+
+Always:
+  Calls companions (100%)
+
+------------------------------
+TURN 1
+------------------------------
+
+Always:
+  Regular attack (100%)
+
+------------------------------
+TURN 2
+------------------------------
+
+Always:
+  Escape (100%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Calls companions:
+------------------------------
+
+- If possible call
+  - 3 Queen Spiders
+
+------------------------------
+Regular attack:
+------------------------------
+
+- Target one random foe
+- Regular attack
+
+- Critical hit rate: 5%
+- Critical DMG multiplier: 0.5
+
+- Neutral elemental
+- Poisoning 100%
+- Sleep 100%
+
+------------------------------
+Escape:
+------------------------------
+
+- Escapes
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+
+- Weak against Fire
+- Weak against Anti-Insect

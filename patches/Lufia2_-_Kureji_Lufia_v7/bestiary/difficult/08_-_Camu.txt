@@ -1,0 +1,164 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Camu
+
+HP:   2000
+MP:   2000
+
+ATP:  210
+DFP:  100
+
+AGL:  250
+INT:  100
+GUT:  100
+MGR:  200
+
+DROP: Camu Jewel
+RATE: 100%
+
+EXP:  3000
+GOLD: 5000
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+Camu is the first boss who inflicts
+status ailments aside from poisoning.
+
+He will either use his Buster Attack
+which is a quite strong multi-targeting
+attack or use Sleep Stinger which puts
+one party member to sleep.
+
+Considering Buster Attack's secret ability
+to cancel all DFP buffs it might be
+useless to use IP moves like Ironclad.
+(That is, unless you cancel out that
+ability by lowering his ATP.)
+
+Furthermore, he will call for one
+Servant every round which might delay
+the whole battle because their healing
+abilities are quite good for this point
+of the game.
+
+Be aware that after losing some HP
+Camu will get an additional attack
+which he will use every round together
+with his other attacks.
+
+His Desperation Cry is as strong as his
+Buster Attack, hits the whole group and
+has a really high probability of silencing.
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 0
+------------------------------
+
+Always:
+  Calls companions (100%)
+
+------------------------------
+TURN 1
+------------------------------
+
+If HP <= 667:
+  Desperation Cry (100%)
+
+------------------------------
+TURN 2
+------------------------------
+
+If HP < 334 (HP are checked before turn 1):
+  Buster Attack (100%)
+
+Else:
+  Buster Attack (64%)
+  Sleep Stinger (36%)
+
+------------------------------
+TURN 3
+------------------------------
+
+If in turn 2 is performed Buster Attack and his ATP are debuffed:
+  "The hidden effect is gone..." (100%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Calls companions:
+------------------------------
+
+- If possible call
+  - 1 Servant
+
+------------------------------
+Desperation Cry:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 150
+
+- Neutral elemental
+- Silence 75%
+
+------------------------------
+Buster Attack:
+------------------------------
+
+- Target all living foes
+- Beforehand remove all DFP buffs and debuffs - only if his ATP aren't debuffed
+- Special physical attack
+- Base DMG = 150
+
+- Anti-Sea elemental
+
+------------------------------
+Sleep Stinger:
+------------------------------
+
+- Target one random foe
+- Special physical attack
+- Base DMG = 200
+
+- Anti-Sea elemental
+- Sleep 100%
+
+------------------------------
+"The hidden effect is gone...":
+------------------------------
+
+- Checking situation
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+
+- Weak against Thunder
+- Strong against Fire

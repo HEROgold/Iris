@@ -1,0 +1,167 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: White Dragon
+
+HP:   7500
+MP:   5000
+
+ATP:  500
+DFP:  500
+
+AGL:  450
+INT:  376
+GUT:  350
+MGR:  350
+
+DROP: Magic Fruit
+RATE: 100%
+
+EXP:  4000
+GOLD: 5500
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+Do you think you could take on three Gold Dragons
+in the regular game without attacking by surprise?
+Yes? Okay, do you think you could do it
+if they are all instant death protected?
+Yes? Okay, do you think you could do it
+if their stats are even more boosted?
+Yes? Well, just do it... here and now!
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 0
+------------------------------
+
+Always:
+  Calls companions A (100%)
+
+Always:
+  Calls companions B (100%)
+
+------------------------------
+TURN 1
+------------------------------
+
+If HP <= 2500:
+  Champion (100%)
+
+Else:
+  Cold Stream (23%)
+  Ice Valk (18%)
+  Regular attack (59%)
+
+------------------------------
+TURN 2
+------------------------------
+
+Always:
+  Cold Stream (23%)
+  Ice Valk (18%)
+  Regular attack (59%)
+
+------------------------------
+TURN 3
+------------------------------
+
+Always:
+  Cold Stream (23%)
+  Ice Valk (18%)
+  Regular attack (59%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Calls companions (A):
+------------------------------
+
+- If possible call
+  - 1 White Dragon (companion)
+
+------------------------------
+Calls companions (B):
+------------------------------
+
+- If possible call
+  - 1 Devil Flower
+
+------------------------------
+Champion:
+------------------------------
+
+- Target self
+- Regular Champion spell
+- Heal 1375 HP
+
+- In case of failure perform
+    Cold Stream (41%)
+    Regular attack (59%)
+
+------------------------------
+Cold Stream:
+------------------------------
+
+- Target all living foes
+- Special physical attack
+- Base DMG = 800
+
+- Ice elemental
+
+------------------------------
+Ice Valk:
+------------------------------
+
+- Target all living foes
+- Regular Ice Valk spell
+- Base DMG = 420
+
+- Ice elemental
+
+- In case of failure perform
+    Cold Stream (100%)
+
+------------------------------
+Regular attack:
+------------------------------
+
+- Target one random foe
+- Regular attack
+
+- Ice elemental
+- Confusion 100%
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+
+- Weak against Fire
+- Weak against Anti-Flying
+- Weak against Anti-Dragon
+- Strong against Ice
+- Immune to Earth

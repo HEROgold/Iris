@@ -1,0 +1,104 @@
+**************************************************************************************
+STATS
+**************************************************************************************
+
+
+NAME: Daniele
+
+HP:   1500
+MP:   1500
+
+ATP:  140
+DFP:  100
+
+AGL:  100
+INT:  60
+GUT:  40
+MGR:  40
+
+DROP: ---
+RATE: ---
+
+EXP:  300
+GOLD: 1000
+
+
+
+
+**************************************************************************************
+GENERAL NOTES
+**************************************************************************************
+
+In this not so serious fight Daniele's
+only attack will be Chance Hit.
+
+However, in some cases he will hit
+himself instead of his enemies.
+
+
+
+
+**************************************************************************************
+ATTACK SCRIPT
+**************************************************************************************
+
+------------------------------
+TURN 1
+------------------------------
+
+Always:
+  Chance Hit A (64%)
+  Chance Hit B (36%)
+
+------------------------------
+TURN 2
+------------------------------
+
+Always:
+  "Ha, ha, ha, ha, ha!" (100%)
+
+
+
+
+**************************************************************************************
+ATTACKS & OTHER MOVES
+**************************************************************************************
+
+------------------------------
+Chance Hit (A):
+------------------------------
+
+- Target one random foe
+- Regular attack
+
+- Neutral elemental
+
+------------------------------
+Chance Hit (B):
+------------------------------
+
+- Target self
+- Regular attack
+
+- Neutral elemental
+
+------------------------------
+"Ha, ha, ha, ha, ha!":
+------------------------------
+
+- Checking situation
+
+
+
+
+**************************************************************************************
+PROTECTIONS & WEAKNESSES
+**************************************************************************************
+
+- Protection against Instant Death
+- Protection against Poisoning, Silence, Paralysis, Confusion and Sleep
+
+- Weak against Fire
+- Weak against Thunder
+- Strong against Ice
+- If an attack doesn't hit a weak spot, the damage gets nullified with a 23% chance
