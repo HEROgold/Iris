@@ -1,40 +1,54 @@
 from helpers.bits import find_table_pointer
-from tables.kureji import (
-    FormationObject,
-    MapEventObject,
-    EventInstObject,
-    ChestObject,
-    AncientChest1Object,
-    AncientChest2Object,
-    MapFormationsObject,
-    TownSpriteObject,
-    OverSpriteObject,
-    BossFormationObject,
-    CapsuleObject,
-    CharacterObject,
-    IPAttackObject,
-    ItemObject,
-    MonsterObject,
-    RoamingNPCObject,
-    ShopObject,
-    SpriteMetaObject,
-    WordObject,
-    CapSpritePTRObject,
-    SpellObject,
+from structures.capsule import CapsuleMonster
+from structures.character import PlayableCharacter
+from structures.chest import AddressChest, PointerChest
+from structures.events import Event, MapEvent
+from structures.formation import BattleFormation
+from structures.ip_attack import IPAttack
+from structures.item import Item
+from structures.maiden import Clare, Lisa, Marie
+from structures.monster import Monster
+from structures.npc import RoamingNPC
+from structures.shop import ShopKureji
+from structures.spell import Spell
+from structures.sprites import (
+    CapsulePallette,
+    CapsuleSprite,
+    OverPallette,
+    OverSprite,
+    SpriteMeta,
+    TownSprite,
 )
 from structures.word import Word
-from structures.spell import Spell
-from structures.shop import Shop
-from structures.reward import RewardItem
-from structures.npc import RoamingNPC
-from structures.monster import Monster
-from structures.maiden import Lisa, Marie, Clare
-from structures.item import Item
-from structures.ip_attack import IPAttack
-from structures.chest import AddressChest, PointerChest
-from structures.character import PlayableCharacter
-from structures.capsule import CapsuleMonster
-from structures.formation import BattleFormation
+from tables.kureji import (
+    AncientChest1Object,
+    AncientChest2Object,
+    CapPaletteObject,
+    CapSpritePTRObject,
+    CapsuleObject,
+    CharacterObject,
+    ChestObject,
+    ItemObject,
+    MonsterObject,
+    ShopObject,
+    SpellObject,
+)
+
+# TODO: Figure out if this is the correct approach for kureji.
+from tables.vanilla import(
+    BossFormationObject,
+    EventInstObject,
+    FormationObject,
+    IPAttackObject,
+    MapEventObject,
+    MapFormationsObject,
+    OverPaletteObject,
+    OverSpriteObject,
+    RoamingNPCObject,
+    SpriteMetaObject,
+    TownSpriteObject,
+    WordObject,
+)
 
 
 def test_capsules():
@@ -57,7 +71,8 @@ def test_chests():
 
 
 def test_events():
-    pass
+    for i in range(EventInstObject.count):
+        assert Event.from_index(i)
 
 
 def test_bosses():
@@ -112,8 +127,8 @@ def test_rewards():
 
 
 def test_shops():
-    for index in range(ShopObject.count):
-        assert Shop.from_table(ShopObject.address, index)
+    for i, pointer in enumerate(ShopObject.pointers):
+        assert ShopKureji.from_pointer(pointer, i)
 
 
 def test_spells():
@@ -121,8 +136,33 @@ def test_spells():
         assert Spell.from_pointer(pointer)
 
 
+def test_palettes():
+    for i in range(CapPaletteObject.count):
+        palette = CapsulePallette.from_index(i)
+        palette.write()
+    for i in range(OverPaletteObject.count):
+        over_pallette = OverPallette.from_index(i)
+        over_pallette.write()
+
+
 def test_sprites():
-    pass
+    for i in range(CapSpritePTRObject.count):
+        capsule_sprite = CapsuleSprite.from_index(i)
+        capsule_sprite.write()
+    for i in range(SpriteMetaObject.count):
+        sprite_meta = SpriteMeta.from_index(i)
+        sprite_meta.write()
+    for i in TownSpriteObject.pointers:
+        town_sprite = TownSprite.from_pointer(i)
+        town_sprite.write()
+    for i in range(OverSpriteObject.count):
+        over_sprite = OverSprite.from_index(i)
+        over_sprite.write()
+
+
+def test_maps():
+    for i in range(MapEventObject.count):
+        assert MapEvent.from_index(i)
 
 
 def test_words():
