@@ -54,7 +54,6 @@ def apply_patch(patch: Patch) -> Path:
     elif patch == Patch.SPEKKIO:
         patch_dir = patch_dir/"Lufia2_-_Spekkio_Lufia_v7"
         patch_file = patch_dir/"Spekkio_Lufia_v7.ips"
-        # TODO apply patch_spekkio.txt
     elif patch == Patch.KUREJI:
         patch_dir = patch_dir/"Lufia2_-_Kureji_Lufia_v7"
         patch_file = patch_dir/"Kureji_Lufia_difficult_with_normal_enemy_buff_v7.ips"
