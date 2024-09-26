@@ -266,8 +266,8 @@ def set_spawn_location(location: Zone, entrance_cutscene: int = 0x2):
     verify_after_patch(patch)  # type: ignore[reportArgumentType]
 
 
-def apply_patch_name(name: str):
-    file = Path(__file__).parent/f"patches/patch_{name}.txt"
+def apply_absynnonym_patch(name: str):
+    file = Path(__file__).parent/f"patches/absynnonym/patch_{name}.txt"
     iris.debug(f"Patching {file.name}")
 
     patch, validation = parser(file)
