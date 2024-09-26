@@ -41,7 +41,7 @@ def apply_patch(patch: Patch) -> Path:
     :class:`NotImplementedError`
         Error when a given patch is not implemented.
     """
-    # Vanilla > Fixxxer Deluxe > Frue > Spekkio, Kureji 
+    # Vanilla > Frue > Spekkio, Kureji 
     iris.info(f"Applying patch {patch.name}")
     if patch == Patch.VANILLA:
         return new_file
