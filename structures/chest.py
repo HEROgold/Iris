@@ -4,7 +4,7 @@ from abc_.pointers import TablePointer, Pointer
 from helpers.bits import read_little_int, read_nth_bit
 from helpers.files import read_file, write_file
 
-from config import POINTER_SIZE
+from constants import POINTER_SIZE
 from logger import iris
 from tables import (
     ChestObject,

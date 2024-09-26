@@ -2,7 +2,7 @@ import argparse
 from textwrap import dedent
 from time import time
 
-from config import PROJECT_NAME, VERSION, SUGGESTED_PATCH
+from constants import PROJECT_NAME, VERSION, SUGGESTED_PATCH
 from enums.patches import Patch
 from logger import iris
 

@@ -1,6 +1,6 @@
 import logging
 from _types.objects import Cache
-from config import POINTER_SIZE
+from constants import POINTER_SIZE
 from helpers.files import read_file, restore_pointer
 from typing import TYPE_CHECKING, Self, TypedDict
 from abc_.pointers import TablePointer

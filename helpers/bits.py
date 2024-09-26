@@ -1,5 +1,5 @@
 from io import BufferedReader
-from config import POINTER_SIZE
+from constants import POINTER_SIZE
 from helpers.files import read_file, write_file, restore_pointer
 
 def read_nth_bit(byte: bytes, n: int) -> int:
