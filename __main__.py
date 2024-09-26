@@ -14,7 +14,7 @@ from structures.zone import Zone
 from helpers.files import read_file, write_file
 from tests.read_write import read_write_all
 
-from config import ASCII_ART_COLORIZED, PROJECT_NAME, VERSION
+from constants import ASCII_ART_COLORIZED, PROJECT_NAME, VERSION
 from logger import iris
 
 
