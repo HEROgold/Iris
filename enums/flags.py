@@ -1,5 +1,5 @@
 from enum import Enum, IntFlag, auto
-from typing import Literal, Self, SupportsIndex
+from typing import Self
 
 
 class IntFlagOperations(IntFlag):
@@ -22,30 +22,21 @@ class IntFlagOperations(IntFlag):
             return self ^ value
         return self
 
-    def to_bytes(
-        self,
-        length: SupportsIndex = 1,
-        byteorder: Literal["little", "big"] = "big",
-        *,
-        signed: bool = False,
-    ) -> bytes:
-        return self.value.to_bytes(length, byteorder, signed=signed)
-
     @classmethod
     def from_byte(cls, byte: bytes) -> Self:
         assert len(byte) == 1
         return cls(int.from_bytes(byte))
 
 
-class SingleByteEnum(IntFlagOperations):
+class SingleByteEnum:
     ALL = 0xFF
 
 
-class TwoByteEnum(IntFlagOperations):
+class TwoByteEnum:
     ALL = 0xFFFF
 
 
-class EquipTypes(SingleByteEnum):
+class EquipTypes(SingleByteEnum, IntFlagOperations):
     WEAPON = auto()
     ARMOR = auto()
     SHIELD = auto()
@@ -56,7 +47,7 @@ class EquipTypes(SingleByteEnum):
     U67 = auto()
 
 
-class EquipableCharacter(SingleByteEnum):
+class EquipableCharacter(SingleByteEnum, IntFlagOperations):
     MAXIM = auto()
     SELAN = auto()
     GUY = auto()
@@ -67,7 +58,7 @@ class EquipableCharacter(SingleByteEnum):
     U77 = auto()
 
 
-class Usability(SingleByteEnum):
+class Usability(SingleByteEnum, IntFlagOperations):
     CONSUMABLE = auto()
     EQUIPABLE = auto()
     U02 = auto()
@@ -78,7 +69,7 @@ class Usability(SingleByteEnum):
     USABLE_BATTLE = auto()
 
 
-class ShopIdentifier(SingleByteEnum):
+class ShopIdentifier(SingleByteEnum, IntFlagOperations):
     # TODO: Investigate more, get more information.
     # Pretty sure these identifiers are correct.
     # (100% certain for Spells, 80% sure for Combat)
@@ -88,7 +79,7 @@ class ShopIdentifier(SingleByteEnum):
     SPELL = 0x03
 
 
-class ShopTypes(SingleByteEnum):
+class ShopTypes(SingleByteEnum, IntFlagOperations):
     PAWN = auto()
     COIN = auto()
     ITEM = auto()
@@ -99,7 +90,7 @@ class ShopTypes(SingleByteEnum):
     SELL = auto()
 
 
-class CastableSpells(SingleByteEnum):
+class CastableSpells(SingleByteEnum, IntFlagOperations):
     MAXIM = auto()
     SELAN = auto()
     GUY = auto()
@@ -112,7 +103,7 @@ class CastableSpells(SingleByteEnum):
     ARTY = ARTEA
 
 
-class Alignment(SingleByteEnum):
+class Alignment(SingleByteEnum, IntFlagOperations):
     NEUTRAL = 0
     LIGHT = auto()
     WIND = auto()
@@ -122,7 +113,7 @@ class Alignment(SingleByteEnum):
     FIRE = auto()
 
 
-class ItemTypes(SingleByteEnum):
+class ItemTypes(SingleByteEnum, IntFlagOperations):
     BANNED_ANCIENT_CAVE = 0x10
     SUPER = 0x20
     POWER = 0x40  # Ip Attack, Elemental power, ...
@@ -132,7 +123,7 @@ class ItemTypes(SingleByteEnum):
     REST = 0x00
 
 
-class ItemEffects(TwoByteEnum):
+class ItemEffects(TwoByteEnum, IntFlagOperations):
     MENU_EFFECT = auto()
     BATTLE_EFFECT = auto()
     WEAPON_EFFECT = auto()
@@ -151,7 +142,7 @@ class ItemEffects(TwoByteEnum):
     IP_EFFECT = auto()
 
 
-class Targeting(SingleByteEnum):
+class Targeting(SingleByteEnum, IntFlagOperations):
     NO_TARGET = 0
     ONE_OR_MORE = auto()
     ONLY_ONE_ALLY = auto()
@@ -159,7 +150,7 @@ class Targeting(SingleByteEnum):
     ONLY_ONE_ENEMY = 0x82
 
 
-class MenuIcon(SingleByteEnum):
+class MenuIcon(SingleByteEnum, IntFlagOperations):
     NO_ICON = 0x10
     SWORD = 0xE0
     ARMOR = 0xE1
