@@ -2,7 +2,7 @@ from args import args
 from patcher import (
     apply_game_genie_codes,
     apply_patch,
-    apply_patch_name,
+    apply_absynnonym_patch,
     set_spawn_location,
     start_engine,
     test_translate_genie_code_chars,
@@ -86,17 +86,17 @@ def main() -> None:
 
     # Apply Randomizer patches
     if args.capsule_feeding_bonus:
-        apply_patch_name("capsule_feeding_bonus")
+        apply_absynnonym_patch("capsule_feeding_bonus")
     if args.clear_initial_spells:
-        apply_patch_name("clear_initial_spells")
+        apply_absynnonym_patch("clear_initial_spells")
     if args.eat_dragon_eggs:
-        apply_patch_name("eat_dragon_eggs")
+        apply_absynnonym_patch("eat_dragon_eggs")
     if args.no_boat_encounters:
-        apply_patch_name("no_boat_encounters")
+        apply_absynnonym_patch("no_boat_encounters")
     if args.secondary_tool:
-        apply_patch_name("secondary_tool")
+        apply_absynnonym_patch("secondary_tool")
     if args.unlock_gift_mode:
-        apply_patch_name("unlock_gift_mode")
+        apply_absynnonym_patch("unlock_gift_mode")
     if args.custom_spawn_city:
         set_spawn_location(Zone.from_name("Elcid"), entrance_cutscene=0x02)
         # set_spawn_location(ZoneObject.from_name(args.spawn_location))
@@ -104,23 +104,23 @@ def main() -> None:
         start_engine()
 
     if args.capsule_master_select:
-        apply_patch_name("capsule_master_select")
+        apply_absynnonym_patch("capsule_master_select")
     if args.capsule_tag:
-        apply_patch_name("capsule_tag")
+        apply_absynnonym_patch("capsule_tag")
     if args.ancient_cave_items:
-        apply_patch_name("fix_ac_items")
+        apply_absynnonym_patch("fix_ac_items")
     if args.no_maxim_boat:
-        apply_patch_name("maximless_boat_fix")
+        apply_absynnonym_patch("maximless_boat_fix")
     if args.no_maxim_warp:
-        apply_patch_name("maximless_warp_animation_fix")
+        apply_absynnonym_patch("maximless_warp_animation_fix")
     if args.no_submarine:
-        apply_patch_name("no_submarine")
+        apply_absynnonym_patch("no_submarine")
     if args.spell_target_limit:
-        apply_patch_name("spell_target_limit")
+        apply_absynnonym_patch("spell_target_limit")
     if args.zero_capsule_command:
-        apply_patch_name("zero_capsule_command")
+        apply_absynnonym_patch("zero_capsule_command")
     if args.zero_gold_command:
-        apply_patch_name("zero_gold_command")
+        apply_absynnonym_patch("zero_gold_command")
 
     # TODO: Implement a route finder, which will place required items (arrow, hook, scenario items.)
 
