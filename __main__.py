@@ -151,6 +151,4 @@ write_file.close()
 # TODO: Implement the following:
 # Create own rom extractor, which can and should extract data from the rom. > well on its way
 # This **SHOULD** work for different versions of the rom.
-# The extractor should find pointers, addresses etc. and create a json file with all the data.
-# This json file will be used to create the objects.
-# TODO: Add some form of caching to avoid cloning?
+# TODO: Add some form of caching to avoid cloning and for faster access.
