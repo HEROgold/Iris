@@ -10,6 +10,7 @@ from enums.flags import (
     Targeting,
     Usability,
 )
+from helpers.bits import bytes_overwrite
 from helpers.files import write_file
 from logger import iris
 from structures import Item, Monster, Spell
@@ -271,10 +272,3 @@ def fix_boltfish():
     bolt_fish.attack_script.bytecode = patched_code
     bolt_fish.write()
     bolt_fish.attack_script.read()
-
-
-def bytes_overwrite(old: bytes, index: int, patch: bytes) -> bytes:
-    size = len(patch)
-
-    patched_code = old[:index] + patch + old[index+size:]
-    return patched_code
