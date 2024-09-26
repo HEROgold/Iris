@@ -320,7 +320,8 @@ class ShopKureji(Pointer):
         self.item_indices = item_indices or []
 
     @classmethod
-    def from_pointer(cls, pointer: int, i: int) -> Self: # type: ignore  Extra arg, i. Required to indexing.
+    def from_pointer(cls, pointer: int, i: int) -> Self: # type: ignore[reportIncompatibleMethodOverride]
+        # Extra arg, i. Required to indexing.
         read_file.seek(pointer)
 
         _unknown1 = read_file.read(ShopObject.unknown0)
@@ -337,33 +338,3 @@ class ShopKureji(Pointer):
         return inst
 
     write = Shop.write
-
-
-"""
-Yes, the range of every shop is set.
-however, as you may notice in the rando the weapon and armor range may shift depending on the amount of items.
-so there is one pointer to the shop table, the offsets are a set value, too.
-what I basically did is to scan for the beginning of a shop marked with 9C.
-If there is a magic shop it's always last in the shop chain ending on FF
-
-this is  Elcid for example:
-
-Items:
-02 9C 00 02 00 05 00 0A 00 0B 00 0D 00 0F 00 18
-00 19 00 1A 00 1D 00 1F 00 24 00 29 00 00 Weapons 00 38
-00 00 Armor 00 E4 00 00 00 Spells  03 20 00 00 0E 15 FF
-
-Shop sections are divided by 00 00 00, spells always begin with 03 20 00 and end on FF
-By shifting the divider you can basically decide which shop contains how many items within that range
-As a base to shop table you can always rely on BF09F as offset from your pointer base
-if you want to get to the other shops you need either calculate the offset and add it to the pointer base or you do it like I did,
-subtract the start of the entire shop table from the address where the respective shop starts,
-that gives you an offset.
-Add that to BF09F and you get the correct offset from the start of the shop table to the shop you want to map
-
-"city": "Elcid",
-      "weapon": "bf0a3-bf0c2",
-      "armor": "bf0a3-bf0c2",
-      "spell": "bf0c9 - bf0cd"
-So you can pretty much rely on abyssonyms offset table
-"""
