@@ -132,14 +132,14 @@ def main() -> None:
     guy_the_mage()
 
     # Apply RealCritical patches
-    ac_more_enemies()
-    fix_cave_chest_table()
     fix_menu()
-    # gift_mode() # Already done by absynnonym. (unlock_gift_mode)
     killer_names() # Could be done with Iris. (Would also allow for moving item table if required later.)
+    # gift_mode() # Already done by absynnonym. (unlock_gift_mode)
+    ac_more_enemies() 
+    fix_cave_chest_table()
     jelly_damage_display() # Should be done with Iris.  (When a more capable script parser is implemented.)
     bunny_girls()
-    fix_shrine_tile_set()
+    # fix_shrine_tile_set() # FIXME: Currently prevents the game from booting. Find out which exactly.
 
     # Randomize the game
     # randomize_all_spells()
