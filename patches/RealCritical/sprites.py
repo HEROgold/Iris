@@ -66,7 +66,7 @@ def bunny_girls():
     write_file.write(bytes.fromhex("02"))
 
 
-def fix_shrine_tileset():
+def fix_shrine_tile_set():
     write_file.seek(0x138575)
     write_file.write(bytes.fromhex("7F 5A 07 32 60 07 2F 6A 07 41 71 07 47"))
     write_file.seek(0x1385D8)
