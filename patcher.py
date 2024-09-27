@@ -120,10 +120,6 @@ def unpack_int(string: bytes):
     (ret,) = struct.unpack_from('>I', b'\x00' * (4 - len(string)) + string)
     return ret
 
-
-# event_parser = EventPatchParser()  # Script parser for event patches.
-parser = PatchParser()  # Script parser for patches.
-
 # Mapping table for SNES Game Genie characters to hexadecimal values
 genie_translation_table = {
     "D": 0x0, "F": 0x1, "4": 0x2, "7": 0x3, "0": 0x4,
@@ -253,6 +249,9 @@ def set_spawn_location(location: Zone, entrance_cutscene: int = 0x2):
     write_patch(patch, validation)  # type: ignore[reportArgumentType]
     verify_after_patch(patch)  # type: ignore[reportArgumentType]
 
+
+# event_parser = EventPatchParser()  # Script parser for event patches.
+parser = PatchParser()  # Script parser for patches.
 
 def apply_absynnonym_patch(name: str):
     file = Path(__file__).parent/f"patches/absynnonym/patch_{name}.txt"
