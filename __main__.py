@@ -60,7 +60,7 @@ def main() -> None:
         # 88A6-4FFA > See "end of game" report on Elcid sign
         apply_game_genie_codes("88A6-4FFA")
         # Unlock all warp locations.
-        # FIXME: Doesn't apply to ROM. > Verify
+        # FIXME: Doesn't apply to ROM. > Figure out why.
         # apply_game_genie_codes(
         #     "7E097BFF","7E097CFF","7E097DFF","7E097EFF",
         #     "7E097FFF","7E0980FF","7E0981FF","7E0982FF",
