@@ -67,6 +67,7 @@ def bunny_girls():
 
 
 def fix_shrine_tile_set():
+    # FIXME: Prevents the game from booting.
     write_file.seek(0x138575)
     write_file.write(bytes.fromhex("7F 5A 07 32 60 07 2F 6A 07 41 71 07 47"))
     write_file.seek(0x1385D8)
