@@ -5,7 +5,6 @@ from patcher import (
     apply_absynnonym_patch,
     set_spawn_location,
     start_engine,
-    test_translate_genie_code_chars,
 )
 from patches.RealCritical import ac_more_enemies, fix_cave_chest_table, fix_menu, jelly_damage_display, killer_names
 from patches.custom import arty_to_artea, ax_to_axe, fix_boltfish, gorem_to_golem, guy_the_mage, set_rom_name, swap_pierre_danielle_sprites
@@ -36,7 +35,6 @@ def main() -> None:
         fix_boltfish()
 
     if args.debug:
-        test_translate_genie_code_chars()
         apply_game_genie_codes("206A-4FAA")  # Enable Debug Mode (For Debug Menu)
         # CB81-CD0A > Start ancient cave with 99 floors
         # 1481-CD6A > Unknown
