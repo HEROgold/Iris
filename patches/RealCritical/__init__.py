@@ -105,17 +105,17 @@ def gift_mode():
 
 def killer_names():
     write_file.seek(0xB3105)
-    write_file.write(bytes.fromhex("4B696C6C6572"))
+    write_file.write(bytes.fromhex("4B 69 6C 6C 65 72"))
     write_file.seek(0xB3152)
-    write_file.write(bytes.fromhex("4B696C6C6572"))
+    write_file.write(bytes.fromhex("4B 69 6C 6C 65 72"))
     write_file.seek(0xF4DF0)
-    write_file.write(bytes.fromhex("4B696C6C6572"))
+    write_file.write(bytes.fromhex("4B 69 6C 6C 65 72"))
     write_file.seek(0xF4DFC)
-    write_file.write(bytes.fromhex("4B696C6C65 2"))
+    write_file.write(bytes.fromhex("4B 69 6C 6C 65 72"))
     write_file.seek(0xF53C0)
-    write_file.write(bytes.fromhex("4B696C6C6572"))
+    write_file.write(bytes.fromhex("4B 69 6C 6C 65 72"))
     write_file.seek(0xF53CC)
-    write_file.write(bytes.fromhex("4B696C6C6572"))
+    write_file.write(bytes.fromhex("4B 69 6C 6C 65 72"))
 
 def jelly_damage_display():
     write_file.seek(0xB097E)
