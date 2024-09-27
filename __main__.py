@@ -9,6 +9,7 @@ from patcher import (
 from patches.RealCritical import ac_more_enemies, fix_cave_chest_table, fix_menu, jelly_damage_display, killer_names
 from patches.HEROgold import arty_to_artea, ax_to_axe, fix_boltfish, gorem_to_golem, guy_the_mage, set_rom_name, swap_pierre_danielle_sprites
 
+from patches.RealCritical.sprites import bunny_girls, fix_shrine_tile_set
 from structures.zone import Zone
 
 from helpers.files import read_file, write_file
@@ -96,8 +97,8 @@ def main() -> None:
         apply_absynnonym_patch("secondary_tool")
     if args.unlock_gift_mode:
         apply_absynnonym_patch("unlock_gift_mode")
-    if args.custom_spawn_city:
-        set_spawn_location(Zone.from_name("Elcid"), entrance_cutscene=0x02)
+    # if args.custom_spawn_city:
+    #     set_spawn_location(Zone.from_name("Elcid"), entrance_cutscene=0x02)
         # set_spawn_location(ZoneObject.from_name(args.spawn_location))
     if args.start_engine:
         start_engine()
@@ -137,6 +138,8 @@ def main() -> None:
     # gift_mode() # Already done by absynnonym. (unlock_gift_mode)
     killer_names() # Could be done with Iris. (Would also allow for moving item table if required later.)
     jelly_damage_display() # Should be done with Iris.  (When a more capable script parser is implemented.)
+    bunny_girls()
+    fix_shrine_tile_set()
 
     # Randomize the game
     # randomize_all_spells()

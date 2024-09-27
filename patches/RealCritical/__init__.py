@@ -91,15 +91,13 @@ def fix_cave_chest_table():
     write_file.write(bytes.fromhex("20"))
 
     write_file.seek(0x30DA20)
-    p1 = bytes.fromhex("E2208901084A8F1C210022C78280488F1B21007B8F1B21006828D002A900C220186F342")
-    p2 = bytes.fromhex("1006F34210060A200108654C220A56029FF014A2020D8EB29FF000A186554AA5C889183")
-    write_file.write(p1 + p2)
+    write_file.write(bytes.fromhex("E2 20 89 01 08 4A 8F 1C 21 00 22 C7 82 80 48 8F 1B 21 00 7B 8F 1B 21 00 68 28 D0 02 A9 00 C2 20 18 6F 34 21 00 6F 34 21 00 60 A2 00 10 86 54 C2 20 A5 60 29 FF 01 4A 20 20 D8 EB 29 FF 00 0A 18 65 54 AA 5C 88 91 83"))
 
 def fix_menu():
     write_file.seek(0xDA0)
     write_file.write(bytes.fromhex("4C1AFC"))
     write_file.seek(0x7E1A)
-    write_file.write(bytes.fromhex("8E75055AA00B00A9209D40009E4100E8E88810F57A4CA38B"))
+    write_file.write(bytes.fromhex("8E 75 05 5A A0 0B 00 A9 20 9D 40 00 9E 41 00 E8 E8 88 10 F5 7A 4C A3 8B"))
 
 def gift_mode():
     write_file.seek(0x16B9E)
@@ -123,7 +121,4 @@ def jelly_damage_display():
     write_file.seek(0xB097E)
     write_file.write(bytes.fromhex("C748"))
     write_file.seek(0xB5087)
-    p1 = bytes.fromhex("4D61737465722020202020202032328600FC2600000A000100FF0101010100010007280008DA000032013205078")
-    p2 = bytes.fromhex("7000042002400E703010C8701000C2305001E86000787010058002401E703010C8702000C2305001E8700078702")
-    p3 = bytes.fromhex("0066001E89410C8703000032061380000F8002001A8024008080011E880C2305005B005B00")
-    write_file.write(p1 + p2 + p3)
+    write_file.write(bytes.fromhex("4D 61 73 74 65 72 20 20 20 20 20 20 20 32 32 86 00 FC 26 00 00 0A 00 01 00 FF 01 01 01 01 00 01 00 07 28 00 08 DA 00 00 32 01 32 05 07 87 00 00 42 00 24 00 E7 03 01 0C 87 01 00 0C 23 05 00 1E 86 00 07 87 01 00 58 00 24 01 E7 03 01 0C 87 02 00 0C 23 05 00 1E 87 00 07 87 02 00 66 00 1E 89 41 0C 87 03 00 00 32 06 13 80 00 0F 80 02 00 1A 80 24 00 80 80 01 1E 88 0C 23 05 00 5B 00 5B 00"))
