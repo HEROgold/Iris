@@ -7,6 +7,7 @@ from patcher import (
     start_engine,
     test_translate_genie_code_chars,
 )
+from patches.RealCritical import ac_more_enemies, fix_cave_chest_table, fix_menu, jelly_damage_display, killer_names
 from patches.custom import arty_to_artea, ax_to_axe, fix_boltfish, gorem_to_golem, guy_the_mage, set_rom_name, swap_pierre_danielle_sprites
 
 from structures.zone import Zone
@@ -130,6 +131,14 @@ def main() -> None:
     gorem_to_golem()
     swap_pierre_danielle_sprites()
     guy_the_mage()
+
+    # Apply RealCritical patches
+    ac_more_enemies()
+    fix_cave_chest_table()
+    fix_menu()
+    # gift_mode() # Already done by absynnonym. (unlock_gift_mode)
+    killer_names() # Could be done with Iris. (Would also allow for moving item table if required later.)
+    jelly_damage_display() # Should be done with Iris.  (When a more capable script parser is implemented.)
 
     # Randomize the game
     # randomize_all_spells()
