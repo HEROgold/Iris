@@ -112,7 +112,6 @@ parser.add_argument("--kureji", action="store_true", help="Apply the Kureji Lufi
 parser.add_argument("--max_world_clock", action="store_true")  # TODO: Implement and set default to True
 parser.add_argument("--open_world_base", action="store_true")  # TODO: Implement and set default to True
 parser.add_argument("--skip_tutorial", action="store_true")  # TODO: Implement and set default to True
-parser.add_argument("--treadool_warp", action="store_true")  # TODO: Implement and set default to True
 # Patch flags
 parser.add_argument("--aggressive-movement", action="store_true", help="Set all monsters to be aggressive.")
 parser.add_argument("--passive-movement", action="store_true", help="Set all monsters to be passive.")
@@ -129,7 +128,7 @@ parser.add_argument("--secondary_tool", action="store_true")
 parser.add_argument("--unlock_gift_mode", action="store_true")
 parser.add_argument("--start_engine", action="store_true")
 # Fix patches
-parser.add_argument("--ancient_cave_music", action="store_true") # TODO: seems to not work?
+parser.add_argument("--ancient_cave_music", action="store_true") # TODO: seems to not work?. (Maybe don't apply the patch?)
 parser.add_argument("--capsule_master_select", action="store_true")
 parser.add_argument("--capsule_tag", action="store_true")
 parser.add_argument("--ancient_cave_items", action="store_true")
@@ -148,26 +147,11 @@ args: Args = parser.parse_args(namespace=Args())
 assert not args.max_world_clock,"EventPatch not implemented."
 assert not args.open_world_base,"EventPatch not implemented."
 assert not args.skip_tutorial,"EventPatch not implemented."
-assert not args.treadool_warp,"EventPatch not implemented."
-assert not args.capsule_feeding_bonus, "Patch not implemented."
-assert not args.clear_initial_spells, "Patch not implemented."
-assert not args.eat_dragon_eggs, "Patch not implemented."
-assert not args.no_boat_encounters, "Patch not implemented."
-assert not args.secondary_tool, "Patch not implemented."
 assert not args.custom_spawn_city, "Custom starting location not implemented."
 assert args.spawn_location == "portravia", "Custom starting location not implemented."
 assert not args.unlock_gift_mode, "Patch not implemented."
 assert not args.start_engine, "Patch not implemented."
 assert not args.ancient_cave_music, "Fix not implemented."  # Won't be implemented.
-assert not args.capsule_master_select, "Fix not implemented."
-assert not args.capsule_tag, "Fix not implemented."
-assert not args.ancient_cave_items, "Fix not implemented."
-assert not args.no_maxim_boat, "Fix not implemented."
-assert not args.no_maxim_warp, "Fix not implemented."
-assert not args.no_submarine, "Fix not implemented."
-assert not args.spell_target_limit, "Fix not implemented."
-assert not args.zero_capsule_command, "Fix not implemented."
-assert not args.zero_gold_command, "Fix not implemented."
 
 
 if args.spekkio and args.kureji:
