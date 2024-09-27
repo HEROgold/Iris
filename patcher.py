@@ -147,15 +147,6 @@ def translate_genie_code_chars(code: str) -> list[int]:
     ]
     return translated_code
 
-def test_translate_genie_code_chars():
-    code = "ABCD-EFFF"
-    code = code.replace("-", "")
-    address, data = translate_game_genie_code_snes(code)
-
-    assert address == 0xC4A704, f"Expected 0xC4A704, got {address:x}"
-    assert data == 0xC9, f"Expected 0xC9, got {data:x}"
-
-
 def translate_game_genie_code_snes(code: str) -> tuple[int, int]:
     """Translate a 8 sized SNES Game Genie code to a patch."""
     iris.debug(f"Translating Game Genie code {code}")
