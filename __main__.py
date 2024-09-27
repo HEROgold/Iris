@@ -98,7 +98,7 @@ def main() -> None:
     if args.unlock_gift_mode:
         apply_absynnonym_patch("unlock_gift_mode")
     # if args.custom_spawn_city:
-    #     set_spawn_location(Zone.from_name("Elcid"), entrance_cutscene=0x02)
+    #     set_spawn_location(Zone.from_name("Elcid"), entrance_cutscene=0x02) # TODO: Investigate and fix (event) script loading.
         # set_spawn_location(ZoneObject.from_name(args.spawn_location))
     if args.start_engine:
         start_engine()
