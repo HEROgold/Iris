@@ -1,22 +1,35 @@
 from args import args
+from constants import ASCII_ART_COLORIZED, PROJECT_NAME, VERSION
+from helpers.files import read_file, write_file
+from logger import iris
 from patcher import (
+    apply_absynnonym_patch,
     apply_game_genie_codes,
     apply_patch,
-    apply_absynnonym_patch,
     set_spawn_location,
     start_engine,
 )
-from patches.RealCritical import ac_more_enemies, fix_cave_chest_table, fix_menu, jelly_damage_display, killer_names
-from patches.HEROgold import arty_to_artea, ax_to_axe, fix_boltfish, gorem_to_golem, guy_the_mage, set_rom_name, swap_pierre_danielle_sprites
-
+from patches.HEROgold import (
+    arty_to_artea,
+    ax_to_axe,
+    fix_boltfish,
+    gorem_to_golem,
+    guy_the_mage,
+    randomize_chest_items,
+    set_rom_name,
+    shuffle_monsters,
+    swap_pierre_danielle_sprites,
+)
+from patches.RealCritical import (
+    ac_more_enemies,
+    fix_cave_chest_table,
+    fix_menu,
+    jelly_damage_display,
+    killer_names,
+)
 from patches.RealCritical.sprites import bunny_girls, fix_shrine_tile_set
 from structures.zone import Zone
-
-from helpers.files import read_file, write_file
 from tests.read_write import read_write_all
-
-from constants import ASCII_ART_COLORIZED, PROJECT_NAME, VERSION
-from logger import iris
 
 
 def main() -> None:
