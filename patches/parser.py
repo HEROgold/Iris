@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-type PatchData = dict[tuple[int, str | None], str | bytearray | bytes]
+type PatchData = dict[tuple[int, str | None], bytearray | str]
 
 class PatchParser:
     """Returns bytecode from a patch file, in a tuple. The patch bytecode, and validation bytecode."""
