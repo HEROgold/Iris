@@ -1,7 +1,6 @@
-from helpers.files import original_file, new_file
 from structures.zone import Zone
 from tables import ZoneObject
-
+from tests.reset_file import test_equal
 
 def test_read():
     for index in range(ZoneObject.count):
@@ -12,5 +11,4 @@ def test_write():
     for index in range(ZoneObject.count):
         inst = Zone.from_index(index)
         inst.write()
-        with open(original_file, "rb") as rf, open(new_file, "rb") as wf:
-            assert rf.read() == wf.read()
+        test_equal()

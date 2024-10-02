@@ -47,24 +47,21 @@ from structures.capsule import CapsuleMonster
 from structures.formation import BattleFormation
 from structures.events import Event
 
-from helpers.files import original_file, new_file
-
+from tests.reset_file import test_equal
 
 def test_bosses():
     for i in range(BossFormationObject.count):
         pointer = find_table_pointer(BossFormationObject.address, i)
         formation = BattleFormation.from_pointer(pointer)
         formation.write()
-        with open(original_file, "rb") as rf, open(new_file, "rb") as wf:
-            assert rf.read() == wf.read()
+        test_equal()
 
 
 def test_formations():
     for i in range(FormationObject.count):
         formation = BattleFormation.from_table(FormationObject.address, i)
         formation.write()
-        with open(original_file, "rb") as rf, open(new_file, "rb") as wf:
-            assert rf.read() == wf.read()
+        test_equal()
 
 
 def test_map_formations():
@@ -72,42 +69,36 @@ def test_map_formations():
         pointer = find_table_pointer(MapFormationsObject.address, i)
         formation = BattleFormation.from_pointer(pointer)
         formation.write()
-        with open(original_file, "rb") as rf, open(new_file, "rb") as wf:
-            assert rf.read() == wf.read()
+        test_equal()
 
 
 def test_capsules():
     for index in range(CapsuleObject.count):
         inst = CapsuleMonster.from_table(CapsuleObject.address, index)
         inst.write()
-        with open(original_file, "rb") as rf, open(new_file, "rb") as wf:
-            assert rf.read() == wf.read()
+        test_equal()
 
 
 def test_characters():
     for index in range(CharacterObject.count):
         inst = PlayableCharacter.from_table(CharacterObject.address, index)
         inst.write()
-        with open(original_file, "rb") as rf, open(new_file, "rb") as wf:
-            assert rf.read() == wf.read()
+        test_equal()
 
 
 def test_chests():
     for pointer in ChestObject.pointers:
         inst = PointerChest.from_pointer(pointer)
         inst.write()
-        with open(original_file, "rb") as rf, open(new_file, "rb") as wf:
-            assert rf.read() == wf.read()
+        test_equal()
     for index in range(AncientChest1Object.count):
         inst = AddressChest.from_table(AncientChest1Object.address, index)
         inst.write()
-        with open(original_file, "rb") as rf, open(new_file, "rb") as wf:
-            assert rf.read() == wf.read()
+        test_equal()
     for index in range(AncientChest2Object.count):
         inst = AddressChest.from_table(AncientChest2Object.address, index)
         inst.write()
-        with open(original_file, "rb") as rf, open(new_file, "rb") as wf:
-            assert rf.read() == wf.read()
+        test_equal()
 
 
 def test_events():
@@ -119,16 +110,14 @@ def test_ip_attacks():
     for pointer in IPAttackObject.pointers:
         inst = IPAttack.from_pointer(pointer)
         inst.write()
-        with open(original_file, "rb") as rf, open(new_file, "rb") as wf:
-            assert rf.read() == wf.read()
+        test_equal()
 
 
 def test_items():
     for index in range(ItemObject.count):
         inst = Item.from_table(ItemObject.address, index)
         inst.write()
-        with open(original_file, "rb") as rf, open(new_file, "rb") as wf:
-            assert rf.read() == wf.read()
+        test_equal()
 
 
 def test_maidens():
@@ -139,16 +128,14 @@ def test_monsters():
     for index in range(MonsterObject.count):
         inst = Monster.from_table(MonsterObject.address, index)
         inst.write()
-        with open(original_file, "rb") as rf, open(new_file, "rb") as wf:
-            assert rf.read() == wf.read()
+        test_equal()
 
 
 def test_npcs():
     for index in range(RoamingNPCObject.count):
         inst = RoamingNPC.from_table(RoamingNPCObject.address, index)
         inst.write()
-        with open(original_file, "rb") as rf, open(new_file, "rb") as wf:
-            assert rf.read() == wf.read()
+        test_equal()
 
 
 def test_priests():
@@ -163,16 +150,14 @@ def test_shops():
     for index in range(ShopObject.count):
         inst = Shop.from_table(ShopObject.address, index)
         inst.write()
-        with open(original_file, "rb") as rf, open(new_file, "rb") as wf:
-            assert rf.read() == wf.read()
+        test_equal()
 
 
 def test_spells():
     for pointer in SpellObject.pointers:
         inst = Spell.from_pointer(pointer)
         inst.write()
-        with open(original_file, "rb") as rf, open(new_file, "rb") as wf:
-            assert rf.read() == wf.read()
+        test_equal()
 
 
 def test_palettes():
@@ -208,5 +193,4 @@ def test_words():
     for index in range(WordObject.count):
         inst = Word.from_table(WordObject.address, index)
         inst.write()
-        with open(original_file, "rb") as rf, open(new_file, "rb") as wf:
-            assert rf.read() == wf.read()
+        test_equal()
