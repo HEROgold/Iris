@@ -554,6 +554,19 @@ zone_data_pointers = [
     0xa6d27,
     0xa2bc7,
     0xa6fe8,
+    # 0x90000,    # Filler data for 243
+    # 0x90000,    # Filler data for 244
+    # 0x90000,    # Filler data for 245
+    # 0x90000,    # Filler data for 246
+    # 0x90000,    # Filler data for 247
+    # 0x90000,    # Filler data for 248
+    # 0x90000,    # Filler data for 249
+    # 0x90000,    # Filler data for 250
+    # 0x90000,    # Filler data for 251
+    # 0x90000,    # Filler data for 252
+    # 0x90000,    # Filler data for 253
+    # 0x90000,    # Filler data for 254
+    # 0x90000,    # Filler data for 255
 ]
 
 def generate_zones():
