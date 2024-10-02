@@ -28,6 +28,7 @@ from patches.RealCritical import (
     killer_names,
 )
 from patches.RealCritical.sprites import bunny_girls, fix_shrine_tile_set
+from patches.genie_codes import AIRSHIP_ANYWHERE, ALWAYS_DROP_33, CAPSULE_ALWAYS_LOVE_FOOD, DEBUG_MODE, ELCID_REPORT, MASTER_ONE_SHOT, NO_SCENARIO_ITEMS, PRIEST_REPORT, UNLOCK_WARP
 from structures.zone import Zone
 from tests.read_write import read_write_all
 
@@ -49,40 +50,16 @@ def main() -> None:
         fix_boltfish()
 
     if args.debug:
-        apply_game_genie_codes("206A-4FAA")  # Enable Debug Mode (For Debug Menu)
-        # CB81-CD0A > Start ancient cave with 99 floors
-        # 1481-CD6A > Unknown
-        # DDAD-30B8 > Ancient Cave Boss Dies From 1 Hit (Necessary,
-        # DDAD-3028 > unless you think you can beat the boss at level 1 with no items)
-        apply_game_genie_codes("DDAD-30B8", "DDAD-3028")
-        # BAC2-44AD > Enable All Ancient Dungeon Trophies
-        # (Keep talking to the person below the lowest level of the bar to keep
-        # receiving trophies. The trophies will be displayed temporarily if you don't
-        # talk to the person there, and will stay displayed if you do talk to them)
-        # 1DE6-3DDC > Dont need Scenario items (1)
-        apply_game_genie_codes("1DE6-3DDC") 
-        # 1DB8-CD9C, C2B2-3FFB > Airship anywhere, anytime
-        apply_game_genie_codes("1DB8-CD9C", "C2B2-3FFB") 
-        # 6DE9-3F01, D2E9-3F61 > Monsters always drop items.
-        apply_game_genie_codes("6DE9-3F01", "D2E9-3F61")  
-        # 04E1-3761, A1E1-3761 > Always drop 33 or 99. Use only one.
-        # apply_game_genie_codes("04E1-3761") 
-        # 6DA0-C7AB > Capsule monsters like all food a lot
-        apply_game_genie_codes("6DA0-C7AB")
-        # D5C5-3F6D > Talk To A Priest To Get A Report
-        # (Can't Exit The Report, but it's normally only accessible from the end of the game)
-        # 88A6-4FFA > See "end of game" report on Elcid sign
-        apply_game_genie_codes("88A6-4FFA")
+        apply_game_genie_codes(DEBUG_MODE)
+        apply_game_genie_codes(*MASTER_ONE_SHOT)
+        apply_game_genie_codes(NO_SCENARIO_ITEMS) 
+        apply_game_genie_codes(*AIRSHIP_ANYWHERE) 
+        apply_game_genie_codes(*ALWAYS_DROP_33)
+        apply_game_genie_codes(CAPSULE_ALWAYS_LOVE_FOOD)
+        apply_game_genie_codes(ELCID_REPORT)
         # Unlock all warp locations.
         # FIXME: Doesn't apply to ROM. > Figure out why.
-        # apply_game_genie_codes(
-        #     "7E097BFF","7E097CFF","7E097DFF","7E097EFF",
-        #     "7E097FFF","7E0980FF","7E0981FF","7E0982FF",
-        #     "7E0983FF" ,"7E0986FF","7E0988FF","7E0989FF",
-        #     "7E098AFF","7E098BFF","7E098CFF","7E098DFF",
-        #     "7E098EFF","7E098FFF","7E0990FF","7E0991FF",
-        #     "7E0992FF","7E0996FF",
-        # )
+        apply_game_genie_codes(*UNLOCK_WARP)
 
     apply_game_genie_codes(*args.game_genie_codes)
 
