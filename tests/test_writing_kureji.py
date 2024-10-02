@@ -52,7 +52,6 @@ from structures.capsule import CapsuleMonster
 from structures.formation import BattleFormation
 from structures.events import Event
 
-from helpers.files import original_file, new_file
 from tests.reset_file import test_equal
 
 def test_bosses():
