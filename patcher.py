@@ -2,6 +2,7 @@ import shutil
 import struct
 from os.path import getsize
 from pathlib import Path
+from typing import cast
 
 from bitstring import BitArray
 
@@ -245,9 +246,9 @@ def set_spawn_location(location: Zone, entrance_cutscene: int = 0x2):
         (0x01adb3, None): bytearray(b'\xa9\x02')
     }
 
-    verify_patch(patch, validation)  # type: ignore[reportArgumentType]
-    write_patch(patch, validation)  # type: ignore[reportArgumentType]
-    verify_after_patch(patch)  # type: ignore[reportArgumentType]
+    verify_patch(patch, validation)
+    write_patch(patch, validation)
+    verify_after_patch(patch)
 
 
 # event_parser = EventPatchParser()  # Script parser for event patches.
@@ -304,4 +305,4 @@ def write_patch(patch: PatchData, validation: PatchData, no_verify: bool = False
                 else:
                     assert patch_dict is patch
                     iris.debug(f"Writing {code=} to {address=}")
-                    f.write(code) # type: ignore[reportArgumentType]
+                    f.write(code)

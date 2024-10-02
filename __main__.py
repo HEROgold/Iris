@@ -9,15 +9,23 @@ from patcher import (
     set_spawn_location,
     start_engine,
 )
+from patches.genie_codes import (
+    AIRSHIP_ANYWHERE,
+    ALWAYS_DROP_33,
+    CAPSULE_ALWAYS_LOVE_FOOD,
+    DEBUG_MODE,
+    ELCID_REPORT,
+    MASTER_ONE_SHOT,
+    NO_SCENARIO_ITEMS,
+    UNLOCK_WARP,
+)
 from patches.HEROgold import (
     arty_to_artea,
     ax_to_axe,
     fix_boltfish,
     gorem_to_golem,
     guy_the_mage,
-    randomize_chest_items,
     set_rom_name,
-    shuffle_monsters,
     swap_pierre_danielle_sprites,
 )
 from patches.RealCritical import (
@@ -27,8 +35,7 @@ from patches.RealCritical import (
     jelly_damage_display,
     killer_names,
 )
-from patches.RealCritical.sprites import bunny_girls, fix_shrine_tile_set
-from patches.genie_codes import AIRSHIP_ANYWHERE, ALWAYS_DROP_33, CAPSULE_ALWAYS_LOVE_FOOD, DEBUG_MODE, ELCID_REPORT, MASTER_ONE_SHOT, NO_SCENARIO_ITEMS, PRIEST_REPORT, UNLOCK_WARP
+from patches.RealCritical.sprites import bunny_girls
 from structures.zone import Zone
 from tests.read_write import read_write_all
 
@@ -87,9 +94,9 @@ def main() -> None:
         apply_absynnonym_patch("secondary_tool")
     if args.unlock_gift_mode:
         apply_absynnonym_patch("unlock_gift_mode")
-    # if args.custom_spawn_city:
-    #     set_spawn_location(Zone.from_name("Elcid"), entrance_cutscene=0x02) # TODO: Investigate and fix (event) script loading.
-        # set_spawn_location(ZoneObject.from_name(args.spawn_location))
+    if args.custom_spawn_city:
+        set_spawn_location(Zone.from_name("Elcid"), entrance_cutscene=0x02) # TODO: Investigate and fix (event) script loading.
+        set_spawn_location(Zone.from_name(args.spawn_location))
     if args.start_engine:
         start_engine()
 
