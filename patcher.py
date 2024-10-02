@@ -290,6 +290,7 @@ def write_patch(patch: PatchData, validation: PatchData, no_verify: bool = False
     with BackupFile(new_file) as backup, backup.open("rb+") as f:
         for patch_dict in (validation, patch):
             for (address, _), code in sorted(patch_dict.items()):
+                code = cast(bytearray, code)
                 f.seek(address)
 
                 if patch_dict is validation:
