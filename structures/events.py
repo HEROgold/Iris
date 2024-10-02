@@ -482,7 +482,7 @@ class EventScript:
 
     @restore_pointer
     def read(self, offset: int = 0):
-        # TODO: Rethink the reading of teh script?
+        # TODO CRITICAL: Rethink the reading of the script.
         if not hasattr(self, "_seen"):
             self._seen = [self.pointer + offset]
         self._stack: list[int] = []
