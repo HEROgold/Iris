@@ -23,3 +23,13 @@ With Iris it should be quite quick to make custom (data related) patches.
 - Frue v7
 - Spekkio v7
 - Kureji v7
+
+## Thanks
+
+There's a list of people who helped a lot while making this project.
+- Inspired by [@Absynnonym/terrorwave](https://github.com/abyssonym/terrorwave)'s project. (some of his patches are included!)
+- RealCritical has helped me with some monster script's and helped sourcing information.
+- Artemis for his Frue, Spekko and Kureji patches, which ofcource also contained a lot of information about the game. Like object structures.
+- RndMeme for helping with the Shop layouts.
+
+Did i miss you? Just let me know!
