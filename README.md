@@ -32,12 +32,14 @@ For deeper knowledge, the structures directory contains a every(?) object the ga
 The tables directory contains tables and pointer information for a given object, which are then used by the right objects in the structures directory. The way these tables are setup and imported, allows for different patches to import the correct tables data. However, this approach has the tendancy to mess up some linters. Only the vanilla tables have been tested so far.
 
 So far, it's been tested on the vanilla Lufia 2 USA rom.
+
 - file: Lufia II - Rise of the Sinistrals (U).smc
 - md5: 0268E8E3B4822ABBB8578823ADD5B8DA
 
 ## Thanks
 
 There's a list of people who helped a lot while making this project.
+
 - Inspired by [@Absynnonym/terrorwave](https://github.com/abyssonym/terrorwave)'s project. (some of his patches are included!)
 - RealCritical has helped me with some monster script's and helped sourcing information.
 - Artemis for his Frue, Spekko and Kureji patches, which ofcource also contained a lot of information about the game. Like object structures.
