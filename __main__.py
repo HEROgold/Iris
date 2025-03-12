@@ -49,6 +49,7 @@ def main() -> None:
 
     if args.no_patch:
         read_write_all()
+        return
 
     set_rom_name(b"Lufia II (Iris patch)") # For identification purposes.
 
