@@ -132,6 +132,9 @@ genie_address_encrypted = "ijklqrstopabcduvwxefghmn"
 genie_address_decrypted = "abcdefghijklmnopqrstuvwx"
 
 def validate_genie_code(code: str):
+    LEN = 8
+    if len(code) != LEN:
+        raise ValueError(f"Invalid Game Genie code length {len(code)}, Expected {LEN}")
     for char in code:
         if char not in genie_translation_table:
             raise ValueError(f"Invalid Game Genie character {char}")
