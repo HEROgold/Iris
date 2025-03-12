@@ -1,11 +1,17 @@
+from __future__ import annotations
+
 import logging
+from string import ascii_letters, digits, printable, punctuation
 from _types.objects import Cache
 from constants import POINTER_SIZE
+from enums.event_scripts import EventClass
 from helpers.files import read_file, restore_pointer
 from typing import TYPE_CHECKING, Self, TypedDict
 from abc_.pointers import TablePointer
-from helpers.bits import read_little_int
+from helpers.bits import find_table_pointer, read_little_int
+from helpers.lempel_ziv import decompress
 from helpers.name import read_as_decompressed_name
+from structures.word import Word
 from tables import MapEventObject
 from logger import iris
 from tables import EventInstObject
@@ -16,7 +22,10 @@ if TYPE_CHECKING:
 
 # TODO: find out what this is used for.
 class Event(TablePointer):
-    _event_script: "EventScript | None"
+    _event_script: EventScript | None
+    zone: Zone
+    event_class: EventClass
+    event_index: int
 
     def __init__(self, address: int, index: int) -> None:
         super().__init__(address, index)
@@ -27,13 +36,38 @@ class Event(TablePointer):
 
     @classmethod
     def from_table(cls, address: int, index: int) -> Self:
-        pointer = address + index * POINTER_SIZE
-        inst = cls(pointer, index)
-        read_file.seek(pointer)
+        from structures.zone import Zone
+        inst = cls(address, index)
+        inst.pointer
+        read_file.seek(inst.pointer)
+        inst.zone = Zone.from_index(read_little_int(read_file, 1))
+        inst.event_class = EventClass(read_little_int(read_file, 1))
+        inst.event_index = read_little_int(read_file, 1)
+        # inst._event_script = EventScript(pointer, 0)
+        # inst._event_script.read() # TESTING TEMP
         return inst
 
     def write(self):
         return
+
+    def parse_text(self):
+        # TODO: Read from Terrorwave and parse using read_file reader.
+        pass
+
+    def parse_event(self):
+        # TODO: Read from Terrorwave and parse using read_file reader.
+        pass
+
+    def parse_variables(self):
+        # TODO: Read from Terrorwave and parse using read_file reader.
+        pass
+
+    def parse_pointers(self, count: int, pointers: bytes):
+        # TODO: transform to read_file reader.
+        res: list[int] = []
+        for i in range(count - 1):
+            res.append(int.from_bytes(pointers[i:i+POINTER_SIZE]))
+        return res
 
 
 MAP_EVENT_SIZE = sum(
@@ -46,9 +80,56 @@ MAP_EVENT_SIZE = sum(
     ]
 )
 
+"""
+Event Identifiers
+
+Now let's talk about some technical details that may not be readily apparent.
+First, every event script in the dump has a unique identifier.
+The identifier for our "Hello World!" event was 04-B-01.
+There are three parts of this identifier.
+The first part of the identifier specifies Map 04, which is the interior of buildings in Elcid.
+The second part indicates that this is a class B event, which I will explain in detail below.
+The final part is the event index, indicating that this is the 01th B event.
+
+
+You'll notice that there are five different classes of events: A, B, C, D, and X.
+I'll give you a brief description of each event class.
+
+
+X: This script runs on map loading and is mainly used to load NPC sprites, BGM, and set map properties.
+This is a special class of script, and many instructions will not work if you put them here.
+However, using event flags for branching conditions seems to work fine.
+Note that there is also much more limited space for these events,
+because they are stored separately from the normal event classes,
+so deleting an ABCD event will not free up any space for X events.
+
+
+A: This script also runs on map load, but you can use any instructions you want and they share space with BCD events.
+However, you can only have two A events per map: A-00 and A-01. Any A event with a higher index will be ignored.
+
+
+B: This class of script is exclusively called from other events;
+for example, when a cutscene needs to make a scene transition to a different map,
+it will use the "Warp to Map & Event" instruction (opcode 16) to call a B class event.
+
+
+C: These scripts are activated when you interact with NPCs.
+Every townsperson dialogue in the game is a C class script.
+However, to link the script to the appropriate NPC, you need to give the script a specific index.
+NPC 01 calls the event script C-50, NPC 02 calls C-51, and so on.
+In other words, the script index is equal to the NPC index plus 0x4F.
+Additionally, there are special NPCs known as "roaming" NPCs that use indexes below 0x50.
+For example, NPC 12 (Iris) will use the script C-12.
+
+
+D: The last class of event scripts are activated when stepping on a particular tile.
+These, too, must have the appropriate index that matches their associated tile.
+For example, Tile 01 will call script D-01.
+
+"""
 
 class MapEvent(TablePointer):
-    zone: "Zone | None"
+    zone: Zone | None
     _cache = Cache[int, Self]()
 
     def __init__(
@@ -425,6 +506,9 @@ EXIT_TEXT_MODE = [0x00, 0x01, 0x0B]
 
 
 class TextScript:
+    SPACE = " "
+    VALID_ASCII_CHARACTERS = ascii_letters + digits + punctuation + SPACE
+
     def __init__(self, pointer: int) -> None:
         self.pointer = pointer
 
@@ -438,6 +522,47 @@ class TextScript:
             if text_code[0] in EXIT_TEXT_MODE:
                 break
         return b
+
+    @staticmethod
+    def _find_word_index(code: int, index: int) -> int:
+        return index + (0x100 * (code-5))
+
+
+    def encode(self, text: str) -> bytes:
+        # TODO: Find if a word in text exists in the Word class.
+        # If it does, encode it as a compressed word (index). as decoded below.
+        ...
+
+    def decode(self, text: bytes) -> tuple[str, bytes]:
+        assert text[0] in [5, 6]
+        index = self._find_word_index(text[0], text[1])
+        return Word.from_index(index).word, text[2:]
+
+    # TODO: parse the rest of the text. Below line displays compressed to full text.
+    # b'\x05P \x88 Elc\xf2!\x00' > "Welcome to Elcid!"
+    def pretty_read(self):
+        """Decompresses words from a text, and returns the text."""
+        text = self.read()
+        result = ""
+
+        while text:
+            # Parse 05/06 shifts to words.
+            if text[0] in {5, 6}:
+                word, text = self.decode(text)
+                result += word
+                continue
+            if (
+                text[0] < 128
+                and (letter := text[:1].decode("ascii"))
+                and letter in self.VALID_ASCII_CHARACTERS
+            ):
+                # Ascii decodable and decoded in ascii.
+                result += letter
+                text = text[1:]
+                continue
+            result += f"<{text[0]:02X}>"
+            text = text[1:]
+        return result
 
 # TODO: Add classes to represent the different opcodes.
 # Those should be able to be used, to write custom scripts?
@@ -490,6 +615,7 @@ class EventScript:
 
         while True:
             byte = read_file.read(1)
+            _address = read_file.tell()
             offset += 1
             op_code = int.from_bytes(byte)
             description = op_codes[op_code]['comment']
@@ -499,6 +625,7 @@ class EventScript:
 
             if "BRK" in description:
                 self.logger.warning(f"BRK found in EventScript {self.pointer} at {offset=}, Address: {self.pointer + offset}")
+                # returns to parent script?
             if self.pointer + offset in self._seen:
                 self.logger.warning(f"Repeat detected in EventScript {self.pointer=} at {offset=}, Address: {self.base_pointer + offset}")
                 break
@@ -534,12 +661,29 @@ class EventScript:
                 # TODO: verify jump address
                 jump = self.pointer + int.from_bytes(args, byteorder='little')
                 self._branch(jump)
+            # elif op_code == 0x12:
+            #     count = args[1]
+            #     for _ in reversed(range(count)):
+            #         pointer = read_little_int(read_file, POINTER_SIZE)
+            #         self._stack.append(pointer)
+            #         offset += POINTER_SIZE
             elif op_code == 0x12:
-                count = args[1]
-                for _ in reversed(range(count)):
-                    pointer = read_little_int(read_file, POINTER_SIZE)
-                    self._stack.append(pointer)
-                    offset += POINTER_SIZE
+                # 0x0003C084 or 245892 is the start of the event. (self.pointer)
+                # 0x0003c096 is the start of the first branch.
+                # Branch on variable
+                pointer_count = args[0]
+                _pointers = [args[1]]
+                if pointer_count < 0:
+                    raise ValueError(f"Pointer count is negative: {pointer_count}")
+                restore = read_file.tell()
+                for i in range(pointer_count):
+                    _pointer = int.from_bytes(read_file.read(2), byteorder='little')
+                    _pointers.append(_pointer)
+                    self._branch(_pointer) # TODO: Verify this is correct.
+                read_file.seek(restore)
+                if pointer_count == 0:
+                    read_file.seek(read_file.tell() - 1)
+                print(pointer_count, _pointers[pointer_count])
             elif op_code == 0x14:
                 offset = self.instruction_parsing(offset, args)
             elif op_code == 0x15:
@@ -556,8 +700,10 @@ class EventScript:
                 if op_code == 0x13:
                     _npc_index = args[0] # Excess? Debug code.
                 elif op_code in [0x6D, 0x6E, 0x9E]:
-                    _position = args[0] # Excess? Debug code.
+                    _position = args[0] # Excess? Debug code. Confirmed for 0x9E.
                 text_script = TextScript(self.pointer + offset)
+                if self.pointer == 245892:
+                    text_script.pretty_read()
                 b = text_script.read()
                 offset += len(b)
                 read_file.seek(self.pointer + offset)
