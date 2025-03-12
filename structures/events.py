@@ -668,6 +668,7 @@ class EventScript:
             #         self._stack.append(pointer)
             #         offset += POINTER_SIZE
             elif op_code == 0x12:
+                # TODO CRITICAL: This is where you left of! Check if the branching is correct.
                 # 0x0003C084 or 245892 is the start of the event. (self.pointer)
                 # 0x0003c096 is the start of the first branch.
                 # Branch on variable
@@ -700,10 +701,11 @@ class EventScript:
                 if op_code == 0x13:
                     _npc_index = args[0] # Excess? Debug code.
                 elif op_code in [0x6D, 0x6E, 0x9E]:
-                    _position = args[0] # Excess? Debug code. Confirmed for 0x9E.
+                    _position = args[0]
                 text_script = TextScript(self.pointer + offset)
-                if self.pointer == 245892:
-                    text_script.pretty_read()
+                # TODO: refine the parsing of compressed text.
+                # if self.pointer == 245892:
+                #     text_script.pretty_read()
                 b = text_script.read()
                 offset += len(b)
                 read_file.seek(self.pointer + offset)
@@ -719,6 +721,8 @@ class EventScript:
                         break
                 print((tell, data))
                 read_file.seek(tell)
+            else:
+                self.logger.warning(f"Warning! Unhandled opcode: {op_code=:#02x} {args=}")
 
         assert len(self._stack) == 0, f"Script restore stack not empty: {self._stack}"
         s = "\n"
