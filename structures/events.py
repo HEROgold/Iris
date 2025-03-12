@@ -684,6 +684,13 @@ class EventScript:
                     _pointers.append(_pointer)
                     self._branch(_pointer) # TODO: Verify this is correct.
                 assert pointer_count+1 == len(_pointers)
+
+                # Maybe we branch/jump, then do something else?
+                print(read_file.tell() + _pointers[pointer_count])
+                read_file.seek(read_file.tell() + _pointers[pointer_count])
+                self._branch(self.pointer + _pointers[pointer_count])
+                # offset += _pointers[pointer_count]
+                continue
                 read_file.seek(restore)
                 if pointer_count == 0:
                     read_file.seek(read_file.tell() - 1)
