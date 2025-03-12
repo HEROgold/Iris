@@ -1,15 +1,14 @@
 from __future__ import annotations
 
 import logging
-from string import ascii_letters, digits, printable, punctuation
+from string import ascii_letters, digits, punctuation
 from _types.objects import Cache
 from constants import POINTER_SIZE
 from enums.event_scripts import EventClass
 from helpers.files import read_file, restore_pointer
 from typing import TYPE_CHECKING, Self, TypedDict
 from abc_.pointers import TablePointer
-from helpers.bits import find_table_pointer, read_little_int
-from helpers.lempel_ziv import decompress
+from helpers.bits import read_little_int
 from helpers.name import read_as_decompressed_name
 from structures.word import Word
 from tables import MapEventObject
