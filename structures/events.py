@@ -597,6 +597,8 @@ class EventScript:
     @parent.setter
     def parent(self, parent: Self | None) -> None:
         self._parent = parent
+        if parent:
+            parent._children.append(self)
 
     # TODO: implement a writing method.
     # should be able to write the script back, and update pointers etc.
@@ -671,7 +673,7 @@ class EventScript:
                 # 0x0003C084 or 245892 is the start of the event. (self.pointer)
                 # 0x0003c096 is the start of the first branch.
                 # Branch on variable
-                pointer_count = args[0]
+                pointer_count = args[0] # Perhaps this is the index of _pointers to follow?
                 _pointers = [args[1]]
                 if pointer_count < 0:
                     raise ValueError(f"Pointer count is negative: {pointer_count}")
@@ -680,6 +682,7 @@ class EventScript:
                     _pointer = int.from_bytes(read_file.read(2), byteorder='little')
                     _pointers.append(_pointer)
                     self._branch(_pointer) # TODO: Verify this is correct.
+                assert pointer_count+1 == len(_pointers)
                 read_file.seek(restore)
                 if pointer_count == 0:
                     read_file.seek(read_file.tell() - 1)
@@ -720,6 +723,10 @@ class EventScript:
                         break
                 print((tell, data))
                 read_file.seek(tell)
+            elif op_code in []:
+                # The listed opcodes, don't require special handling. or are unknown.
+                # These usually are opcode + 1 byte of arg.
+                continue
             else:
                 self.logger.warning(f"Warning! Unhandled opcode: {op_code=:#02x} {args=}")
 
