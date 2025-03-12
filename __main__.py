@@ -61,7 +61,7 @@ def main() -> None:
         apply_game_genie_codes(*MASTER_ONE_SHOT)
         apply_game_genie_codes(NO_SCENARIO_ITEMS) 
         apply_game_genie_codes(*AIRSHIP_ANYWHERE) 
-        apply_game_genie_codes(*ALWAYS_DROP_33)
+        apply_game_genie_codes(ALWAYS_DROP_33)
         apply_game_genie_codes(CAPSULE_ALWAYS_LOVE_FOOD)
         apply_game_genie_codes(ELCID_REPORT)
         # Unlock all warp locations.
