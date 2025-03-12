@@ -577,7 +577,7 @@ class EventScript:
         self.offset = offset
         self._script: list[bytes] = []
         self._pretty_script: list[tuple[str, bytes, str]] = []
-        self._children = []
+        self._children = set()
         self._parent: Self | None = None
         self._text_mode = False
 
@@ -589,7 +589,7 @@ class EventScript:
         child_size = sum([child.size for child in self.children])
         return len(self._script) + child_size
     @property
-    def children(self) -> list[Self]:
+    def children(self) -> set[Self]:
         return self._children
     @property
     def parent(self) -> Self | None:
@@ -598,7 +598,8 @@ class EventScript:
     def parent(self, parent: Self | None) -> None:
         self._parent = parent
         if parent:
-            parent._children.append(self)
+            parent._children.add(self)
+            self._seen = parent._seen
 
     # TODO: implement a writing method.
     # should be able to write the script back, and update pointers etc.
@@ -801,6 +802,4 @@ class EventScript:
         self._seen.append(self.base_pointer + jump)
         child = EventScript(self.base_pointer, jump)
         child.parent = self
-        child._seen = self._seen
         child.read()
-        self._children.append(child)
