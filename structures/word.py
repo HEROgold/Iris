@@ -14,7 +14,7 @@ class Word(TablePointer):
 
     @classmethod
     def from_index(cls, index: int) -> Self:
-        return cls.from_table(WordObject.address , index)
+        return cls.from_table(WordObject.address, index)
 
     @classmethod
     @restore_pointer
