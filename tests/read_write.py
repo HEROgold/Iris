@@ -95,7 +95,7 @@ def read_write_all():
         test_characters,
         test_initial_equipment,
         test_items_full,
-        test_maps, # FIXME
+        test_maps,
         test_monsters,
         test_shops,
         test_spells,
@@ -186,12 +186,14 @@ def test_roaming_npc():
         assert_files_are_same()
 
 def test_events():
+    # FIXME
     for i in range(EventInstObject.count):
         event = Event.from_index(i)
         event.write()
         assert_files_are_same()
 
 def test_zones():
+    # FIXME
     for i in range(ZoneObject.count):
         zone = Zone.from_index(i)
         zone.write()
@@ -393,6 +395,7 @@ def test_ancient_chests():
 
 
 def test_map_events():
+    # FIXME
     # EventScript(0x3B21B).read()
     for i in range(MapEventObject.count):
         event = MapEvent.from_index(i)
