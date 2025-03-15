@@ -502,23 +502,31 @@ op_codes: dict[int, OpCode] = {
 FLOW_CONTROL = [0x12, 0x1C, 0x14, 0x15, 0x6A]
 ENTER_TEXT_MODE = [0x08, 0x13, 0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67, 0x6D, 0x6E, 0x9E]
 EXIT_TEXT_MODE = [0x00, 0x01, 0x0B]
-
+SPACE = " "
+VALID_ASCII_CHARACTERS = ascii_letters + digits + punctuation + SPACE
 
 class TextScript:
-    SPACE = " "
-    VALID_ASCII_CHARACTERS = ascii_letters + digits + punctuation + SPACE
 
     def __init__(self, pointer: int) -> None:
         self.pointer = pointer
+
+    @property
+    @restore_pointer
+    def pre_data(self):
+        pointer = self.pointer - 0x1000
+        assert pointer >= 0
+        read_file.seek(pointer)
+        return read_file.read(0x1000)
 
     @restore_pointer
     def read(self):
         read_file.seek(self.pointer)
         b = b""
         while True:
-            text_code = read_file.read(1)
-            b += text_code
-            if text_code[0] in EXIT_TEXT_MODE:
+            code = read_file.read(1)
+            opcode = code[0]
+            b += code
+            if opcode in EXIT_TEXT_MODE:
                 break
         return b
 
@@ -553,7 +561,7 @@ class TextScript:
             if (
                 text[0] < 128
                 and (letter := text[:1].decode("ascii"))
-                and letter in self.VALID_ASCII_CHARACTERS
+                and letter in VALID_ASCII_CHARACTERS
             ):
                 # Ascii decodable and decoded in ascii.
                 result += letter
@@ -562,6 +570,19 @@ class TextScript:
             result += f"<{text[0]:02X}>"
             text = text[1:]
         return result
+
+class EventScriptV2:
+    _data: bytes | None = None
+
+    def __init__(self, pointer: int, size: int) -> None:
+        self.pointer = pointer
+        self.size = size
+
+    @property
+    def data(self) -> bytes:
+        if self._data is None:
+            self._data = read_file.read(self.size)
+        return self.data
 
 # TODO: Add classes to represent the different opcodes.
 # Those should be able to be used, to write custom scripts?

@@ -3,7 +3,7 @@
 from helpers.bits import read_little_int
 from helpers.files import read_file, write_file
 from typing import Self
-from abc_.pointers import Pointer, TablePointer
+from abc_.pointers import Pointer, ReferencePointer
 from tables import OverPaletteObject, CapPaletteObject, OverSpriteObject, SpriteMetaObject, TownSpriteObject, CapSpritePTRObject
 
 TOWN_SPRITE_SIZE = sum([
@@ -43,65 +43,67 @@ CAP_PALETTE_SIZE = sum([
 ])
 
 
-class CapsulePallette(TablePointer):
+class CapsulePallette(ReferencePointer):
     def __init__(self, data: bytes) -> None:
         self.palette = data
 
     @classmethod
     def from_index(cls, index: int) -> Self:
-        return cls.from_table(CapPaletteObject.address, index)
+        return cls.from_reference(CapPaletteObject.address, index, CAP_PALETTE_SIZE)
 
     @classmethod
-    def from_table(cls, address: int, index: int) -> Self:
-        pointer = address + index * CAP_PALETTE_SIZE
+    def from_reference(cls, address: int, index: int, size: int) -> Self:
+        pointer = address + index * size
         read_file.seek(pointer)
-        inst = cls(read_file.read(CAP_PALETTE_SIZE))
-        super().__init__(inst, address, index)
+        inst = cls(read_file.read(size))
+        super().__init__(inst, address, index, size)
         return inst
 
     def write(self):
         write_file.seek(self.pointer)
         write_file.write(self.palette)
 
-class CapsuleSprite(TablePointer):
+class CapsuleSprite(ReferencePointer):
+    """
+    Kureji only class.
+    This class is used to represent the sprite data for the capsule monsters.
+    """
     def __init__(self, sprite_pointer: int) -> None:
         self.sprite_pointer = sprite_pointer
 
     @classmethod
     def from_index(cls, index: int) -> Self:
-        return cls.from_table(CapSpritePTRObject.address, index)
+        return cls.from_reference(CapSpritePTRObject.address, index, CapSpritePTRObject.sprite_pointer)
 
     @classmethod
-    def from_table(cls, address: int, index: int) -> Self:
-        pointer = address + index * CapSpritePTRObject.sprite_pointer
+    def from_reference(cls, address: int, index: int, size: int) -> Self:
+        pointer = address + index * size
         read_file.seek(pointer)
-        inst = cls(read_little_int(read_file, 3))
-        inst.address = address
-        inst.index = index
-        inst.pointer = pointer
+        inst = cls(read_little_int(read_file, size))
+        super().__init__(inst, address, index, size)
         return inst
 
     def write(self):
         write_file.seek(self.pointer)
         write_file.write(self.sprite_pointer.to_bytes(3, "little"))
 
-class OverPallette(TablePointer):
+class OverPallette(ReferencePointer):
     def __init__(self, pallette_index: int, pallette: bytes) -> None:
         self.pallette_index = pallette_index
         self.palette = pallette
 
     @classmethod
     def from_index(cls, index: int) -> Self:
-        return cls.from_table(OverPaletteObject.address, index)
+        return cls.from_reference(OverPaletteObject.address, index, OVER_PALLETTE_SIZE)
 
     @classmethod
-    def from_table(cls, address: int, index: int) -> Self:
-        pointer = address + index * OVER_PALLETTE_SIZE
+    def from_reference(cls, address: int, index: int, size: int) -> Self:
+        pointer = address + index * size
         read_file.seek(pointer)
         idx = read_little_int(read_file, 1)
         pallette = read_file.read(OverPaletteObject.unknown)
         inst = cls(idx, pallette)
-        super().__init__(inst, address, index)
+        super().__init__(inst, address, index, size)
         return inst
 
     def write(self):
@@ -109,23 +111,23 @@ class OverPallette(TablePointer):
         write_file.write(self.pallette_index.to_bytes())
         write_file.write(self.palette)
 
-class OverSprite(TablePointer):
+class OverSprite(ReferencePointer):
     def __init__(self, unknown: bytes, sprite_pointer: int) -> None:
         self.unknown = unknown
         self.sprite_index = sprite_pointer
 
     @classmethod
     def from_index(cls, index: int) -> Self:
-        return cls.from_table(OverSpriteObject.address, index)
+        return cls.from_reference(OverSpriteObject.address, index, OVER_SPRITE_SIZE)
 
     @classmethod
-    def from_table(cls, address: int, index: int) -> Self:
-        pointer = address + index * OVER_SPRITE_SIZE
+    def from_reference(cls, address: int, index: int, size: int) -> Self:
+        pointer = address + index * size
         read_file.seek(pointer)
         unknown = read_file.read(3)
         sprite_pointer = read_little_int(read_file, 3)
         inst = cls(unknown, sprite_pointer)
-        super().__init__(inst, address, index)
+        super().__init__(inst, address, index, size)
         return inst
 
     def write(self):
@@ -133,7 +135,7 @@ class OverSprite(TablePointer):
         write_file.write(self.unknown)
         write_file.write(self.sprite_index.to_bytes(3, "little"))
 
-class SpriteMeta(TablePointer):
+class SpriteMeta(ReferencePointer):
     address: int
     index: int
     pointer: int
@@ -149,18 +151,16 @@ class SpriteMeta(TablePointer):
 
     @classmethod
     def from_index(cls, index: int) -> Self:
-        return cls.from_table(SpriteMetaObject.address, index)
+        return cls.from_reference(SpriteMetaObject.address, index, SPRITE_META_SIZE)
 
     @classmethod
-    def from_table(cls, address: int, index: int) -> Self:
-        pointer = address + index * SPRITE_META_SIZE
+    def from_reference(cls, address: int, index: int, size: int) -> Self:
+        pointer = address + index * size
         read_file.seek(pointer)
         width = read_file.read(1)
         height = read_file.read(1)
         inst = cls(width, height)
-        inst.address = address
-        inst.index = index
-        inst.pointer = pointer
+        super().__init__(inst, address, index, size)
         inst._validate()
         return inst
 
