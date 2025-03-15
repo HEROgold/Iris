@@ -115,7 +115,7 @@ def test_monsters():
 
 def test_npcs():
     for index in range(RoamingNPCObject.count):
-        assert RoamingNPC.from_table(RoamingNPCObject.address, index)
+        assert RoamingNPC.from_reference(RoamingNPCObject.address, index)
 
 
 def test_priests():

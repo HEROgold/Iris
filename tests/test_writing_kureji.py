@@ -138,7 +138,7 @@ def test_monsters():
 
 def test_npcs():
     for index in range(RoamingNPCObject.count):
-        inst = RoamingNPC.from_table(RoamingNPCObject.address, index)
+        inst = RoamingNPC.from_reference(RoamingNPCObject.address, index)
         inst.write()
         test_equal()
 
