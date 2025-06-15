@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from string import ascii_letters, digits, punctuation
-from typing import TYPE_CHECKING, Self, TypedDict
+from typing import TYPE_CHECKING, Self, TypedDict, Optional, List
 
 from _types.objects import Cache
 from abc_.pointers import TablePointer
@@ -14,6 +14,9 @@ from helpers.name import read_as_decompressed_name
 from logger import iris
 from structures.word import Word
 from tables import EventInstObject, MapEventObject
+
+# Import the new event system
+from .event_script_redesign import ZoneEventManager, CompiledScript
 
 
 if TYPE_CHECKING:
@@ -131,6 +134,7 @@ For example, Tile 01 will call script D-01.
 class MapEvent(TablePointer):
     zone: Zone | None
     _cache = Cache[int, Self]()
+    _event_manager: ZoneEventManager = ZoneEventManager()
 
     def __init__(
         self,
@@ -147,7 +151,7 @@ class MapEvent(TablePointer):
         self._eventlist_highbyte = eventlist_highbyte
         self._npc_lowbytes = npc_lowbytes
         self._npc_highbyte = npc_highbyte
-        self._map_name_offset = map_name_pointer # FIXME: pointer at 169?
+        self._map_name_offset = map_name_pointer
         self._event_lists: list[EventList] = []
 
     @classmethod
@@ -171,7 +175,11 @@ class MapEvent(TablePointer):
         )
         inst.address = address
         inst.index = index
-        inst._gen_scripts()
+
+        print(f"{inst.zone.event.get_compiled_scripts()=}")
+        print(f"{inst.zone.event.get_npc_script()=}")
+        print(f"{inst.zone.event.export_scripts_text()=}")
+        # inst._gen_scripts()
 
         cls._cache.to_cache(index, inst)
         return inst
@@ -243,7 +251,26 @@ class MapEvent(TablePointer):
     def write(self) -> None:
         return
 
+    def get_compiled_scripts(self) -> List[CompiledScript]:
+        """Get all compiled scripts using the new event system."""
+        if self.zone and MapEvent._event_manager:
+            return MapEvent._event_manager.load_zone_events(self.zone)
+        return []
+    
+    def get_npc_script(self) -> Optional[CompiledScript]:
+        """Get the NPC loader script using the new system."""
+        if self.zone and MapEvent._event_manager:
+            return MapEvent._event_manager.get_npc_script(self.zone)
+        return None
+    
+    def export_scripts_text(self) -> str:
+        """Export all scripts to text format using the new system."""
+        if self.zone and MapEvent._event_manager:
+            return MapEvent._event_manager.export_zone_events(self.zone)
+        return ""
 
+
+# Keep existing classes for backward compatibility
 class EventList:
     # TODO: add caching?
     def __init__(self, pointer: int, offset: int) -> None:
