@@ -6,11 +6,11 @@ file.close()
 ```
 """
 
-from collections.abc import Callable
 import shutil
+from collections.abc import Callable
 from pathlib import Path
 from types import TracebackType
-from typing import Any, Literal, Type
+from typing import Any, Literal
 
 from args import args
 
@@ -41,7 +41,7 @@ class BackupFile:
 
     def __exit__(
         self,
-        exc_type: Type | None,
+        exc_type: type | None,
         exc_value: Any | None,
         traceback: TracebackType | None,
     ) -> None | Literal[False]:
@@ -51,6 +51,7 @@ class BackupFile:
         new = self.temp.with_stem(f"{self.temp.stem}").with_suffix(self.original.suffix)
         shutil.copy(self.temp, new)
         self.temp.unlink()
+        return None
 
 
 def restore_pointer[F, **P](func: Callable[P, F]) -> Callable[P, F]:

@@ -1,15 +1,17 @@
+from collections.abc import Generator
 from enum import Enum
-from helpers.files import read_file, restore_pointer, write_file
-from typing import Any, Generator, Self
-from abc_.pointers import TablePointer, Pointer
+from typing import Any, Self
+
+from _types.objects import Cache
+from abc_.pointers import Pointer, TablePointer
+from args import args
 from enums.flags import ShopIdentifier, ShopTypes
 from helpers.bits import find_table_pointer, read_little_int
+from helpers.files import read_file, restore_pointer, write_file
+from logger import iris
 from structures.item import Item
 from structures.spell import Spell
 from tables import ShopObject
-from logger import iris
-from _types.objects import Cache
-from args import args
 
 
 UNUSED_SHOPS = [0x1A, 0x27]
@@ -49,13 +51,13 @@ class ShopSection:
     def size(self) -> int:
         return self.end_data - self.start_data
 
-    def _gen_spells(self) -> Generator[tuple[Spell, int], Any, None]:
+    def _gen_spells(self) -> Generator[tuple[Spell, int], Any]:
         next_pointer = self.fix_spell_section(self.start_data)
         for j in range(self.start_data, next_pointer):
             read_file.seek(j)
             yield Spell.from_index(read_little_int(read_file, 1)), j
 
-    def _gen_items(self, next_section: Self) -> Generator[tuple[Item, int], Any, None]:
+    def _gen_items(self, next_section: Self) -> Generator[tuple[Item, int], Any]:
         next_pointer = next_section.pointer
         assert next_pointer - self.start_data % 2, "Start and next_ should have a even sized gap."
         for j in range(self.start_data, next_pointer, 2):
@@ -63,7 +65,7 @@ class ShopSection:
             item_index = read_little_int(read_file, 2)
             yield Item.from_index(item_index), j
 
-    def _find_items(self) -> Generator[tuple[Item | Spell, int], Any, None]:
+    def _find_items(self) -> Generator[tuple[Item | Spell, int], Any]:
         if (
             self.section == Sections.SPELL
             or (
@@ -76,10 +78,11 @@ class ShopSection:
 
         next_section = self.next_
         if next_section is None:
-            last_section = (
-                self.section == Sections.DIVIDER
-                or self.section == Sections.ALTERNATIVE_END
-                or self.section == Sections.SHOP_START # Rare case if a shop has only one section. # FIXME: (Index 37, expected to have a divider. )
+            last_section = (self.section in {
+                Sections.DIVIDER,
+                Sections.ALTERNATIVE_END,
+                Sections.SHOP_START, # Rare case if a shop has only one section. # FIXME: (Index 37, expected to have a divider.)
+                },
             )
             assert last_section, "Last section should be a divider."
             return
@@ -93,9 +96,7 @@ class ShopSection:
         read_file.seek(start)
         while read_file.read(1) != Sections.SPELL_END.value:
             j += 1
-            pass
-        end = start + j
-        return end
+        return start + j
 
 
     def add_item(self, item: Item | Spell) -> None:
@@ -105,7 +106,8 @@ class ShopSection:
         elif isinstance(item, Spell): # type: ignore[reportUnnecessaryIsInstance]
             self.end_data += 1
         else:
-            raise ValueError("Item or Spell expected.")
+            msg = "Item or Spell expected."
+            raise ValueError(msg)
 
 
     def remove_item(self, item: Item | Spell) -> None:
@@ -115,16 +117,13 @@ class ShopSection:
         elif isinstance(item, Spell): # type: ignore[reportUnnecessaryIsInstance]
             self.end_data -= 1
         else:
-            raise ValueError("Item or Spell expected.")
+            msg = "Item or Spell expected."
+            raise ValueError(msg)
 
 
     def write(self) -> None:
         tell = write_file.tell()
-        if (
-            self.section == Sections.SHOP_START
-            or self.section == Sections.DUMMY
-            or self.section == Sections.SPELL
-        ):
+        if (self.section in (Sections.SHOP_START, Sections.DUMMY, Sections.SPELL)):
             # Dummy sections are just for our code, so we ignore them as we write.
             # Spell sections are (always in vanilla) the same as the shop type.
             # So we can ignore them. TODO: find out if we can create custom shops containing spells and items.
@@ -150,7 +149,7 @@ class Shop(TablePointer):
 
     def __init__(
         self,
-        shop_type: ShopTypes
+        shop_type: ShopTypes,
     ) -> None:
         self.shop_type = shop_type
 
@@ -194,7 +193,7 @@ class Shop(TablePointer):
             inst.shop_sections.append(shop_section)
 
         for section in inst.shop_sections:
-            for item, p in section._find_items(): # type: ignore[reportPrivateUsage]
+            for item, _p in section._find_items(): # type: ignore[reportPrivateUsage]
                 section.add_item(item)
 
         inst.identifier = ShopIdentifier.from_byte(unknown1)
@@ -220,9 +219,10 @@ class Shop(TablePointer):
             shop_section.start_data = start
             shop_section.end_data = start + 2
             return shop_section
+        return None
 
     @restore_pointer
-    def _find_shop_sections(self, shop_start: int, stop: int) -> Generator[ShopSection, Any, None]:
+    def _find_shop_sections(self, shop_start: int, stop: int) -> Generator[ShopSection, Any]:
         offset = 0
         read_file.seek(shop_start)
         while True:
@@ -261,7 +261,7 @@ class Shop(TablePointer):
 
         if (
             shop_section.section is Sections.SPELL
-            or shop_section.section is Sections.SHOP_START and self.shop_type == ShopTypes.SPELL
+            or (shop_section.section is Sections.SHOP_START and self.shop_type == ShopTypes.SPELL)
         ):
             end = shop_section.fix_spell_section(shop_section.start_data)
             if self.shop_type == ShopTypes.SPELL:

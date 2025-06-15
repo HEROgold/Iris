@@ -8,10 +8,10 @@
 #     address = 0xBC53D
 #     count = 39
 
-from helpers.files import read_file, write_file
 from typing import Self
 
 from abc_.pointers import Pointer
+from helpers.files import read_file, write_file
 from structures.monster import Monster
 
 

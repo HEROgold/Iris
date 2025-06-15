@@ -38,5 +38,5 @@ class ProgressBar:
         air = self.SPACE * air_count
 
         # if scale == 0, make sure the len our return is the same as any other scale
-        end = self.end + self.SPACE if int(scale) != 0 else self.end 
+        end = self.end + self.SPACE if int(scale) != 0 else self.end
         return f"{self.message}{self.start}{bar}{self.arrow}{air}{end}"

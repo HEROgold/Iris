@@ -1,9 +1,13 @@
 from dataclasses import dataclass
-from structures.validator import PositiveValidator
+
 from helpers.files import write_file
+from structures.validator import PositiveValidator
+
 
 @dataclass
 class RpgStats:
+    """Class for RPG stats, using positive integers."""
+
     health_points: PositiveValidator[int] = PositiveValidator[int](0)
     mana_points: PositiveValidator[int] = PositiveValidator[int](0)
     attack: PositiveValidator[int] = PositiveValidator[int](0)
@@ -16,7 +20,8 @@ class RpgStats:
     xp: PositiveValidator[int] = PositiveValidator[int](0)
     gold: PositiveValidator[int] = PositiveValidator[int](0)
 
-    def __bytes__(self):
+    def __bytes__(self) -> bytes:
+        """Convert the RPG stats to bytes."""
         return (
             (self.health_points.to_bytes()) +
             (self.mana_points.to_bytes()) +
@@ -31,13 +36,16 @@ class RpgStats:
             (self.gold.to_bytes())
         )
 
-    def write(self, pointer: int):
+    def write(self, pointer: int) -> None:
+        """Write the RPG stats to a file at the specified pointer."""
         write_file.seek(pointer)
         write_file.write(bytes(self))
 
 
 @dataclass
 class ScalableRpgStats:
+    """Class for scalable RPG stats, allowing for floating-point values."""
+
     health_points: PositiveValidator[float] = PositiveValidator[float](0)
     mana_points: PositiveValidator[float] = PositiveValidator[float](0)
     attack: PositiveValidator[float] = PositiveValidator[float](0)
@@ -51,6 +59,7 @@ class ScalableRpgStats:
     gold: PositiveValidator[float] = PositiveValidator[float](0)
 
     def to_int(self) -> RpgStats:
+        """Convert the scalable stats to integer stats."""
         return RpgStats(
             int(self.health_points),
             int(self.mana_points),
@@ -65,7 +74,8 @@ class ScalableRpgStats:
             int(self.gold),
         )
 
-    def __bytes__(self):
+    def __bytes__(self) -> bytes:
+        """Convert the scalable stats to bytes."""
         stats = self.to_int()
         return (
             (stats.health_points.to_bytes()) +
@@ -80,6 +90,7 @@ class ScalableRpgStats:
             (stats.gold.to_bytes())
         )
 
-    def write(self, pointer: int):
+    def write(self, pointer: int) -> None:
+        """Write the scalable stats to a file at the specified pointer."""
         write_file.seek(pointer)
         write_file.write(bytes(self))

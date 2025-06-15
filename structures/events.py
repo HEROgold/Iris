@@ -2,18 +2,19 @@ from __future__ import annotations
 
 import logging
 from string import ascii_letters, digits, punctuation
+from typing import TYPE_CHECKING, Self, TypedDict
+
 from _types.objects import Cache
+from abc_.pointers import TablePointer
 from constants import POINTER_SIZE
 from enums.event_scripts import EventClass
-from helpers.files import read_file, restore_pointer
-from typing import TYPE_CHECKING, Self, TypedDict
-from abc_.pointers import TablePointer
 from helpers.bits import read_little_int
+from helpers.files import read_file, restore_pointer
 from helpers.name import read_as_decompressed_name
-from structures.word import Word
-from tables import MapEventObject
 from logger import iris
-from tables import EventInstObject
+from structures.word import Word
+from tables import EventInstObject, MapEventObject
+
 
 if TYPE_CHECKING:
     from structures.zone import Zone
@@ -46,18 +47,18 @@ class Event(TablePointer):
         # inst._event_script.read() # TESTING TEMP
         return inst
 
-    def write(self):
+    def write(self) -> None:
         return
 
-    def parse_text(self):
+    def parse_text(self) -> None:
         # TODO: Read from Terrorwave and parse using read_file reader.
         pass
 
-    def parse_event(self):
+    def parse_event(self) -> None:
         # TODO: Read from Terrorwave and parse using read_file reader.
         pass
 
-    def parse_variables(self):
+    def parse_variables(self) -> None:
         # TODO: Read from Terrorwave and parse using read_file reader.
         pass
 
@@ -76,7 +77,7 @@ MAP_EVENT_SIZE = sum(
         MapEventObject.npc_lowbytes,
         MapEventObject.npc_highbyte,
         MapEventObject.map_name_pointer,
-    ]
+    ],
 )
 
 """
@@ -183,7 +184,7 @@ class MapEvent(TablePointer):
         self._npc_script = EventScript(self.base_pointer, self.npc_offset)
 
         for _ in range(6):
-            offset = int.from_bytes(read_file.read(2), byteorder='little')
+            offset = int.from_bytes(read_file.read(2), byteorder="little")
             event_list = EventList(self.event_list_pointer, offset)
             self._event_lists.append(event_list)
 
@@ -239,7 +240,7 @@ class MapEvent(TablePointer):
         self._npc_lowbytes = (temp & 0x7fff).to_bytes(1)
         assert self.npc_pointer == pointer
 
-    def write(self):
+    def write(self) -> None:
         return
 
 
@@ -266,7 +267,7 @@ class EventList:
             self._events.append(script)
 
 
-    def read(self):
+    def read(self) -> None:
         for event in self._events:
             event.read()
 
@@ -468,7 +469,7 @@ op_codes: dict[int, OpCode] = {
     0xB8: {"params": 0, "comment":" => ? (can EXIT)"},
     0xB9: {"params": 1, "comment":""" XX => Fill IP bar of party member XX"""},
     0xBA: {"params": 1, "comment":" XX => ?"},
-    0xBB: {"params": 0, "comment":" => Show the current report (like the report you can see after the end of the game)"""},
+    0xBB: {"params": 0, "comment":" => Show the current report (like the report you can see after the end of the game)"},
     0xBC: {"params": 0, "comment":" => ? (EXIT)"},
     0xBD: {"params": 2, "comment":" XX YY => ?"},
     0xBE: {"params": 1, "comment":" XX => same as 0x77"},
@@ -495,7 +496,7 @@ op_codes: dict[int, OpCode] = {
 
     # Script data format:
     # Offset + 0x0000:
-    # 50 48 
+    # 50 48
     # Offset + 0x0002:
     # 6 pointers (2 bytes) to subscripts
 }
@@ -629,7 +630,7 @@ class EventScript:
     # From there we can modify pointers as required.
 
     @restore_pointer
-    def read(self, offset: int = 0):
+    def read(self, offset: int = 0) -> None:
         # TODO CRITICAL: Rethink the reading of the script.
         if not hasattr(self, "_seen"):
             self._seen = [self.pointer + offset]
@@ -641,8 +642,8 @@ class EventScript:
             _address = read_file.tell()
             offset += 1
             op_code = int.from_bytes(byte)
-            description = op_codes[op_code]['comment']
-            n_args = op_codes[op_code]['params']
+            description = op_codes[op_code]["comment"]
+            n_args = op_codes[op_code]["params"]
             args = read_file.read(n_args)
             offset += n_args
 
@@ -682,7 +683,7 @@ class EventScript:
                 read_file.seek(self.pointer + offset)
             elif op_code == 0x0A:
                 # TODO: verify jump address
-                jump = self.pointer + int.from_bytes(args, byteorder='little')
+                jump = self.pointer + int.from_bytes(args, byteorder="little")
                 self._branch(jump)
             # elif op_code == 0x12:
             #     count = args[1]
@@ -698,10 +699,11 @@ class EventScript:
                 pointer_count = args[0] # Perhaps this is the index of _pointers to follow?
                 _pointers = [args[1]]
                 if pointer_count < 0:
-                    raise ValueError(f"Pointer count is negative: {pointer_count}")
+                    msg = f"Pointer count is negative: {pointer_count}"
+                    raise ValueError(msg)
                 restore = read_file.tell()
                 for i in range(pointer_count):
-                    _pointer = int.from_bytes(read_file.read(2), byteorder='little')
+                    _pointer = int.from_bytes(read_file.read(2), byteorder="little")
                     _pointers.append(_pointer)
                     self._branch(_pointer) # TODO: Verify this is correct.
                 assert pointer_count+1 == len(_pointers)
@@ -719,14 +721,14 @@ class EventScript:
             elif op_code == 0x14:
                 offset = self.instruction_parsing(offset, args)
             elif op_code == 0x15:
-                jump = int.from_bytes(args[1:], byteorder='little')
+                jump = int.from_bytes(args[1:], byteorder="little")
                 self._branch(jump)
             elif op_code == 0x16:
                 # TODO: find out if this has a jump?
                 # stack.append(self.pointer + args[1])
                 pass
             elif op_code in [0x1C, 0x6A]:
-                jump = int.from_bytes(args, byteorder='little')
+                jump = int.from_bytes(args, byteorder="little")
                 self._branch(jump)
             elif op_code in [0x13, 0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67, 0x6D, 0x6E, 0x9E]:
                 if op_code == 0x13:
@@ -748,7 +750,7 @@ class EventScript:
                 while True:
                     byte = read_file.read(1)
                     data.append(byte)
-                    if byte == b'\x20':
+                    if byte == b"\x20":
                         break
                 print((tell, data))
                 read_file.seek(tell)
@@ -777,7 +779,7 @@ class EventScript:
 
             if flag == 0xff:
                 break
-            elif flag & 0xf0 == 0xf0:
+            if flag & 0xf0 == 0xf0:
                 assert len(args) == 1
                 assert flag in {0xf0, 0xf8}
                         # 0xf0 Monster on button
@@ -822,7 +824,7 @@ class EventScript:
         return offset
 
     @restore_pointer
-    def _branch(self, jump: int):
+    def _branch(self, jump: int) -> None:
         branch_pointer = self.base_pointer + jump
         if branch_pointer in self._seen:
             self.logger.warning(f"Repeat at branch detected in EventScript {self.pointer=} at {jump=}")

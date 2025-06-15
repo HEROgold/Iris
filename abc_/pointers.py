@@ -1,7 +1,7 @@
-from abc import ABC, abstractmethod
 import logging
-
-from typing import Self, Sequence
+from abc import ABC, abstractmethod
+from collections.abc import Sequence
+from typing import Self
 
 from helpers.bits import find_table_pointer
 from logger import iris

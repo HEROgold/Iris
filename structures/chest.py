@@ -1,10 +1,9 @@
 from typing import Self
 
-from abc_.pointers import TablePointer, Pointer
+from abc_.pointers import Pointer, TablePointer
+from constants import POINTER_SIZE
 from helpers.bits import read_little_int, read_nth_bit
 from helpers.files import read_file, write_file
-
-from constants import POINTER_SIZE
 from logger import iris
 from tables import (
     ChestObject,

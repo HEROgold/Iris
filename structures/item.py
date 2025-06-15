@@ -1,15 +1,16 @@
-from bitstring import BitArray
-from enums.flags import ItemTypes, MenuIcon, Targeting
-from helpers.files import read_file, write_file
 from typing import Self
-from structures.word import Word
-from tables import ItemObject
-from enums.flags import EquipTypes, EquipableCharacter, ItemEffects, Usability
+
+from bitstring import BitArray
+
 from abc_.pointers import TablePointer
-from helpers.bits import find_table_pointer, read_little_int
-from tables import ItemNameObject
-from logger import iris
 from args import args
+from enums.flags import EquipableCharacter, EquipTypes, ItemEffects, ItemTypes, MenuIcon, Targeting, Usability
+from helpers.bits import find_table_pointer, read_little_int
+from helpers.files import read_file, write_file
+from logger import iris
+from structures.word import Word
+from tables import ItemNameObject, ItemObject
+
 
 ITEM_SIZE = sum(
     [
@@ -24,7 +25,7 @@ ITEM_SIZE = sum(
         1,  #ItemObject.misc1,
         1,  #ItemObject.misc2,
         ItemObject.zero,
-    ]
+    ],
 )
 
 class ItemName(TablePointer):
@@ -92,7 +93,7 @@ class Item(TablePointer):
         """Return the index of any item, without 0x00 bytes."""
         return self.index.to_bytes(2, "little").strip(b"\x00")
 
-    def _validate_requirements(self):
+    def _validate_requirements(self) -> None:
         assert self.price is not None
         assert self.equip_types is not None
         assert self.usability is not None
@@ -104,7 +105,7 @@ class Item(TablePointer):
         self._validate_effects()
         self.description
 
-    def _validate_effects(self):
+    def _validate_effects(self) -> None:
         effects = list(self.get_effects())
         effect_validity = (bool(effects) == (bool(self.item_effects)))
         assert effect_validity
@@ -171,6 +172,7 @@ class Item(TablePointer):
         # Clueless from here.
         description = read_file.read(2)
         Word.from_index(int.from_bytes(description))
+        return None
 
 
     def get_misc_pointers(self) -> list[int]:
@@ -185,11 +187,10 @@ class Item(TablePointer):
             for i in range(16)
             if offset.uint & (1 << i & 0xFFFF)
         ]
-        effect_pointers = [
+        return [
             table_address + i
             for i in offsets
         ]
-        return effect_pointers
 
     def get_effect_bytes(self):
         """Get the bytes defining the item's effect.
@@ -217,13 +218,13 @@ class Item(TablePointer):
                 self._warn_extra_increases(item_flag)
                 yield next(effects),
 
-    def _warn_extra_increases(self, item_flag: ItemEffects):
+    def _warn_extra_increases(self, item_flag: ItemEffects) -> None:
         if ItemEffects.INCREASE_STR in item_flag:
             iris.warning(f"{item_flag=} also increases ATP (increases STR).")
         if ItemEffects.INCREASE_STR in item_flag:
             iris.warning(f"{item_flag=} also increases DFP (increases STR).")
         if ItemEffects.INCREASE_AGL in item_flag:
-            iris.warning(f"{item_flag=} also increases DFP (increases AGL).") 
+            iris.warning(f"{item_flag=} also increases DFP (increases AGL).")
 
     @property
     def is_coin_set(self):

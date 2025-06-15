@@ -1,9 +1,11 @@
-from helpers.files import read_file, write_file
 from typing import Self
-from abc_.pointers import TablePointer, Pointer
+
+from abc_.pointers import Pointer, TablePointer
 from abc_.stats import RpgStats
 from helpers.bits import read_little_int
-from tables import CharLevelObject, CharacterObject, CharExpObject, InitialEquipObject, CharGrowthObject
+from helpers.files import read_file, write_file
+from tables import CharacterObject, CharExpObject, CharGrowthObject, CharLevelObject, InitialEquipObject
+
 from .item import Item
 
 
@@ -22,7 +24,7 @@ class CharacterLevel(Pointer):
         super().__init__(inst, pointer)
         return inst
 
-    def write(self):
+    def write(self) -> None:
         write_file.seek(self.pointer)
         write_file.write(self.level.to_bytes(CharLevelObject.level, "little"))
 
@@ -41,7 +43,7 @@ class CharacterExperience(Pointer):
         super().__init__(inst, pointer)
         return inst
 
-    def write(self):
+    def write(self) -> None:
         write_file.seek(self.pointer)
         write_file.write(self.xp.to_bytes(CharExpObject.xp, "little"))
 
@@ -70,7 +72,7 @@ class InitialEquipment(Pointer):
         super().__init__(inst, pointer)
         return inst
 
-    def write(self):
+    def write(self) -> None:
         write_file.seek(self.pointer)
         write_file.write(self.weapon.index.to_bytes(InitialEquipObject.weapon, "little"))
         write_file.write(self.armor.index.to_bytes(InitialEquipObject.armor, "little"))
@@ -116,7 +118,7 @@ class CharacterGrowth(Pointer):
         super().__init__(inst, pointer)
         return inst
 
-    def write(self):
+    def write(self) -> None:
         write_file.seek(self.pointer)
         write_file.write(self.health_points.to_bytes(CharGrowthObject.hp, "little"))
         write_file.write(self.mana_points.to_bytes(CharGrowthObject.mp, "little"))
@@ -158,7 +160,7 @@ class PlayableCharacter(TablePointer):
         level_start = CharLevelObject.pointers[index]
         name_start = level_start - NAME_LENGTH
         read_file.seek(name_start)
-        
+
         name = read_file.read(NAME_LENGTH).decode("ascii")
         name = name.split("\0")[0]
 
@@ -188,9 +190,9 @@ class PlayableCharacter(TablePointer):
         inst.pointer = address + index * CHARACTER_SIZE
         return inst
 
-    def write(self):
+    def write(self) -> None:
         # FIXME: some data are shuffled after writing.
-        
+
         level_start = CharLevelObject.pointers[self.index]
         name_start = level_start - NAME_LENGTH
         write_file.seek(name_start)

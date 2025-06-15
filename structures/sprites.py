@@ -1,10 +1,12 @@
 """Extra structures for sprites and palettes, for future support of gathering sprites and palettes from the ROM."""
 
+from typing import Self
+
+from abc_.pointers import Pointer, ReferencePointer
 from helpers.bits import read_little_int
 from helpers.files import read_file, write_file
-from typing import Self
-from abc_.pointers import Pointer, ReferencePointer
-from tables import OverPaletteObject, CapPaletteObject, OverSpriteObject, SpriteMetaObject, TownSpriteObject, CapSpritePTRObject
+from tables import CapPaletteObject, CapSpritePTRObject, OverPaletteObject, OverSpriteObject, SpriteMetaObject, TownSpriteObject
+
 
 TOWN_SPRITE_SIZE = sum([
     TownSpriteObject.unknown,
@@ -13,7 +15,7 @@ TOWN_SPRITE_SIZE = sum([
 ])
 SPRITE_META_SIZE = sum([
     SpriteMetaObject.width,
-    SpriteMetaObject.height_misc
+    SpriteMetaObject.height_misc,
 ])
 OVER_SPRITE_SIZE = sum([
     OverSpriteObject.unknown,
@@ -59,7 +61,7 @@ class CapsulePallette(ReferencePointer):
         super().__init__(inst, address, index, size)
         return inst
 
-    def write(self):
+    def write(self) -> None:
         write_file.seek(self.pointer)
         write_file.write(self.palette)
 
@@ -83,7 +85,7 @@ class CapsuleSprite(ReferencePointer):
         super().__init__(inst, address, index, size)
         return inst
 
-    def write(self):
+    def write(self) -> None:
         write_file.seek(self.pointer)
         write_file.write(self.sprite_pointer.to_bytes(3, "little"))
 
@@ -106,7 +108,7 @@ class OverPallette(ReferencePointer):
         super().__init__(inst, address, index, size)
         return inst
 
-    def write(self):
+    def write(self) -> None:
         write_file.seek(self.pointer)
         write_file.write(self.pallette_index.to_bytes())
         write_file.write(self.palette)
@@ -130,7 +132,7 @@ class OverSprite(ReferencePointer):
         super().__init__(inst, address, index, size)
         return inst
 
-    def write(self):
+    def write(self) -> None:
         write_file.seek(self.pointer)
         write_file.write(self.unknown)
         write_file.write(self.sprite_index.to_bytes(3, "little"))
@@ -144,7 +146,7 @@ class SpriteMeta(ReferencePointer):
         self.width = width
         self.height = height
 
-    def _validate(self):
+    def _validate(self) -> None:
         assert self.address
         assert self.index >= 0
         assert self.pointer
@@ -164,7 +166,7 @@ class SpriteMeta(ReferencePointer):
         inst._validate()
         return inst
 
-    def write(self):
+    def write(self) -> None:
         write_file.seek(self.pointer)
         write_file.write(self.width)
         write_file.write(self.height)
@@ -181,12 +183,12 @@ class TownSprite(Pointer):
         inst = cls(
             read_little_int(read_file, 1),
             read_little_int(read_file, 1),
-            read_little_int(read_file, 3)
+            read_little_int(read_file, 3),
         )
         inst.pointer = pointer
         return inst
 
-    def write(self):
+    def write(self) -> None:
         write_file.seek(self.pointer)
         write_file.write(self.unknown.to_bytes(1, "little"))
         write_file.write(self.sprite_index.to_bytes(1, "little"))

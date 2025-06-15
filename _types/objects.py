@@ -5,8 +5,9 @@ class Cache[K, V]:
     def from_cache(self, key: K) -> V | None:
         if key in self._cache:
             return self._cache[key]
+        return None
 
-    def to_cache(self, key: K, value: V):
+    def to_cache(self, key: K, value: V) -> None:
         self._cache[key] = value
 
     def keys(self):

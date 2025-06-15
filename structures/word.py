@@ -1,7 +1,8 @@
-from helpers.files import read_file, restore_pointer, write_file
 from typing import Self
-from helpers.bits import find_table_pointer
+
 from abc_.pointers import TablePointer
+from helpers.bits import find_table_pointer
+from helpers.files import read_file, restore_pointer, write_file
 from tables import WordObject
 
 
@@ -24,7 +25,7 @@ class Word(TablePointer):
 
         reset_bit = b"\x00"
 
-        word = bytes()
+        word = b""
         while True:
             partial_data = read_file.read(1)
             if partial_data == reset_bit:
@@ -34,7 +35,7 @@ class Word(TablePointer):
         super().__init__(inst, address, index)
         return inst
 
-    def write(self):
+    def write(self) -> None:
         write_file.seek(self.pointer)
         write_file.write(self.word.encode("utf-8"))
         write_file.write(b"\x00")

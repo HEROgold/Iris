@@ -1,6 +1,8 @@
 from io import BufferedReader
+
 from constants import POINTER_SIZE
-from helpers.files import read_file, write_file, restore_pointer
+from helpers.files import read_file, restore_pointer, write_file
+
 
 def read_nth_bit(byte: bytes, n: int) -> int:
     mask = 1 << n
@@ -15,6 +17,7 @@ def get_true_bit_index(byte: bytes) -> int | None:
     for i in range(len(byte)):
         if read_nth_bit(byte, i) == 1:
             return i
+    return None
 
 
 @restore_pointer
@@ -38,5 +41,4 @@ def read_little_int(file: BufferedReader, size: int) -> int:
 def bytes_overwrite(old: bytes, index: int, patch: bytes) -> bytes:
     size = len(patch)
 
-    patched_code = old[:index] + patch + old[index+size:]
-    return patched_code
+    return old[:index] + patch + old[index+size:]

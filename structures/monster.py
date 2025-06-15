@@ -1,18 +1,16 @@
-from _types.objects import Cache
-from helpers.files import read_file, write_file
 from typing import Self
 
+from _types.objects import Cache
 from abc_.pointers import TablePointer
 from abc_.stats import ScalableRpgStats
-
+from args import args
 from helpers.bits import find_table_pointer, read_little_int, update_pointer_table
+from helpers.files import read_file, write_file
+from logger import iris
 from structures.battlescript import BattleScript, ScriptType
 from tables import MonsterObject
 
 from .item import Item
-from args import args
-from logger import iris
-
 
 
 class MonsterSprite:
@@ -26,7 +24,7 @@ class MonsterSprite:
         if index > MonsterObject.count:
             index = 0xA4 # Red JElly
         name, sprite = MONSTER_SPRITES[index]
-        if args.spekkio and 'Lady Spider' in name:
+        if args.spekkio and "Lady Spider" in name:
             sprite = 0x89 # Web Spider
         return cls(name, index, sprite)
 
@@ -96,7 +94,8 @@ class Monster(TablePointer):
     @classmethod
     def from_index(cls, index: int) -> Self:
         if index > MonsterObject.count and index != 0xFF:
-            raise IndexError(f"Monster index out of range, max: {MonsterObject.count} got {index}")
+            msg = f"Monster index out of range, max: {MonsterObject.count} got {index}"
+            raise IndexError(msg)
         if index == 0xFF:
             return cls("Dummy", 0xFF, 0x0)
         return cls.from_table(MonsterObject.address, index)
@@ -172,26 +171,28 @@ class Monster(TablePointer):
         return inst
 
 
-    def create_attack_script(self):
+    def create_attack_script(self) -> None:
         if self.attack_script:
-            raise ValueError(f"{self} already has an attack script.")
+            msg = f"{self} already has an attack script."
+            raise ValueError(msg)
         self.attack_script_offset = read_little_int(read_file, 2)
         self.attack_script = BattleScript(
             self,
             self.attack_script_offset,
-            ScriptType.ATTACK
+            ScriptType.ATTACK,
         )
         if read_file.read(1) == b"\x08":
             self.create_defense_script()
 
-    def create_defense_script(self):
+    def create_defense_script(self) -> None:
         if self.defense_script:
-            raise ValueError(f"{self} already has an attack script.")
+            msg = f"{self} already has an attack script."
+            raise ValueError(msg)
         self.defense_script_offset = read_little_int(read_file, 2)
         self.defense_script = BattleScript(
             self,
             self.defense_script_offset,
-            ScriptType.DEFENSE
+            ScriptType.DEFENSE,
         )
 
 
@@ -264,7 +265,7 @@ class Monster(TablePointer):
     def drop_item(self, item: Item) -> None:
         """
         Sets the item that the monster can drop.
-        
+
         Parameters
         -----------
         :param:`item`: :class:`Item`
@@ -281,8 +282,8 @@ class Monster(TablePointer):
     def drop_rate(self) -> int:
         """
         The drop rate for the monster.
-        
-        
+
+
         Return/Parameter
         -------
         :class:`int`
@@ -308,7 +309,7 @@ class Monster(TablePointer):
         self._misc = b"\x03" if value else b"\x00"
 
     @classmethod
-    def adjust_monster_pointers(cls):
+    def adjust_monster_pointers(cls) -> None:
         # FIXME: This code edits the file when nothing has changed.
         start = MonsterObject.address
         end = start + MonsterObject.count * 2

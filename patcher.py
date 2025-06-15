@@ -8,17 +8,12 @@ from bitstring import BitArray
 
 from args import args
 from enums.patches import Patch
-from helpers.files import new_file
-from helpers.files import BackupFile
+from helpers.addresses import address_from_lorom
+from helpers.files import BackupFile, new_file
+from logger import iris
 from patches.parser import PatchData, PatchParser
 from structures.item import Item
-
-from logger import iris
-from helpers.addresses import address_from_lorom
 from structures.zone import Zone
-
-
-
 
 
 def apply_patch(patch: Patch) -> Path:
@@ -42,7 +37,7 @@ def apply_patch(patch: Patch) -> Path:
     :class:`NotImplementedError`
         Error when a given patch is not implemented.
     """
-    # Vanilla > Frue > Spekkio, Kureji 
+    # Vanilla > Frue > Spekkio, Kureji
     iris.info(f"Applying patch {patch.name}")
     if patch == Patch.VANILLA:
         return new_file
@@ -57,7 +52,8 @@ def apply_patch(patch: Patch) -> Path:
         patch_dir = patch_dir/"Lufia2_-_Kureji_Lufia_v7"
         patch_file = patch_dir/"Kureji_Lufia_difficult_with_normal_enemy_buff_v7.ips"
     else:
-        raise NotImplementedError(f"Patch {patch.name} not implemented.")
+        msg = f"Patch {patch.name} not implemented."
+        raise NotImplementedError(msg)
     return patch_files(Path(args.file), patch_file)
 
 
@@ -78,7 +74,8 @@ def patch_files(rom: Path, patch: Path):
     with patch.open("rb") as pf, rom.open("r+b") as rf:
         patch_size = getsize(patch)
         if pf.read(5) != b"PATCH":
-            raise Exception("Invalid patch header.")
+            msg = "Invalid patch header."
+            raise Exception(msg)
         # Read First Record
         r = pf.read(3)
         while pf.tell() not in [patch_size, patch_size - 3]:
@@ -118,7 +115,7 @@ def patch_files(rom: Path, patch: Path):
 
 def unpack_int(string: bytes):
     """Read an n-byte big-endian integer from a byte string."""
-    (ret,) = struct.unpack_from('>I', b'\x00' * (4 - len(string)) + string)
+    (ret,) = struct.unpack_from(">I", b"\x00" * (4 - len(string)) + string)
     return ret
 
 # Mapping table for SNES Game Genie characters to hexadecimal values
@@ -131,21 +128,22 @@ genie_translation_table = {
 genie_address_encrypted = "ijklqrstopabcduvwxefghmn"
 genie_address_decrypted = "abcdefghijklmnopqrstuvwx"
 
-def validate_genie_code(code: str):
+def validate_genie_code(code: str) -> None:
     LEN = 8
     if len(code) != LEN:
-        raise ValueError(f"Invalid Game Genie code length {len(code)}, Expected {LEN}")
+        msg = f"Invalid Game Genie code length {len(code)}, Expected {LEN}"
+        raise ValueError(msg)
     for char in code:
         if char not in genie_translation_table:
-            raise ValueError(f"Invalid Game Genie character {char}")
+            msg = f"Invalid Game Genie character {char}"
+            raise ValueError(msg)
 
 def translate_genie_code_chars(code: str) -> list[int]:
-    translated_code = [
+    return [
         genie_translation_table[char]
         for char in code
         if char in genie_translation_table
     ]
-    return translated_code
 
 def translate_game_genie_code_snes(code: str) -> tuple[int, int]:
     """Translate a 8 sized SNES Game Genie code to a patch."""
@@ -177,7 +175,7 @@ def translate_game_genie_code_snes(code: str) -> tuple[int, int]:
     return ret_address.uint, data
 
 
-def apply_game_genie_codes(*codes: str):
+def apply_game_genie_codes(*codes: str) -> None:
     """Apply any game genie code to the rom.
     https://gamefaqs.gamespot.com/boards/588451-lufia-ii-rise-of-the-sinistrals/80223211
     Contains a lot of codes to use. (Needs a LOT of testing, and confirmation)
@@ -220,12 +218,12 @@ def apply_game_genie_codes(*codes: str):
 #     patch, validation = parser(file)
 
 
-def start_engine():
+def start_engine() -> None:
     item = Item.from_index(449)
     assert item.name_pointer.name.startswith("Engine"), f"Expected Engine, got {item.name_pointer}"
     # TODO: add that to starting inventory.
 
-def set_spawn_location(location: Zone, entrance_cutscene: int = 0x2):
+def set_spawn_location(location: Zone, entrance_cutscene: int = 0x2) -> None:
     # entrance_cutscene
     # Unused/unknown values (by the game) crash the game.
     # 01 Game ending cutscene. (for every zone?)
@@ -241,12 +239,12 @@ def set_spawn_location(location: Zone, entrance_cutscene: int = 0x2):
     # 0x01adb3: 0xa9 0x02
     iris.debug(f"Setting spawn location to {location.name=}, with {entrance_cutscene=}")
     patch = {
-        (0x01adab, None): bytearray(b'\xa9') + bytearray(location.index.to_bytes()),
-        (0x01adb3, None): bytearray(b'\xa9') + bytearray(entrance_cutscene.to_bytes())
+        (0x01adab, None): bytearray(b"\xa9") + bytearray(location.index.to_bytes()),
+        (0x01adb3, None): bytearray(b"\xa9") + bytearray(entrance_cutscene.to_bytes()),
     }
     validation = {
-        (0x01adab, None): bytearray(b'\xa9\x03'),
-        (0x01adb3, None): bytearray(b'\xa9\x02')
+        (0x01adab, None): bytearray(b"\xa9\x03"),
+        (0x01adb3, None): bytearray(b"\xa9\x02"),
     }
 
     verify_patch(patch, validation)
@@ -257,7 +255,7 @@ def set_spawn_location(location: Zone, entrance_cutscene: int = 0x2):
 # event_parser = EventPatchParser()  # Script parser for event patches.
 parser = PatchParser()  # Script parser for patches.
 
-def apply_absynnonym_patch(name: str):
+def apply_absynnonym_patch(name: str) -> None:
     file = Path(__file__).parent/f"patches/absynnonym/patch_{name}.txt"
     iris.debug(f"Patching {file.name}")
 
@@ -267,7 +265,7 @@ def apply_absynnonym_patch(name: str):
     verify_after_patch(patch)
 
 
-def verify_patch(patch: PatchData, validation: PatchData):
+def verify_patch(patch: PatchData, validation: PatchData) -> None:
     # Check if Validation is same as expected data. (before patching)
     iris.debug(f"Verifying patch. {patch=}, {validation=}")
     with BackupFile(new_file) as backup, backup.open("rb") as file:
@@ -275,10 +273,11 @@ def verify_patch(patch: PatchData, validation: PatchData):
             file.seek(address)
             written = file.read(len(code))
             if code != written:
-                raise Exception(f"Validation {address:x} conflicts with unmodified data.")
+                msg = f"Validation {address:x} conflicts with unmodified data."
+                raise Exception(msg)
 
 
-def verify_after_patch(patch: PatchData):
+def verify_after_patch(patch: PatchData) -> None:
     # Apply patch, then check if it is the same as the expected data.
     iris.debug(f"Verifying after patch. {patch=}")
     with BackupFile(new_file) as backup, backup.open("rb") as file:
@@ -286,21 +285,22 @@ def verify_after_patch(patch: PatchData):
             file.seek(address)
             written = file.read(len(code))
             if code != written:
-                raise Exception(f"Patch {address:x} conflicts with modified data.")
+                msg = f"Patch {address:x} conflicts with modified data."
+                raise Exception(msg)
 
 
-def write_patch(patch: PatchData, validation: PatchData, no_verify: bool = False):
+def write_patch(patch: PatchData, validation: PatchData, no_verify: bool = False) -> None:
     iris.debug(f"Writing patch. {patch=}, {validation=}")
     with BackupFile(new_file) as backup, backup.open("rb+") as f:
         for patch_dict in (validation, patch):
             for (address, _), code in sorted(patch_dict.items()):
-                code = cast(bytearray, code)
+                code = cast("bytearray", code)
                 f.seek(address)
 
                 if patch_dict is validation:
                     validate = f.read(len(code))
                     if validate != code[:len(validate)]:
-                        error = f'Patch {patch:s}-{address:x} did not pass validation.'
+                        error = f"Patch {patch:s}-{address:x} did not pass validation."
                         if no_verify:
                             print(f'WARNING: {error:s}')
                         else:

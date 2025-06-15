@@ -1,8 +1,10 @@
-from helpers.files import read_file, restore_pointer, write_file
 from typing import Self
-from helpers.bits import read_little_int
-from tables import RoamingNPCObject
+
 from abc_.pointers import ReferencePointer
+from helpers.bits import read_little_int
+from helpers.files import read_file, restore_pointer, write_file
+from tables import RoamingNPCObject
+
 
 NPC_SIZE = sum(
     [
@@ -10,7 +12,7 @@ NPC_SIZE = sum(
         RoamingNPCObject.sprite_index,
         RoamingNPCObject.map_index,
         RoamingNPCObject.map_npc_index,
-    ]
+    ],
 )
 
 class RoamingNPC(ReferencePointer):
@@ -43,7 +45,7 @@ class RoamingNPC(ReferencePointer):
     def from_index(cls, index: int) -> Self:
         return cls.from_reference(RoamingNPCObject.address, index, NPC_SIZE)
 
-    def write(self):
+    def write(self) -> None:
         write_file.seek(self.pointer)
         write_file.write(self.npc_event_map_index.to_bytes(RoamingNPCObject.map_npc_event_index))
         write_file.write(self.sprite_index.to_bytes(RoamingNPCObject.sprite_index))

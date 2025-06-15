@@ -12,10 +12,10 @@ from typing import Any, Self
 
 from _types.objects import Cache
 from helpers.bits import read_little_int
+from helpers.files import read_file, write_file
 from helpers.name import read_as_decompressed_name
 from structures.events import MapEvent
 from tables.zones import ZoneObject
-from helpers.files import read_file, write_file
 
 
 # TODO: Map items to chests, chest to zones.
@@ -62,7 +62,7 @@ class Exit:
                 self.destination_x,
                 self.destination_y,
                 self.destination_map,
-            ]
+            ],
         )
 
 
@@ -90,8 +90,8 @@ class Waypoint:
                 self.x,
                 self.y,
                 self.misc,
-                *self.offsets
-            ]
+                *self.offsets,
+            ],
         )
 
 
@@ -118,10 +118,10 @@ class ZoneData:
             return inst
         return cls(pointer)
 
-    def _parse_waypoints(self):
+    def _parse_waypoints(self) -> None:
         self.waypoints = []
         waypoint_data = self.parsed_data[8]
-        if waypoint_data == b'\xff':
+        if waypoint_data == b"\xff":
             return
 
         self.waypoints: list[Waypoint] = []
@@ -133,13 +133,13 @@ class ZoneData:
                 waypoint_data[1],
                 waypoint_data[2],
                 waypoint_data[3],
-                waypoint_data[4:6]
+                waypoint_data[4:6],
             )
             waypoint_data = waypoint_data[6:]
             self.waypoints.append(waypoint)
         self.waypoint_shared_data = waypoint_data[1:] # Store the remaining data.
 
-    def _parse_tiles(self):
+    def _parse_tiles(self) -> None:
         data_size = 5
         tile_data = self.parsed_data[5]
         data_length = len(tile_data)
@@ -150,13 +150,13 @@ class ZoneData:
         self.tiles: list[Tile] = [
             Tile(
                 tile_data[i+0],
-                Boundary(*tile_data[i+1:i+5])
+                Boundary(*tile_data[i+1:i+5]),
             )
             for i in range(0, target, 5)
         ]
 
 
-    def _parse_exits(self):
+    def _parse_exits(self) -> None:
         data_size = 9
         exit_data = self.parsed_data[2]
         data_length = len(exit_data)
@@ -171,12 +171,12 @@ class ZoneData:
                 exit_data[i+5],
                 exit_data[i+6],
                 exit_data[i+7],
-                exit_data[i+9]
+                exit_data[i+9],
             )
             for i in range(0, target, data_size)
         ]
 
-    def _parse_npc_positions(self):
+    def _parse_npc_positions(self) -> None:
         data_size = 8
         npc_position_data = self.parsed_data[7]
         data_length = len(npc_position_data)
@@ -190,13 +190,13 @@ class ZoneData:
                 npc_position_data[i+1],
                 npc_position_data[i+2],
                 Boundary(*npc_position_data[i+3:i+7]),
-                npc_position_data[i+7]
+                npc_position_data[i+7],
             )
             for i in range(0, target, 8)
         ]
 
 
-    def _parse_offsets(self):
+    def _parse_offsets(self) -> None:
         offsets: list[int] = [
             int.from_bytes(self.data[(i*2):(i*2)+2], "little")
             for i in range(21)
@@ -207,14 +207,11 @@ class ZoneData:
             offset = offsets[i]
             index = clean_offsets.index(offset)
 
-            if index == len(clean_offsets) - 1:
-                next_offset = self.size
-            else:
-                next_offset = clean_offsets[index + 1]
+            next_offset = self.size if index == len(clean_offsets) - 1 else clean_offsets[index + 1]
             assert offset < next_offset
             offset_data = self.data[offset-2:next_offset-2]
             if offset == 0x2C:
-                assert offset_data == b'\xff'
+                assert offset_data == b"\xff"
             self.parsed_data[i] = offset_data
 
 
@@ -257,12 +254,14 @@ class Zone:
         cls._generate_zones()
         if zone := cls.from_name(name):
             return zone
-        raise ValueError(f"Zone with name {name} not found.")
+        msg = f"Zone with name {name} not found."
+        raise ValueError(msg)
 
     @classmethod
-    def _generate_zones(cls):
+    def _generate_zones(cls) -> None:
         if len(cls._cache) >= 0xFF:
-            raise ValueError("All Zones already generated.")
+            msg = "All Zones already generated."
+            raise ValueError(msg)
         current_index = 0
         start_address = 0
         prev_end_address = ZoneObject.address
@@ -292,7 +291,7 @@ class Zone:
         # Remove the control byte for compressing
         return self.name.replace(b"\x0a", b"").replace(b"\x00", b"")
 
-    def write(self):
+    def write(self) -> None:
         write_file.seek(self.start)
         read_as_decompressed_name(self.start)
         _compressed_name = self.read_compressed_name(self.start)

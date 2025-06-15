@@ -1,8 +1,10 @@
-from enum import Enum
 import logging
+from enum import Enum
 from typing import TYPE_CHECKING, TypedDict
+
 from helpers.files import read_file, restore_pointer, write_file
 from logger import iris
+
 
 if TYPE_CHECKING:
     from structures import Monster
@@ -38,7 +40,7 @@ op_codes: dict[int, OpCode] = {
     #              $56 00 00 => protection against Confusion
     #              $58 00 00 => protection against Sleep
 
-    #              ! if bit 7 of the last byte is set 
+    #              ! if bit 7 of the last byte is set
     #                (generally: $0C XX YY 80)
     #                => LOAD reg($XX), reg($YY)
     #                   Load the value "register" $YY in "register" $XX
@@ -91,9 +93,9 @@ op_codes: dict[int, OpCode] = {
     #              Note: target first! (ex.: 32 06)
 
     #              Ex.: last attack of the Master (monster):
-    #                   32 06 
+    #                   32 06
     #                         Target self
-    #                   14 01 00 
+    #                   14 01 00
     #                         LOAD stat_reg(HP), reg($01)
     #                   28
     #                         Physical attack
@@ -108,7 +110,7 @@ op_codes: dict[int, OpCode] = {
     0x17: {"params": 3, "comment": "Register OR"}, # OR reg($XX), $YY YY
     0x1727: {"params": 3, "comment": "Add Element"},
     #     Add elemental power to attack
-    #                  (weapon effect of some rings) 
+    #                  (weapon effect of some rings)
     #          $XX XX: element
     #                  $00 01 => vs Dragons ('Dragon ring')
     #                  $00 20 => vs Sea enemies ('Sea ring')
@@ -149,7 +151,7 @@ op_codes: dict[int, OpCode] = {
     #                  - load $00XX in reg($25)
     0x1F: {"params": 2, "comment": "Add Element"},
     # $1F XX XX      : Add elemental power to attack
-    #                  (for some weapons and monster attacks) 
+    #                  (for some weapons and monster attacks)
     #          $XX XX: element
     #                  $00 00 => Neutral
     #                  $00 01 => Effective against Dragons
@@ -172,7 +174,7 @@ op_codes: dict[int, OpCode] = {
     0x20: {"params": 2, "comment": "Critical Hit Chance"},
     # $20 XX YY      : Enhanced critical hit rate
     #             $XX: % chances of critical hit
-    #             $YY: damage multiplier for critical hits??? 
+    #             $YY: damage multiplier for critical hits???
     #                  (real DMG = DMG * $YY / $10)???
     #                  Effect on registers:
     #                  - load $00XX in reg($28)
@@ -192,7 +194,7 @@ op_codes: dict[int, OpCode] = {
     #                  - load $0020 in reg($2B)
     0x22: {"params": 5, "comment": "Magical Damage"},
     # $22 XX XX YY YY ZZ
-    #                : Magical damage 
+    #                : Magical damage
     #                  (for spells)
     #          $XX XX: element
     #          $YY YY: base damage
@@ -230,7 +232,7 @@ op_codes: dict[int, OpCode] = {
     #             $ZZ: max fluctuation
 
     #             restored HP/MP/...  = base value + fluctuation
-    #             with fluctuation = pseudo-randomly generated integer 
+    #             with fluctuation = pseudo-randomly generated integer
     #                                in range [0, max fluctuation[
     #                                (0 included, max fluctuation not included)
 
@@ -270,7 +272,7 @@ op_codes: dict[int, OpCode] = {
     #                  $04 => recover from Confusion ('Shriek')
     #                  $05 => recover from Sleep     ('Waken')
     #                  $07 => removes Mirror         (Erim's "Eerie light")
-    #                         (verified by hacking the Antidote item 
+    #                         (verified by hacking the Antidote item
     #                          (-> $26 07 64) and using one on a mirrored Selan)
     #             $YY: success probability ($64 = 100%)
 
@@ -298,7 +300,7 @@ op_codes: dict[int, OpCode] = {
     #                  - $XX = 03 => load $YY in reg($54)
     0x28: {"params": 0,"comment": "Physical Attack"},
     # $28            : Physical attack
-    #                  (for monsters; like $37 for characters???) 
+    #                  (for monsters; like $37 for characters???)
     #                  Effect on registers:
     #                  - load $0001 in reg($23)
     0x29: {"params": 0,"comment": "Defend"},
@@ -317,7 +319,7 @@ op_codes: dict[int, OpCode] = {
     #                  Ex.: 32 06 2B 01 00 => monster uses Charred newt on self
     0x2C : {"params": 1, "comment": "Monster Cast Spell"},
     # $2C XX         : Cast spell
-    #                  (for monsters) 
+    #                  (for monsters)
     #             $XX: spell number (see Spell Compendium)
     #                  Effect on registers:
     #                  - load $0012 in reg($23)
@@ -343,7 +345,7 @@ op_codes: dict[int, OpCode] = {
     # $2F XX         : ???
     # Hypothesis:
     # $2F XX
-    # counts the number of dead in the hero party (CM included?) 
+    # counts the number of dead in the hero party (CM included?)
     # then stores that value in L2BASM reg($XX) (TO VERIFY!!!)
 
     0x30: {"params": 1,"comment": "Unknown"},
@@ -367,7 +369,7 @@ op_codes: dict[int, OpCode] = {
     #             $XX: type
     #                  $01 => 'Warp' (spell and item)
     #                  $02 => 'Escape' (spell and item), 'Providence'
-    #                  $03 => HP recovery? (see Potion) 
+    #                  $03 => HP recovery? (see Potion)
     #                  $22 => 'Smoke ball' (escape from battle)
     #                  $25 => 'Curselifter'
     0x36: {"params": 0, "comment": "Unknown"},
@@ -405,7 +407,7 @@ op_codes: dict[int, OpCode] = {
     #                  $2A => Bubble blast
     #                  ...
     0x3F: {"params": 3, "comment": "Learnable Attack"},
-    # $3F XX YY YY   : If Capsule Monster has learned its learnable 
+    # $3F XX YY YY   : If Capsule Monster has learned its learnable
     #                  attack number $XX (in range [1, 3])
     #                  => jump to +$YYYY
     0x40: {"params": 0, "comment": "Unknown"},
@@ -436,52 +438,52 @@ op_codes: dict[int, OpCode] = {
     #             $XX: $0E => Protection against Shadow
     #             $XX: $0F => makes you a "Hard enemy"? (to check...)
     #             $XX: $10 => makes you an "insect"? (to check...)
-    #             $XX: $11 => Full protection against 
-    #                              Poisoning, 
-    #                              Silence, 
-    #                              Paralysis, 
-    #                              Confusion 
+    #             $XX: $11 => Full protection against
+    #                              Poisoning,
+    #                              Silence,
+    #                              Paralysis,
+    #                              Confusion
     #                              and Sleep
-    #                          Not protection against 
-    #                              Instant Death, 
-    #                              Effect 6 
+    #                          Not protection against
+    #                              Instant Death,
+    #                              Effect 6
     #                              and Mirror
-    #                         (For a lot of monsters (bosses...), 
+    #                         (For a lot of monsters (bosses...),
     #                          'Seethru cape', 'Seethru silk')
-    #             $XX: $12 => Full protection against Instant Death but 
+    #             $XX: $12 => Full protection against Instant Death but
     #                         HP recovery spells inflict damage! (i.e.: you're
     #                         undead)
     #                         (Not used for items. Common for monsters)
     #             $XX: $13 => ??? (For Core monsters only. Not used for items)
     #                         (greatly reduce all magic DMG?)
     #             $XX: $14 => (For Gorem monsters only. Not used for items)
-    #                         Protection against all attacks except "neutral 
+    #                         Protection against all attacks except "neutral
     #                         elemental" attacks?
     #             $XX: $15 => ???
     #             $XX: $16 => (Not used for items/monster/caps.monsters)
     #             $XX: $17 => Protection against "hard" attacks?
-    #                         (Not used for items. Used for Demise and Leech 
+    #                         (Not used for items. Used for Demise and Leech
     #                          (monsters))
-    #             $XX: $18 => Good protection against a certain elemental 
+    #             $XX: $18 => Good protection against a certain elemental
     #                         damage.
-    #                         0C 81 02 00 42 18 00 
+    #                         0C 81 02 00 42 18 00
     #                          => Fire DMG greatly reduced (by 50 % ?)
-    #                         (Gold gloves, Gold shield, Holy shield, 
+    #                         (Gold gloves, Gold shield, Holy shield,
     #                         Plati gloves, Plati shield, Rune gloves (IP effect))
     #                         (not used for monsters)
-    #             $XX: $19 => Full protection against a certain elemental 
+    #             $XX: $19 => Full protection against a certain elemental
     #                         damage.
     #                         Ex.:
-    #                         (Apron shield, Bolt shield, Cryst shield, 
-    #                         0C 81 02 00 42 19 00 
+    #                         (Apron shield, Bolt shield, Cryst shield,
+    #                         0C 81 02 00 42 19 00
     #                          => Fire attacks miss
     #                         Dark mirror, Flame shield, Water gaunt (IP effect))
     #                         (not used for monsters)
     #             $XX: $1A => "elemental mirror"
-    #                         0C 81 02 00 42 1A 00 
-    #                          => Fire attacks bounce back at attacker 
+    #                         0C 81 02 00 42 1A 00
+    #                          => Fire attacks bounce back at attacker
     #                             (like with Mirror)
-    #                         (Agony helm, Aqua helm, Boom turban, 
+    #                         (Agony helm, Aqua helm, Boom turban,
     #                         Brill helm, Hairpin, Ice hairband (IP effect))
     #                         (not used for monsters)
     #             $XX: $1B => ??? (not used for items / monsters)
@@ -495,9 +497,9 @@ op_codes: dict[int, OpCode] = {
     # $44 XX YY      : ???
     0x477800_FF_54014F: {"params": 0, "comment": "Cast IP Spell"},
     #  _FF_ > Variable
-    # $47 78 00     54 XX     01     4F: 
+    # $47 78 00     54 XX     01     4F:
     #                  Cast spell
-    #                  (for IPs. Doesn't consume MPs) 
+    #                  (for IPs. Doesn't consume MPs)
     #             $XX: spell number (see Spell Compendium)
     0x47: {"params": 2, "comment": "Unknown"},
     # $47 ?? ??      : ???
@@ -512,14 +514,14 @@ op_codes: dict[int, OpCode] = {
     # $4F            : Exit without executing "effect code"???
     #                  (see Gold Dragon)
     0x50: {"params": 0, "comment": "No Re-targetting Spells"},
-    # $50            : A spell or attack where this instruction is used 
-    #                  will not be retargetted if it targets a dead party 
+    # $50            : A spell or attack where this instruction is used
+    #                  will not be retargetted if it targets a dead party
     #                  member.
-    #                  Is used for Rally and Valor (since those are the 2 
-    #                  spells that affect dead characters). 
+    #                  Is used for Rally and Valor (since those are the 2
+    #                  spells that affect dead characters).
     #                  Could be used in other spells or attacks
     #                  (ex.: weapon effect of a sword: $50 37
-    #                        => this sword would allow to hit a dead party 
+    #                        => this sword would allow to hit a dead party
     #                           member (the attack wouldn't be retargetted))
     0x51: {"params": 0, "comment": "Dark Reflector Effect"},
     # $51            : Dark reflector effect
@@ -540,11 +542,11 @@ op_codes: dict[int, OpCode] = {
     0x55: {"params": 3, "comment": "Unsigned Division?"},
     # $55 XX YY YY   : "unsigned" division? (opcode $10 = "signed" division?)
     0x56: {"params": 2, "comment": "Attack Name Duration"},
-    # $56 XX XX      : used to specify how long the attack name must be 
+    # $56 XX XX      : used to specify how long the attack name must be
     #                  displayed.
     #                  Min: $0001
     #                  Max: the duration of the attack (animation) is the limit.
-    #                  Note: $56 00 00 => the attack name is diplayed until 
+    #                  Note: $56 00 00 => the attack name is diplayed until
     #                                     a new message must be displayed
     #                                     (=> until the end of the attack).
     0x57: {"params": 3, "comment": "Item Effectiveness > Spell"},
@@ -573,10 +575,10 @@ op_codes: dict[int, OpCode] = {
     #                  ...
     0x5B: {"params": 0, "comment": "Lose on Master Suicide"},
     # $5B            : Used in the final attack of the Master.
-    #                  Effect: makes you lose if the Master kills himself 
+    #                  Effect: makes you lose if the Master kills himself
     #                  (without this opcode, you would win).
-    0x5C: {"params": 0, "comment": "Hide damage dealt"}
-    # $5C            : Don't show the value of inflicted DMG 
+    0x5C: {"params": 0, "comment": "Hide damage dealt"},
+    # $5C            : Don't show the value of inflicted DMG
     #                  (but the DMG is inflicted nonetheless!)
 }
 subroutines = {
@@ -600,7 +602,7 @@ subroutines = {
     0x11:   " => Full protection against"
             " Poisoning, Silence, Paralysis, Confusion and Sleep."
             "Not protection against Instant Death, Effect 6 and Mirror."
-            "(For a lot of monsters (bosses...),  'Seethru cape', 'Seethru silk'", 
+            "(For a lot of monsters (bosses...),  'Seethru cape', 'Seethru silk'",
     0x12:   " => Full protection against Instant Death but "
             "HP recovery spells inflict damage! (i.e.: you're undead)"
             "(Not used for items. Common for monsters)",
@@ -686,13 +688,13 @@ class BattleScript:
             content += f"{line[0]}: {line[1]}\n"
         return content
 
-    def validate_offset(self):
+    def validate_offset(self) -> None:
         assert self.offset == self.pointer - self.monster.pointer, f"Offset is incorrect. {self.offset} != {self.monster.pointer - self.pointer}"
 
-    def update_offset(self):
+    def update_offset(self) -> None:
         self.offset = self.pointer - self.monster.pointer
 
-    def write(self):
+    def write(self) -> None:
         # Pointer *should* already be set to where the script type is specified.
         # Then we can just write the type, and the offset where the actual script lives.
         # TODO: Investigate if this works for capsule monsters, and can we use this for capsule monsters?
@@ -700,17 +702,17 @@ class BattleScript:
         write_file.seek(self.pointer)
         write_file.write(self.bytecode)
 
-    def write_offset(self):
+    def write_offset(self) -> None:
         self.validate_offset()
         write_file.write(self.type.value)
         write_file.write(self.offset.to_bytes(2, "little"))
 
-    def from_range(self, start: int, end: int):
+    def from_range(self, start: int, end: int) -> None:
         read_file.seek(start)
         self.bytecode = read_file.read(end - start)
 
     @restore_pointer
-    def read(self, offset: int=0):
+    def read(self, offset: int=0) -> None:
         stack: list[int] = [self.pointer]
         read_file.seek(self.pointer + offset)
 
@@ -752,24 +754,27 @@ class BattleScript:
             if op_code == 0x0:
                 read_file.seek(stack.pop())
                 continue
-            elif op_code == 0x1:
+            if op_code == 0x1:
                 # Execute effect code
                 pass
             elif op_code in self.crash_codes:
                 # Crashes game.
                 self.logger.critical(f"Crash code {hex(op_code)} found.")
             elif op_code == 0x3:
-                assert nr_args == 2 and args
+                assert nr_args == 2
+                assert args
                 jump_offset = int.from_bytes(args[0:2], "little")
                 self._pretty.append((hex(jump_offset), "0 -> Jump Offset"))
                 stack.append(self.monster.pointer + jump_offset)
             elif op_code == 0x4: # On Failure GoTo > If previous command failed
-                assert nr_args == 2 and args
+                assert nr_args == 2
+                assert args
                 jump_offset = int.from_bytes(args, "little")
                 self._pretty.append((hex(jump_offset), "0 -> Jump Offset"))
                 stack.append(self.monster.pointer + jump_offset)
             elif op_code == 0x5: # Chance GoTo
-                assert nr_args == 3 and args
+                assert nr_args == 3
+                assert args
                 chance = args[0]
                 bytes_offset = args[1:3]
                 jump_offset = int.from_bytes(bytes_offset, "little", signed=True)
@@ -777,7 +782,8 @@ class BattleScript:
                 self._pretty.append((hex(jump_offset), "1 -> Jump Offset"))
                 stack.append(self.monster.pointer + jump_offset)
             elif op_code == 0x6:
-                assert nr_args == 5 and args
+                assert nr_args == 5
+                assert args
                 compare_value = int.from_bytes(args[0:2], "little")
                 compare_against = int.from_bytes(args[2:4], "little")
                 jump_offset = int.from_bytes(args[4:6], "little")
@@ -786,7 +792,8 @@ class BattleScript:
                 self._pretty.append((hex(jump_offset), "3 -> Jump Offset"))
                 stack.append(self.monster.pointer + jump_offset)
             elif op_code == 0x7:
-                assert nr_args == 5 and args
+                assert nr_args == 5
+                assert args
                 compare_value = int.from_bytes(args[0:2], "little")
                 compare_against = int.from_bytes(args[2:4], "little")
                 jump_offset = int.from_bytes(args[4:6], "little")
@@ -795,7 +802,8 @@ class BattleScript:
                 self._pretty.append((hex(jump_offset), "3 -> Jump Offset"))
                 stack.append(self.monster.pointer + jump_offset)
             elif op_code == 0x8:
-                assert nr_args == 5 and args
+                assert nr_args == 5
+                assert args
                 compare_value = int.from_bytes(args[0:2], "little")
                 compare_against = int.from_bytes(args[2:4], "little")
                 jump_offset = int.from_bytes(args[4:6], "little")
@@ -804,7 +812,8 @@ class BattleScript:
                 self._pretty.append((hex(jump_offset), "3 -> Jump Offset"))
                 stack.append(self.monster.pointer + jump_offset)
             elif op_code == 0x9:
-                assert nr_args == 5 and args
+                assert nr_args == 5
+                assert args
                 compare_value = int.from_bytes(args[0:2], "little")
                 compare_against = int.from_bytes(args[2:4], "little")
                 jump_offset = int.from_bytes(args[4:6], "little")
@@ -813,7 +822,8 @@ class BattleScript:
                 self._pretty.append((hex(jump_offset), "3 -> Jump Offset"))
                 stack.append(self.monster.pointer + jump_offset)
             elif op_code == 0xA:
-                assert nr_args == 5 and args
+                assert nr_args == 5
+                assert args
                 compare_value = int.from_bytes(args[0:2], "little")
                 compare_against = int.from_bytes(args[2:4], "little")
                 jump_offset = int.from_bytes(args[4:6], "little")
@@ -822,7 +832,8 @@ class BattleScript:
                 self._pretty.append((hex(jump_offset), "3 -> Jump Offset"))
                 stack.append(self.monster.pointer + jump_offset)
             elif op_code == 0xB:
-                assert nr_args == 5 and args
+                assert nr_args == 5
+                assert args
                 compare_value = int.from_bytes(args[0:2], "little")
                 compare_against = int.from_bytes(args[2:4], "little")
                 jump_offset = int.from_bytes(args[4:6], "little")
@@ -831,31 +842,37 @@ class BattleScript:
                 self._pretty.append((hex(jump_offset), "3 -> Jump Offset"))
                 stack.append(self.monster.pointer + jump_offset)
             elif op_code in [0xC, 0xD, 0xE, 0xF, 0x10, 0x16, 0x17, 0x18]:
-                assert nr_args == 3 and args
+                assert nr_args == 3
+                assert args
                 reg = args[0]
                 value = int.from_bytes(args[1:3], "little")
                 self._pretty.append((hex(reg), "0 -> Register"))
                 self._pretty.append((hex(value), "1 -> Value"))
             elif op_code in [0x11, 0x12, 0x13, 0x14, 0x15]:
-                assert nr_args == 2 and args
+                assert nr_args == 2
+                assert args
                 reg = args[0]
                 value = int.from_bytes(args[1:2], "little")
                 self._pretty.append((hex(reg), "0 -> Register"))
                 self._pretty.append((hex(value), "1 -> Value"))
             elif op_code == 0x1A:
-                assert nr_args == 1 and args
+                assert nr_args == 1
+                assert args
                 reg = args[0]
                 self._pretty.append((hex(reg), "0 -> Register"))
             elif op_code == 0x32:
                 # TODO: investigate cases for target all foes/allies/self (more args?)
-                assert nr_args == 1 and args
+                assert nr_args == 1
+                assert args
                 target = args[0]
                 self._pretty.append((hex(target), "0 -> Target"))
             elif op_code == 0x37:
                 # Physical Attack, Execute Weapon effect?
                 pass
             elif op_code == 0x42: # Subroutine
-                assert nr_args == 2 and args and args[1:2] == b"\x00"
+                assert nr_args == 2
+                assert args
+                assert args[1:2] == b"\x00"
                 self._pretty.append((hex(args[0]), f"0 -> {subroutines[args[0]]}"))
                 self._pretty.append((hex(args[1]), "1 -> Empty Byte"))
                 # TODO: read subroutines. (So we could edit it later) (Separate class?)

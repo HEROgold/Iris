@@ -1,10 +1,13 @@
-from helpers.files import read_file, write_file
 from typing import Self
+
 from abc_.pointers import TablePointer
 from abc_.stats import RpgStats
 from enums.flags import Alignment
 from helpers.bits import find_table_pointer, read_little_int
-from tables import CapsuleLevelObject, CapsuleObject, CapAttackObject
+from helpers.files import read_file, write_file
+from tables import CapAttackObject, CapsuleLevelObject, CapsuleObject
+
+
 # from .sprites import CapsulePallette
 
 
@@ -99,8 +102,8 @@ class CapsuleMonster(TablePointer):
         _zero = read_little_int(read_file, CapsuleObject.zero)
         class_ = read_little_int(read_file, CapsuleObject.capsule_class)
         alignment = Alignment(read_little_int(read_file, CapsuleObject.alignment))
-        start_skills = read_file.read(CapsuleObject.start_skills)  # type: ignore # list of 3, TODO figure out how these are stored. (Battle scripts?) 
-        upgrade_skills = read_file.read(CapsuleObject.upgrade_skills)  # type: ignore # list of 3, TODO figure out how these are stored. (Battle scripts?) 
+        start_skills = read_file.read(CapsuleObject.start_skills)  # type: ignore # list of 3, TODO figure out how these are stored. (Battle scripts?)
+        upgrade_skills = read_file.read(CapsuleObject.upgrade_skills)  # type: ignore # list of 3, TODO figure out how these are stored. (Battle scripts?)
         hp = read_little_int(read_file, CapsuleObject.hp)
         attack = read_little_int(read_file, CapsuleObject.attack)
         defense = read_little_int(read_file, CapsuleObject.defense)
@@ -121,7 +124,7 @@ class CapsuleMonster(TablePointer):
         _zero = read_little_int(read_file, 1)
         _zero = read_little_int(read_file, 1)
         _1 = read_little_int(read_file, 1) # 1 Byte with data, Always 0x2B, (BattleScript offset?)
-        assert 0x2B == _1
+        assert _1 == 0x2B
         _zero = read_little_int(read_file, 1) # 1 Empty Byte,
         _2 = read_little_int(read_file, 1) # 1 Byte with data. Mana?
         _zero = read_little_int(read_file, 3) # 3 Empty Bytes,
@@ -180,7 +183,7 @@ class CapsuleMonster(TablePointer):
         inst.magic_resistance_factor = magic_resistance_factor
         return inst
 
-    def write(self):
+    def write(self) -> None:
         write_file.seek(self.pointer)
         write_file.write(self.name.encode())
         write_file.write(b"\x00")

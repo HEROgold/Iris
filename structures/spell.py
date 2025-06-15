@@ -1,11 +1,12 @@
-from _types.objects import Cache
-from errors import SpellNotFound
-from helpers.files import read_file, write_file
 from typing import Self
-from enums.flags import CastableSpells
-from helpers.bits import read_little_int
-from tables import SpellObject
+
+from _types.objects import Cache
 from abc_.pointers import Pointer
+from enums.flags import CastableSpells
+from errors import SpellNotFound
+from helpers.bits import read_little_int
+from helpers.files import read_file, write_file
+from tables import SpellObject
 
 
 SPELLS_ADDRESS = 0x000AFAAB
@@ -48,8 +49,8 @@ class Spell(Pointer):
                 read_file.seek(original)
                 cls._name_cache.to_cache(name, inst)
                 return inst
-        else:
-            raise SpellNotFound(f"Spell with name {name} not found.")
+        msg = f"Spell with name {name} not found."
+        raise SpellNotFound(msg)
 
     @classmethod
     def from_index(cls, index: int) -> Self:
@@ -64,21 +65,21 @@ class Spell(Pointer):
                 inst = cls.from_pointer(pointer)
                 cls._int_cache.to_cache(index, inst)
                 return inst
-        else:
-            raise SpellNotFound(f"Spell with index {index} not found.")
+        msg = f"Spell with index {index} not found."
+        raise SpellNotFound(msg)
 
     @classmethod
     def from_pointer(cls, pointer: int) -> Self:
         """
         Get's a Spell from a pointer in a file.
-        
+
         Parameters
         -----------
         :param:`pointer`: :class:`int`
             The pointer to the spell.
         :param:`file`: :class:`_type_`
             The file to get the spell from.
-        
+
         Returns
         -------
         :class:`Self`
@@ -104,7 +105,7 @@ class Spell(Pointer):
             _unk4,
             mp_cost,
             _zero,
-            price
+            price,
         )
         super().__init__(inst, pointer)
         read_file.seek(original)
@@ -114,7 +115,7 @@ class Spell(Pointer):
     def index(self) -> int:
         return SpellObject.pointers.index(self.pointer)
 
-    def write(self):
+    def write(self) -> None:
         write_file.seek(self.pointer)
 
         write_file.write(self.name.encode())

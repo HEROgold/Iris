@@ -1,6 +1,8 @@
 from bitstring import BitArray
+
 from helpers.addresses import address_from_lorom
 from helpers.files import read_file, restore_pointer, write_file
+
 
 END = b"\x00"
 COMPRESS = b"\x0A"
@@ -29,7 +31,7 @@ def read_as_decompressed_name(pointer: int):
     return name
 
 @restore_pointer
-def decompress_name(name: bytes):
+def decompress_name(name: bytes) -> None:
     # 12 lower bits = address,
     # 4 higher bits = bytes to copy -2
     # stored in byte1 and byte2
@@ -41,7 +43,7 @@ def decompress_name(name: bytes):
     name += read_file.read(length) # + b"\x0A" # we add a mark, so we can split later.??
 
 
-def write_compressed_better(end_pointer: int, name: bytes):
+def write_compressed_better(end_pointer: int, name: bytes) -> None:
     split = 0
     # name_len = len(name)
     for i, byte in enumerate(reversed(name)):
@@ -53,8 +55,8 @@ def write_compressed_better(end_pointer: int, name: bytes):
     write_length = len(write)
     write_file.seek(end_pointer - write_length)
     write_file.write(write)
-    
-    
+
+
     while rest:
         write_file.seek(end_pointer - (write_length + len(rest)))
         # print(rest)
@@ -82,7 +84,7 @@ def find_word_address(target: bytes):
     return tell
 
 
-def write_as_compressed_name(end_pointer: int, name: str):
+def write_as_compressed_name(end_pointer: int, name: str) -> None:
     """Write the name to the ROM. Also recompresses the name to the ROM."""
     # WIP:!!!
     # End pointer == start pointer for next name.
@@ -101,10 +103,7 @@ def write_as_compressed_name(end_pointer: int, name: str):
 
     section = names[0]
 
-    if section == b"":
-        length = 3
-    else:
-        length = len(section)
+    length = 3 if section == b"" else len(section)
 
     write_file.seek(end_pointer - length)
     tell = write_file.tell()

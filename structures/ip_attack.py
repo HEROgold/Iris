@@ -1,9 +1,11 @@
-from enums.flags import Targeting, TargetingCursor
-from helpers.files import read_file, write_file
 from typing import Self
+
 from abc_.pointers import Pointer
+from enums.flags import Targeting, TargetingCursor
 from helpers.bits import read_little_int
+from helpers.files import read_file, write_file
 from tables import IPAttackObject
+
 
 class IPAttack(Pointer):
     def __init__(
@@ -13,7 +15,7 @@ class IPAttack(Pointer):
         target_cursor: TargetingCursor,
         target_mode: int,
         ip_cost: int,
-        name: str
+        name: str,
     ) -> None:
         self.name = name
         self.ip_cost = ip_cost

@@ -1,5 +1,6 @@
 from math import ceil, floor
 
+
 ASCII_TO_INT: dict = {i.to_bytes(1, "big"): i for i in range(256)}
 INT_TO_ASCII: dict = {i: b for b, i in ASCII_TO_INT.items()}
 
