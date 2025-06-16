@@ -218,23 +218,27 @@ class ZoneData:
 
 
 class Zone:
-    connections: list[Self]
     event: MapEvent
     data: ZoneData
     _requirements: list[int]
     _chest_indices: list[int]  # TODO
     _cache = Cache[int, Self]()
+    npcs: list[NPC]
+    exits: list[Exit]
+    tiles: list[Tile]
+    waypoints: list[Waypoint]
+    connections: list[Self]
 
     def __init__(self, index: int, start: int, end: int) -> None:
         self._name = None
         self.index = index
         self.start = start
         self.end = end
-        self.npcs: list[NPC] = []
-        self.exits: list[Exit] = []
-        self.tiles: list[Tile] = []
-        self.waypoints: list[Waypoint] = []
-        self.connections = []  # type: ignore[reportAttributeAccessIssue]
+        self.npcs = []
+        self.exits = []
+        self.tiles = []
+        self.waypoints = []
+        self.connections = []
 
     def __repr__(self) -> str:
         return f"<Zone: {self.index}, {self.clean_name}>"
@@ -243,30 +247,28 @@ class Zone:
     def from_index(cls, index: int) -> Self:
         if inst := cls._cache.from_cache(index):
             return inst
-        cls._generate_zones()
         return cls.from_index(index)
 
     @classmethod
     def from_name(cls, name: str) -> Self:
         for zone in cls._cache.values():
-            if zone.clean_name == bytes(name, encoding="ascii"):
+            comparable_cname = zone.clean_name.decode().casefold()
+            comparable_name = bytes(name, encoding="ascii").decode().casefold()
+            if comparable_cname == comparable_name:
                 return zone
-        cls._generate_zones()
-        if zone := cls.from_name(name):
-            return zone
         msg = f"Zone with name {name} not found."
         raise ValueError(msg)
 
     @classmethod
     def _generate_zones(cls) -> None:
-        if len(cls._cache) >= 0xFF:
+        zone_data_count = len(zone_data_pointers)
+        if len(cls._cache) >= zone_data_count:
             msg = "All Zones already generated."
             raise ValueError(msg)
-        current_index = 0
         start_address = 0
         prev_end_address = ZoneObject.address
 
-        for idx in range(0xFF):
+        for current_index, idx in enumerate(range(zone_data_count)):
             read_file.seek(prev_end_address)
             start_address = read_file.tell()
             name = read_as_decompressed_name(start_address)
@@ -278,7 +280,6 @@ class Zone:
             inst.data = ZoneData.from_pointer(zone_data_pointers[idx])
 
             cls._cache.to_cache(current_index, inst)
-            current_index += 1
 
     @property
     def name(self):
@@ -309,6 +310,8 @@ class Zone:
             if name.endswith(b"\x00"):
                 break
         return name
+
+Zone._generate_zones()  # type: ignore[reportPrivateUsage] # Generate all zones on import.  # noqa: SLF001
 
 zone_data_pointers = [
     0x90000,
