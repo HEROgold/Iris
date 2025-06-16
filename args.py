@@ -67,8 +67,8 @@ class Args(argparse.Namespace):
     eat_dragon_eggs: bool
     no_boat_encounters: bool
     secondary_tool: bool
-    custom_spawn_city: bool  # start in portravia
-    spawn_location: str = "portravia"  # start in portravia
+    custom_spawn_city: bool  # start in Portravia
+    spawn_location: str = "Portravia"  # start in Portravia
     unlock_gift_mode: bool
     start_engine: bool
     # Fixing patches
@@ -148,7 +148,7 @@ assert not args.max_world_clock,"EventPatch not implemented."
 assert not args.open_world_base,"EventPatch not implemented."
 assert not args.skip_tutorial,"EventPatch not implemented."
 assert not args.custom_spawn_city, "Custom starting location not implemented."
-assert args.spawn_location == "portravia", "Custom starting location not implemented."
+assert args.spawn_location == "Portravia", "Custom starting location not implemented."
 assert not args.unlock_gift_mode, "Patch not implemented."
 assert not args.start_engine, "Patch not implemented."
 assert not args.ancient_cave_music, "Fix not implemented."  # Won't be implemented.
