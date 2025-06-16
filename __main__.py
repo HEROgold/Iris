@@ -49,6 +49,9 @@ def main() -> None:
 
     if args.no_patch:
         read_write_all()
+        # Cleanup after testing.
+        write_file.close()
+        new_file.unlink()
         return
 
     set_rom_name(b"Lufia II (Iris patch)") # For identification purposes.
@@ -97,7 +100,7 @@ def main() -> None:
         apply_absynnonym_patch("unlock_gift_mode")
     if args.custom_spawn_city:
         set_spawn_location(Zone.from_name("Elcid"), entrance_cutscene=0x02) # TODO: Investigate and fix (event) script loading.
-        set_spawn_location(Zone.from_name(args.spawn_location))
+        # set_spawn_location(Zone.from_name(args.spawn_location))
     if args.start_engine:
         start_engine()
 
