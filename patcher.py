@@ -193,9 +193,9 @@ def apply_game_genie_codes(*codes: str) -> None:
             (address, None): bytearray([data]),
         }
 
-        verify_patch(patch, validation)  # type: ignore[reportArgumentType]
-        write_patch(patch, validation, no_verify=True)  # type: ignore[reportArgumentType]
-        verify_after_patch(patch)  # type: ignore[reportArgumentType]
+        verify_patch(patch, validation)
+        write_patch(patch, validation, no_verify=True)
+        verify_after_patch(patch)
 
 # TODO: Write a function that can apply SRAM patches.
 

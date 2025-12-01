@@ -1,14 +1,22 @@
 from bitstring import BitArray
 
-from helpers.addresses import address_from_lorom
+from helpers.addresses import address_from_lorom, address_to_lorom
 from helpers.files import read_file, restore_pointer, write_file
 
 
 END = b"\x00"
 COMPRESS = b"\x0A"
 COMPRESSED_NAME_OFFSET = 0x878000
+COMPRESSED_NAME_END = 0x878FFF
+COMPRESSED_NAMES_START = address_from_lorom(COMPRESSED_NAME_OFFSET)
+COMPRESSED_NAMES_END = address_from_lorom(COMPRESSED_NAME_END)
 
-def read_compressed_name(pointer: int):
+# Compression constants
+MIN_COMPRESSION_LENGTH = 3
+MAX_COMPRESSION_LENGTH = 17
+MAX_ADDRESS_OFFSET = 0xFFF  # 12 bits maximum
+
+def read_compressed_name(pointer: int) -> bytes:
     read_file.seek(pointer)
     name = b""
     while True:
@@ -18,7 +26,7 @@ def read_compressed_name(pointer: int):
     return name
 
 
-def read_as_decompressed_name(pointer: int):
+def read_as_decompressed_name(pointer: int) -> bytes:
     """Read a name from the ROM. Also decompresses the name from the ROM."""
     read_file.seek(pointer)
     name = read = read_file.read(1)
@@ -42,130 +50,109 @@ def decompress_name(name: bytes) -> None:
     read_file.seek(copy_address)
     name += read_file.read(length) # + b"\x0A" # we add a mark, so we can split later.??
 
+@restore_pointer
+def find_substring_in_rom(target: bytes) -> int | None:
+    """
+    Find a substring in the ROM's compressed name area.
 
-def write_compressed_better(end_pointer: int, name: bytes) -> None:
-    split = 0
-    # name_len = len(name)
-    for i, byte in enumerate(reversed(name)):
-        if byte == 0x0A:
-            split = -i + 2 # + 2 # 0A + 2 bytes
-            break
+    Args:
+        target: The bytes to search for
 
-    rest, write = name[:split], name[split:]
-    write_length = len(write)
-    write_file.seek(end_pointer - write_length)
-    write_file.write(write)
+    Returns:
+        The ROM address where the substring was found, or None if not found
+    """
+    # Search in the compressed name area
+    read_file.seek(COMPRESSED_NAMES_START)
+    search_data = read_file.read(COMPRESSED_NAMES_END - COMPRESSED_NAMES_START)
 
+    # Find the target in the search data
+    pos = search_data.find(target)
+    if pos != -1:
+        return COMPRESSED_NAMES_START + pos
 
-    while rest:
-        write_file.seek(end_pointer - (write_length + len(rest)))
-        # print(rest)
+    return None
 
-        # TODO: implement sliding window for this while loop.
-        # Find the address and length of the referenced word.
+def create_compression_reference(address: int, copy_size: int) -> bytes:
+    """
+    Create the 2-byte compression reference.
 
-        if len(rest) == 3:
-            # oxOa + 2 bytes, TODO: Verify
-            write_file.write(rest[:0])
-            break
-        rest = rest[1:]
-    # Read `rest` and find the address and byte length, then point/write to it.
-    # TODO: Implement this part.
-
-
-def find_word_address(target: bytes):
-    tell = write_file.tell()
-    read = write_file.read(1)
-    length = len(target)
-    while read != target:
-        write_file.seek(tell - 1)
-        read = write_file.read(length)
-        tell = write_file.tell() - length
-    return tell
+    Args:
+        address: The address to copy from
+        copy_size: Number of bytes to copy from address
+    """
+    return BitArray(uint=((address & 0xFFF) << 4) | ((copy_size - 2) & 0xF), length=16).tobytes()
 
 
-def write_as_compressed_name(end_pointer: int, name: str) -> None:
-    """Write the name to the ROM. Also recompresses the name to the ROM."""
-    # WIP:!!!
-    # End pointer == start pointer for next name.
-    # raise NotImplementedError
-    names = name.encode("ascii").split(COMPRESS)
+def write_compressed_name(pointer: int, name: bytes) -> None:
+    """
+    Write a name to ROM with compression.
 
-    # TODO: work in reverse with names
-    # Multiple sections can be compressed, so we need to work in reverse.
-    # Cave to Sundletan B2, in rom is 0A 5B D8 32
-    # 32 here is ascii 2.
-    # 0A 5B D8 references to Cave to Sundletan B
-    # Which is written as 0A 53 28 20 74 6F 20 53 75 6E 64 6C 65 74 61 6E 20 42
-    #               (REF TO CAVE) + _  T  O  _  S  U  N  D  L  E  T  A  N  _  B
-    # (_ is a space > 0x20)
-    # In that sequence, 0A 53 28 refers to Cave >Ascii 43 61 76 65
+    Args:
+        pointer: ROM address where to write the compressed name
+        name: The name string to compress and write
+    """
+    # O(n^2)
+    # First tries to find end to front matches
+    # If no substring is found, it shortens the front, and finds end to front again.
+    # Continues until all bytes are written.
+    # Each word iteration: world, worl, wor, wo, w.
+    # then
+    # World > orld > rld > ld
+    # etc.
+    write_file.seek(pointer)
 
-    section = names[0]
+    written_bytes = 0
+    while written_bytes < len(name):
+        # Try to find the longest substring that exists elsewhere in ROM. Also store it's size.
+        best_match = None
+        size = 0
 
-    length = 3 if section == b"" else len(section)
+        # Check substrings from longest to shortest (minimum 2 bytes)
+        for length in range(min(MAX_COMPRESSION_LENGTH, len(name) - written_bytes), MIN_COMPRESSION_LENGTH, -1):
+            substring = name[written_bytes:written_bytes+length]
+            target_address = find_substring_in_rom(substring)
 
-    write_file.seek(end_pointer - length)
-    tell = write_file.tell()
-    write_file.write(section)
+            if target_address is not None:
+                # Avoid self-referencing.
+                if target_address >= pointer + written_bytes:
+                    continue
 
-    if len(names) == 1:
-        return
+                best_match = target_address
+                size = length
+                break
 
-    for compressed in reversed(names[:-1]):
-        write_as_compressed_name(tell, compressed.decode("ascii"))
+        if best_match and size > MIN_COMPRESSION_LENGTH:
+            # Write compression reference.
+            write_file.write(COMPRESS)
+            reference_bytes = create_compression_reference(best_match, size)
+            write_file.write(reference_bytes)
+            written_bytes += size
+        else:
+            # Write literal byte
+            write_file.write(name[written_bytes:written_bytes+1])
+            written_bytes += 1
 
-    # if len(names[-2]) == 0: # TODO: Verify, always True-thy?
-    #     A0 = tell + len(names[-1]) - 4 # 3 for 0x0A + address, and 1 for 0x00 end byte.
+    # Write null terminator
+    # write_file.write(END)
+    return None
 
-    # for section in reversed(names[::-1]):
-    #     write_file.seek(tell - 3) # -3 to point at 0x0A
-    #     length = len(section)
-    #     read = write_file.read(length)
-    #     while read != section:
-    #         write_file.seek(tell - 1)
-    #         read = write_file.read(length)
-    #         tell = write_file.tell() - length
+def test_compression_round_trip(name: str, test_pointer: int = 0x100000) -> bool:
+    """
+    Test that compression and decompression work correctly for a given name.
 
-    #     address = tell
-    #     copy_address = address_to_lorom(address) - COMPRESSED_NAME_OFFSET
-    #     bytes_1 = BitArray(uint=copy_address, length=12)
-    #     bytes_2 = BitArray(uint=length - 2, length=4)
-    #     to_write = (bytes_1 + bytes_2)
-    #     to_write = to_write.tobytes()
-    #     to_write = to_write[::-1]
+    Args:
+        name: The name to test
+        test_pointer: ROM address to use for testing (should be safe area)
 
-    #     write_file.seek(A0)
-    #     write_file.write(COMPRESS + to_write)
+    Returns:
+        True if round-trip is successful, False otherwise
+    """
+    # Write compressed name
+    write_compressed_name(test_pointer, name)
 
+    # Read it back
+    result = read_compressed_name(test_pointer)
 
-    # # Code for L > R
-    # for section in names:
-    #     if section == b"":
-    #         # Sections can become empty, bc of the split on the COMPRESS byte.
-    #         continue
-    #     if section != names[-1]:
-    #         restore = write_file.tell()
-    #         length = len(section)
-
-    #         read = write_file.read(length)
-    #         tell = restore
-    #         while read != section:
-    #             write_file.seek(tell - 1)
-    #             read = write_file.read(length)
-    #             tell = write_file.tell() - length
-
-    #         # FIXME: Something is wrong with the address calculation.
-    #         # Cave to Sundletan B2 expects, 0x5bd8
-    #         address = tell
-    #         copy_address = address_to_lorom(address) - COMPRESSED_NAME_OFFSET
-    #         bytes_1 = BitArray(uint=copy_address, length=12)
-    #         bytes_2 = BitArray(uint=length - 2, length=4)
-    #         to_write = (bytes_1 + bytes_2)
-    #         to_write = to_write.tobytes()
-    #         to_write = to_write[::-1]
-
-    #         write_file.seek(restore)
-    #         write_file.write(COMPRESS + to_write)
-    #     else:
-    #         write_file.write(section)
+    # Check if they match (accounting for null terminator)
+    expected = name.encode("ascii") + END
+    return result == expected

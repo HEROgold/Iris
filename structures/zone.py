@@ -4,17 +4,20 @@
 # NOTES:
 # Map names are stored in ASCII, and there's two control codes:
 # $00 (end string) and $0A (compression). For compression, the $0A control code is followed by a 16 bit value,
-# where the lower 12 bits is the start address to copy from (+878000) and the upper 4 bits is the number of bytes to copy -2.
+# where the lower 12 bits is the start address to copy from (+878000)
+# and the upper 4 bits is the number of bytes to copy -2.
 
 
 from dataclasses import dataclass
-from typing import Any, Self
+from typing import Any, ClassVar, Self
 
 from _types.objects import Cache
 from helpers.bits import read_little_int
 from helpers.files import read_file, write_file
-from helpers.name import read_as_decompressed_name
+from helpers.name import read_as_decompressed_name, write_compressed_name
+from structures.event_script_redesign import ZoneEventManager
 from structures.events import MapEvent
+from structures.zone_data_pointers import zone_data_pointers
 from tables.zones import ZoneObject
 
 
@@ -218,6 +221,8 @@ class ZoneData:
 
 
 class Zone:
+    event_manager: ClassVar[ZoneEventManager] = ZoneEventManager()
+
     event: MapEvent
     data: ZoneData
     _requirements: list[int]
@@ -277,6 +282,9 @@ class Zone:
             inst = cls(current_index, start_address, prev_end_address)
             inst._name = name
             inst.event = MapEvent.from_index(idx)
+            Zone.event_manager.load_zone_events(inst)
+            Zone.event_manager.get_npc_script(inst)
+            Zone.event_manager.export_zone_events(inst)
             inst.data = ZoneData.from_pointer(zone_data_pointers[idx])
 
             cls._cache.to_cache(current_index, inst)
@@ -294,12 +302,11 @@ class Zone:
 
     def write(self) -> None:
         write_file.seek(self.start)
-        read_as_decompressed_name(self.start)
-        _compressed_name = self.read_compressed_name(self.start)
-        # TODO: Implement
-        # write_compressed_better(self.end, compressed_name)
-        # write_as_compressed_name(self.end, self.name.decode("ascii"))
-        # write_as_compressed_name(self.end, self.name.decode("ascii"))
+        _compressed_name1 = read_as_decompressed_name(self.start)
+        _compressed_name2 = self.read_compressed_name(self.start)
+        # assert _compressed_name1 == _compressed_name2, "Compressed name read methods do not match!"
+        write_compressed_name(self.start, _compressed_name1)
+        return
 
     @staticmethod
     def read_compressed_name(pointer: int):
@@ -312,264 +319,6 @@ class Zone:
         return name
 
 Zone._generate_zones()  # type: ignore[reportPrivateUsage] # Generate all zones on import.  # noqa: SLF001
-
-zone_data_pointers = [
-    0x90000,
-    0xa6df1,
-    0xa31ec,
-    0x9bfbd,
-    0x95bf8,
-    0x8bda8,
-    0x936ae,
-    0xa0698,
-    0xa2a7a,
-    0xa539a,
-    0x8d80b,
-    0x98000,
-    0x99066,
-    0xa6b09,
-    0xa63aa,
-    0xa57c0,
-    0x8b372,
-    0x98724,
-    0x9a478,
-    0x95963,
-    0x92b47,
-    0xa4b7c,
-    0xa5d35,
-    0xa4097,
-    0x933e0,
-    0x9af3a,
-    0x94c54,
-    0x919af,
-    0x8eaae,
-    0xa30b9,
-    0xa4d58,
-    0xa27d4,
-    0xa23c2,
-    0xa0000,
-    0x9bba3,
-    0xa1505,
-    0xa3e73,
-    0xa1e17,
-    0x9897c,
-    0x9db55,
-    0x9c5d7,
-    0x9d787,
-    0x9778b,
-    0xa6300,
-    0x8a807,
-    0xa137b,
-    0x93979,
-    0x8d42d,
-    0x972ab,
-    0x8fc66,
-    0x96b39,
-    0x92298,
-    0x92580,
-    0xa6a8f,
-    0xa644d,
-    0x97ed2,
-    0x9ea3d,
-    0x97037,
-    0x95190,
-    0x9a6a2,
-    0x9dd39,
-    0x9f171,
-    0xa3f87,
-    0xa5474,
-    0xa09dc,
-    0xa1052,
-    0x9df1d,
-    0x9fa0c,
-    0x9cfd1,
-    0x8adf2,
-    0x90362,
-    0x9c9e0,
-    0x91cad,
-    0x8ee4c,
-    0x9996a,
-    0xa5eb6,
-    0x956c8,
-    0x968b9,
-    0x9ad1e,
-    0x92865,
-    0xa38e6,
-    0x9b152,
-    0x979fa,
-    0xa083a,
-    0xa45bc,
-    0xa4c6b,
-    0xa3d5d,
-    0xa6759,
-    0x93109,
-    0x994ee,
-    0x9d1bf,
-    0x94702,
-    0x9a011,
-    0xa42af,
-    0x95e8c,
-    0xa2d10,
-    0xa292a,
-    0x9aaf6,
-    0x94ef3,
-    0x92e28,
-    0xa66c7,
-    0x9b575,
-    0xa0b7b,
-    0xa5f75,
-    0xa0d18,
-    0x98269,
-    0x9611d,
-    0xa64f0,
-    0xa6030,
-    0x9fd64,
-    0x9cddf,
-    0x9d96f,
-    0x9c7dc,
-    0xa47af,
-    0x93c36,
-    0xa2523,
-    0xa6a0b,
-    0x9ec0c,
-    0x9a246,
-    0x8f8ed,
-    0x8f56f,
-    0xa658e,
-    0x8cbeb,
-    0xa01a9,
-    0x9972c,
-    0x99ba2,
-    0xa2e4d,
-    0xa5016,
-    0x9b995,
-    0x949ab,
-    0xa3a08,
-    0xa168e,
-    0xa51df,
-    0xa4a8a,
-    0xa3b28,
-    0xa20f9,
-    0xa1f8c,
-    0x91378,
-    0xa369a,
-    0xa56f0,
-    0x96638,
-    0x8df8a,
-    0x8f1e6,
-    0x8dbcd,
-    0x8c28c,
-    0xa43b7,
-    0x8e6fd,
-    0xa6b7d,
-    0xa4e43,
-    0x9f6b0,
-    0xa1815,
-    0xa11ee,
-    0x984cb,
-    0xa68fd,
-    0xa37c1,
-    0xa331e,
-    0xa4f2e,
-    0xa60e8,
-    0xa6c57,
-    0xa7035,
-    0x8c748,
-    0x98e1e,
-    0x8d025,
-    0x9542c,
-    0x9f4fd,
-    0xa2f84,
-    0x98bcd,
-    0xa67e7,
-    0x9f33b,
-    0x9bdb0,
-    0x96db8,
-    0xa1c9f,
-    0x9f85e,
-    0xa6252,
-    0xa7079,
-    0x909fd,
-    0x99dda,
-    0x906bb,
-    0xa5aec,
-    0x9e100,
-    0x93ef1,
-    0xa344a,
-    0xa5a26,
-    0xa6d8d,
-    0x9cbe0,
-    0x9c1c8,
-    0x9d3ad,
-    0x9b364,
-    0x9b785,
-    0x941a6,
-    0xa267c,
-    0xa48a4,
-    0xa5c73,
-    0x94455,
-    0x91052,
-    0x9c3d1,
-    0x963ad,
-    0xa6873,
-    0xa5bb0,
-    0x9fbb8,
-    0xa6cc1,
-    0xa6986,
-    0xa3c45,
-    0xa6bea,
-    0x91fa7,
-    0xa199b,
-    0xa6ef2,
-    0xa50fd,
-    0xa61a0,
-    0xa70bd,
-    0x9e2dd,
-    0x9169b,
-    0x8e346,
-    0x9a8cc,
-    0x90d2a,
-    0xa6f44,
-    0xa41a6,
-    0x9edd9,
-    0x9e869,
-    0xa225e,
-    0xa46b9,
-    0xa0eb5,
-    0xa034f,
-    0x9efa5,
-    0xa44be,
-    0x9e4ba,
-    0xa04f4,
-    0x97c67,
-    0x9e692,
-    0x992ac,
-    0xa6e4c,
-    0xa1b1e,
-    0xa662c,
-    0xa588e,
-    0x9ff0f,
-    0x9751b,
-    0xa3572,
-    0xa70fd,
-    0xa6f96,
-    0xa6d27,
-    0xa2bc7,
-    0xa6fe8,
-    # 0x90000,    # Filler data for 243
-    # 0x90000,    # Filler data for 244
-    # 0x90000,    # Filler data for 245
-    # 0x90000,    # Filler data for 246
-    # 0x90000,    # Filler data for 247
-    # 0x90000,    # Filler data for 248
-    # 0x90000,    # Filler data for 249
-    # 0x90000,    # Filler data for 250
-    # 0x90000,    # Filler data for 251
-    # 0x90000,    # Filler data for 252
-    # 0x90000,    # Filler data for 253
-    # 0x90000,    # Filler data for 254
-    # 0x90000,    # Filler data for 255
-]
 
 def generate_zones():
     for i in range(ZoneObject.count):

@@ -12,7 +12,7 @@ CANNOT_PATCH_TOGETHER = dedent("""
     The most right selected patch will be applied:
     Vanilla > Frue > Spekkio OR Kureji
 """)
-ALL_CITIES = ", ".join([
+ALL_CITIES = ", ".join([  # noqa: FLY002
     "Overworld","Seafloor","Arek Daos Shrine","Elcid","Secret Skills Cave","Sundletan Cave",
     "Sundletan","Lake Cave","Alunze South Shrine","Foomy Woods","Alunze Castle","Alunze",
     "Alunze North Shrine","Alunze Cave","Tanbel","Tanbel Tower","Clamento","Ruby Cave",

@@ -1,6 +1,6 @@
 from args import args
 from constants import ASCII_ART_COLORIZED, PROJECT_NAME, VERSION
-from helpers.files import read_file, write_file
+from helpers.files import new_file, read_file, write_file
 from logger import iris
 from patcher import (
     apply_absynnonym_patch,
@@ -61,7 +61,7 @@ def main() -> None:
         fix_boltfish()
 
     if args.debug:
-        apply_game_genie_codes(DEBUG_MODE)
+        # apply_game_genie_codes(DEBUG_MODE)
         apply_game_genie_codes(*MASTER_ONE_SHOT)
         apply_game_genie_codes(NO_SCENARIO_ITEMS)
         apply_game_genie_codes(*AIRSHIP_ANYWHERE)
@@ -69,8 +69,11 @@ def main() -> None:
         apply_game_genie_codes(CAPSULE_ALWAYS_LOVE_FOOD)
         apply_game_genie_codes(ELCID_REPORT)
         # Unlock all warp locations.
-        # FIXME: Doesn't apply to ROM. > Figure out why.
+        # Doesn't apply to ROM. Why? Because some are applied to running memory.
+        # These also don't contain a `-` between the 2 parts of the code
+        # Like flags for warp unlocks
         apply_game_genie_codes(*UNLOCK_WARP)
+        apply_game_genie_codes("7E0C4324") # Maxim starts with warp. (slot 1)
 
     apply_game_genie_codes(*args.game_genie_codes)
 
