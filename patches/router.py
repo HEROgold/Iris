@@ -4,9 +4,11 @@ Also look at what we've got at the Archipelago implementation.
 """
 
 from enum import Enum
+
 from structures.item import Item
 from structures.zone import Zone
 from tables.zones import ZoneObject
+
 
 class KeyItems(Enum):
     HOOK            = 423
@@ -63,55 +65,55 @@ unlocks = {
     "Alunze Basement": {
         "requirements": [
             KeyItems.BOMB,
-            KeyItems.HAMMER
-        ]
+            KeyItems.HAMMER,
+        ],
     },
     "Alunze Northwest Cave": {
         "requirements": [
             KeyItems.BOMB,
-            KeyItems.HAMMER
-        ]
+            KeyItems.HAMMER,
+        ],
     },
     "Ancient Tower": {
         "requirements": [
             KeyItems.BOMB,
             KeyItems.HOOK,
             KeyItems.ANCIENT_KEY,
-            KeyItems.HAMMER
-        ]
+            KeyItems.HAMMER,
+        ],
     },
     "Bridge Cave": {
         "requirements": [
             KeyItems.BOMB,
             KeyItems.HOOK,
             KeyItems.HAMMER,
-        ]
+        ],
     },
     "Capsule Monster Cave": {
         "requirements": [
-            KeyItems.MERMAID_JADE
-        ]
+            KeyItems.MERMAID_JADE,
+        ],
     },
     "Dankirk North Cave": {
         "requirements": [
             KeyItems.BOMB,
             KeyItems.HOOK,
             KeyItems.DANKIRK_KEY,
-        ]
+        ],
     },
     "Divine Shrine": {
         "requirements": [
             KeyItems.BOMB,
             KeyItems.HOOK,
             KeyItems.HEART_KEY,
-        ]
+        ],
     },
     "Doom Island": {
         "requirements": [
             KeyItems.CLAIRE,
             KeyItems.LISA,
             KeyItems.MARIE,
-        ]
+        ],
     },
     "Dragon Mountain": {
         "requirements": [
@@ -121,26 +123,26 @@ unlocks = {
             KeyItems.FIRE_ARROW,
             KeyItems.ENGINE,
             KeyItems.MERMAID_JADE,
-        ]
+        ],
     },
     "Flower Capsule": {
         "requirements": [
             KeyItems.HAMMER,
             KeyItems.HOOK,
-        ]
+        ],
     },
     "Flower Mountain": {
         "requirements": [
             KeyItems.HAMMER,
             KeyItems.FLOWER_KEY,
-        ]
+        ],
     },
     "Gordovan West Tower": {
         "requirements": [
             KeyItems.BOMB,
             KeyItems.HOOK,
             KeyItems.WIND_KEY,
-        ]
+        ],
     },
     "Gratze Castle": {
         "requirements": [
@@ -151,48 +153,48 @@ unlocks = {
             KeyItems.HOOK,
             KeyItems.ENGINE,
             KeyItems.MERMAID_JADE,
-        ]
+        ],
     },
     "Kamirno": {
         "requirements": [
             KeyItems.ENGINE,
-        ]
+        ],
     },
     "Karlloon North Shrine": {
         "requirements": [
             KeyItems.BOMB,
             KeyItems.HOOK,
-        ]
+        ],
     },
     "Lake Cave": {
         "requirements": [
             KeyItems.LAKE_KEY,
             KeyItems.ARROW,
             KeyItems.HOOK,
-        ]
+        ],
     },
     "North Dungeon Capsule": {
         "requirements": [
             KeyItems.HOOK,
-        ]
+        ],
     },
     "North Dungeon": {
         "requirements": [
             KeyItems.BOMB,
             KeyItems.HOOK,
-        ]
+        ],
     },
     "North Lighthouse": {
         "requirements": [
             KeyItems.LIGHT_KEY,
-        ]
+        ],
     },
     "Northeast Tower": {
         "requirements": [
             KeyItems.HOOK,
             KeyItems.HAMMER,
             KeyItems.TRIAL_KEY,
-        ]
+        ],
     },
     "Phantom Tree Mountain": {
         "requirements": [
@@ -200,18 +202,18 @@ unlocks = {
             KeyItems.HOOK,
             KeyItems.FIRE_ARROW,
             KeyItems.TREE_KEY,
-        ]
+        ],
     },
     "Ruby Cave Capsule": {
         "requirements": [
             KeyItems.BOMB,
             KeyItems.HAMMER,
-        ]
+        ],
     },
     "Ruby Cave": {
         "requirements": [
-            KeyItems.RUBY_KEY
-        ]
+            KeyItems.RUBY_KEY,
+        ],
     },
     "Shrine Of Vengeance": {
         "requirements": [
@@ -219,34 +221,34 @@ unlocks = {
             KeyItems.HAMMER,
             KeyItems.MERMAID_JADE,
             KeyItems.GHOST_KEY,
-        ]
+        ],
     },
     "Shuman": {
         "requirements": [
             KeyItems.ENGINE,
-        ]
+        ],
     },
     "Skill Cave": {
         "requirements": [
             KeyItems.ARROW,
             KeyItems.FIRE_ARROW,
             KeyItems.HOOK,
-        ]
+        ],
     },
     "Strahda": {
         "requirements": [
             KeyItems.ENGINE,
-        ]
+        ],
     },
     "Submarine Cave": {
         "requirements": [
             KeyItems.MERMAID_JADE,
-        ]
+        ],
     },
     "Tanbel Southeast Tower": {
         "requirements": [
             KeyItems.SKY_KEY,
-        ]
+        ],
     },
     "Tower of Sacrifice": {
         "requirements": [
@@ -254,7 +256,7 @@ unlocks = {
             KeyItems.NARCYSUS_KEY,
             KeyItems.HOOK,
             KeyItems.HAMMER,
-        ]
+        ],
     },
     "Tower of Truth": {
         "requirements": [
@@ -262,22 +264,21 @@ unlocks = {
             KeyItems.HOOK,
             KeyItems.HAMMER,
             KeyItems.BOMB,
-        ]
+        ],
     },
     "Treasure Sword Shrine": {
         "requirements": [
             KeyItems.SWORD_KEY,
             KeyItems.BOMB,
-        ]
-    }
+        ],
+    },
 }
 
 def as_key_item(item: Item) -> KeyItems:
     return KeyItems(item.index)
 
 def get_requirements(zone: Zone) -> list[KeyItems]:
-    requirements = unlocks[zone.clean_name.decode()].get("requirements", [])
-    return requirements
+    return unlocks[zone.clean_name.decode()].get("requirements", [])
 
 def get_reachable_zones(items: list[KeyItems]) -> list[Zone]:
     reachable_zones = []

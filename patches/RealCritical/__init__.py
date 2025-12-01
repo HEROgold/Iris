@@ -1,6 +1,7 @@
 from helpers.files import write_file
 
-def ac_more_enemies():
+
+def ac_more_enemies() -> None:
     write_file.seek(0xA5B71)
     write_file.write(bytes.fromhex("17"))
     write_file.seek(0xA5B77)
@@ -68,7 +69,7 @@ def ac_more_enemies():
     write_file.seek(0xBC5DE)
     write_file.write(bytes.fromhex("62"))
 
-def fix_cave_chest_table():
+def fix_cave_chest_table() -> None:
     write_file.seek(0x19376)
     write_file.write(bytes.fromhex("5C4AD8E16B"))
     write_file.seek(0xB6078)
@@ -93,17 +94,20 @@ def fix_cave_chest_table():
     write_file.seek(0x30DA20)
     write_file.write(bytes.fromhex("E2 20 89 01 08 4A 8F 1C 21 00 22 C7 82 80 48 8F 1B 21 00 7B 8F 1B 21 00 68 28 D0 02 A9 00 C2 20 18 6F 34 21 00 6F 34 21 00 60 A2 00 10 86 54 C2 20 A5 60 29 FF 01 4A 20 20 D8 EB 29 FF 00 0A 18 65 54 AA 5C 88 91 83"))
 
-def fix_menu():
+def fix_menu() -> None:
     write_file.seek(0xDA0)
     write_file.write(bytes.fromhex("4C1AFC"))
     write_file.seek(0x7E1A)
     write_file.write(bytes.fromhex("8E 75 05 5A A0 0B 00 A9 20 9D 40 00 9E 41 00 E8 E8 88 10 F5 7A 4C A3 8B"))
 
-def gift_mode():
+def gift_mode() -> None:
     write_file.seek(0x16B9E)
     write_file.write(bytes.fromhex("A902"))
 
-def killer_names():
+def killer_names() -> None:
+    # FIXME: This is a placeholder. This should be done with Iris.
+    # These values only work with the .sfc version of the game.
+    # from 2003
     write_file.seek(0xB3105)
     write_file.write(bytes.fromhex("4B 69 6C 6C 65 72"))
     write_file.seek(0xB3152)
@@ -117,7 +121,7 @@ def killer_names():
     write_file.seek(0xF53CC)
     write_file.write(bytes.fromhex("4B 69 6C 6C 65 72"))
 
-def jelly_damage_display():
+def jelly_damage_display() -> None:
     write_file.seek(0xB097E)
     write_file.write(bytes.fromhex("C748"))
     write_file.seek(0xB5087)

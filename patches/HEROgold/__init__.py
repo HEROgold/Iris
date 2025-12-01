@@ -18,7 +18,6 @@ from structures.character import InitialEquipment, PlayableCharacter
 from structures.chest import AddressChest, PointerChest
 from structures.ip_attack import IPAttack
 from structures.item import ItemName
-
 from tables import (
     AncientChest1Object,
     AncientChest2Object,
@@ -55,7 +54,7 @@ def get_monsters():
     ]
 
 
-def start_char_with_equipment(char: PlayableCharacter, equipment: InitialEquipment):
+def start_char_with_equipment(char: PlayableCharacter, equipment: InitialEquipment) -> None:
     iris.info(f"Starting {char.name} with {equipment=}.")
     char.equipment = equipment
     char.equipment.write()
@@ -73,7 +72,7 @@ def randomize_starting_equipment(char: PlayableCharacter):
     return char
 
 
-def randomize_all_spells():
+def randomize_all_spells() -> None:
     iris.info("Randomizing spells.")
     spells = get_spells()
     for spell in deepcopy(spells):
@@ -95,7 +94,7 @@ def randomize_all_spells():
         spell.write()
 
 
-def randomize_all_items():
+def randomize_all_items() -> None:
     iris.info("Randomizing items.")
     items = get_items()
     for item in deepcopy(items):
@@ -113,7 +112,7 @@ def randomize_all_items():
         item.write()
 
 
-def randomize_all_monsters():
+def randomize_all_monsters() -> None:
     iris.info("Randomizing monsters.")
     monsters = get_monsters()
     for monster in deepcopy(monsters):
@@ -131,7 +130,7 @@ def randomize_all_monsters():
         monster.write()
 
 
-def randomize_chest_items():
+def randomize_chest_items() -> None:
     iris.warning("Randomizing chest items will overwrite the current chest items.")
     chests = get_chests()
     for chest in deepcopy(chests):
@@ -139,7 +138,7 @@ def randomize_chest_items():
         chest.write()
 
 
-def shuffle_chest_items():
+def shuffle_chest_items() -> None:
     # TODO: Find out what happens, that causes some chests to appear
     # as if they're opened already. When they still contain an item.
     iris.info("Shuffling chest items.")
@@ -155,7 +154,7 @@ def shuffle_chest_items():
         chest.item = items.pop(0)
         chest.write()
 
-def shuffle_items():
+def shuffle_items() -> None:
     """Effectively shuffles all items in the entire game.
     Regardless of where they are pointed from."""
     iris.info("Shuffling items.")
@@ -176,7 +175,7 @@ def shuffle_items():
         item.unknown2 = shuffled.pop(0).unknown2
         item.write()
 
-def shuffle_monsters():
+def shuffle_monsters() -> None:
     iris.info("Shuffling monsters.")
     monsters = get_monsters()
     shuffled = deepcopy(monsters)
@@ -197,7 +196,7 @@ def shuffle_monsters():
         monster.write()
 
 
-def arty_to_artea():
+def arty_to_artea() -> None:
     """Change Arty to Artea, and Arty's bow to Artea's Bow."""
     iris.info("Changing Arty to Artea.")
     artea = PlayableCharacter.from_index(3)
@@ -210,7 +209,7 @@ def arty_to_artea():
     item_name.write()
 
 
-def ax_to_axe():
+def ax_to_axe() -> None:
     """Rename all items with "ax" in their name to "axe"."""
     iris.info("Renaming 'ax' to 'axe'.")
     for index in range(ItemObject.count):
@@ -220,13 +219,13 @@ def ax_to_axe():
             item.name_pointer.name = item.name_pointer.name.replace(" ax ", " axe")
             iris.info(f"Renamed to: {item.name_pointer}.")
             item.write()
-    
+
     ax_attack = IPAttack.from_pointer(IPAttackObject.pointers[164])
     ax_attack.name = ax_attack.name.replace("ax ", "axe")
     iris.info(f"Renamed to: {ax_attack.name}.")
 
 
-def swap_pierre_danielle_sprites():
+def swap_pierre_danielle_sprites() -> None:
     """Swap the sprites of Piere and Danielle.
     Reflects their damage type with their colors, rather than weakness type."""
     iris.info("Swapping sprites for Pierre and Danielle.")
@@ -238,7 +237,7 @@ def swap_pierre_danielle_sprites():
     danielle.write()
 
 
-def guy_the_mage():
+def guy_the_mage() -> None:
     guy = PlayableCharacter.from_index(1)
     guy.stats.mana_points = 0xFFFF
 
@@ -247,19 +246,19 @@ def guy_the_mage():
         spell.write()
 
 
-def gorem_to_golem():
+def gorem_to_golem() -> None:
     for monster in get_monsters():
         if "Gorem" in monster.name:
             monster.name = monster.name.replace("Gorem", "Golem")
             monster.write()
 
-def set_rom_name(name: bytes):
+def set_rom_name(name: bytes) -> None:
     write_file.seek(0x007FC0)
     empty_name = bytes(21)
     assert len(name) <= len(empty_name)
     write_file.write(name)
 
-def fix_boltfish():
+def fix_boltfish() -> None:
     """Fix the boltfish attack script to avoid softlocks.
     This sets 2 offsets to 0x45.
     Previously they pointed to itself (0x3b)."""

@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 
+
 type PatchData = dict[tuple[int, str | None], bytearray | str] | dict[tuple[int, None], bytearray]
 
 class PatchParser:
@@ -16,7 +17,8 @@ class PatchParser:
         read_into = patch
 
         if not patch_file.name.startswith("patch_"):
-            raise Exception(f"Patch file {patch_file} must start with 'patch'.")
+            msg = f"Patch file {patch_file} must start with 'patch'."
+            raise Exception(msg)
 
         f = open(patch_file)
 
@@ -68,7 +70,8 @@ class PatchParser:
                 code = code.replace("  ", " ")
 
             if (address, file_name) in read_into:
-                raise Exception(f"Multiple {address:x} patches used.")
+                msg = f"Multiple {address:x} patches used."
+                raise Exception(msg)
             if code:
                 read_into[(address, file_name)] = code
             for name in labels:
@@ -89,12 +92,13 @@ class PatchParser:
                             if jump < 0:
                                 jump = 0x100 + jump
                             if not 0 <= jump <= 0xFF:
+                                msg = f"Label out of range {address} - {code}"
                                 raise Exception(
-                                    f"Label out of range {address} - {code}"
+                                    msg,
                                 )
                             code = code.replace(name, f"{jump:x}")  # type: ignore[reportArgumentType]
 
-                code = bytearray(map(lambda s: int(s, 0x10), code.split()))
+                code = bytearray(int(s, 0x10) for s in code.split())
                 read_into[address, file_name] = code
 
         f.close()

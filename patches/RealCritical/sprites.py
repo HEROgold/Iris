@@ -1,7 +1,7 @@
 from helpers.files import write_file
 
 
-def bunny_girls():
+def bunny_girls() -> None:
     write_file.seek(0x123E0A)
     write_file.write(bytes.fromhex("0C 00 32 0C 5A 38"))
     write_file.seek(0x123E1D)
@@ -66,7 +66,7 @@ def bunny_girls():
     write_file.write(bytes.fromhex("02"))
 
 
-def fix_shrine_tile_set():
+def fix_shrine_tile_set() -> None:
     # FIXME: Prevents the game from booting.
     write_file.seek(0x138575)
     write_file.write(bytes.fromhex("7F 5A 07 32 60 07 2F 6A 07 41 71 07 47"))
