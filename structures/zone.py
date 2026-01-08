@@ -233,6 +233,7 @@ class Zone:
     tiles: list[Tile]
     waypoints: list[Waypoint]
     connections: list[Self]
+    valid_entrances: list[int] # TODO: see set_spawn_location() for more details
 
     def __init__(self, index: int, start: int, end: int) -> None:
         self._name = None

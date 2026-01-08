@@ -237,6 +237,10 @@ def set_spawn_location(location: Zone, entrance_cutscene: int = 0x2) -> None:
     # VALIDATION
     # 0x01adab: 0xa9 0x03
     # 0x01adb3: 0xa9 0x02
+    if entrance_cutscene not in location.valid_entrances:
+        msg = f"Invalid entrance cutscene {entrance_cutscene} for zone {location.name}."
+        raise ValueError(msg)
+
     iris.debug(f"Setting spawn location to {location.name=}, with {entrance_cutscene=}")
     patch = {
         (0x01adab, None): bytearray(b"\xa9") + bytearray(location.index.to_bytes()),
