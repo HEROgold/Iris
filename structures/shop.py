@@ -107,7 +107,7 @@ class ShopSection:
             self.end_data += 1
         else:
             msg = "Item or Spell expected."
-            raise ValueError(msg)
+            raise TypeError(msg)
 
 
     def remove_item(self, item: Item | Spell) -> None:
@@ -118,7 +118,7 @@ class ShopSection:
             self.end_data -= 1
         else:
             msg = "Item or Spell expected."
-            raise ValueError(msg)
+            raise TypeError(msg)
 
 
     def write(self) -> None:
