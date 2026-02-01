@@ -13,6 +13,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
+from structures.events import EventScript
+
 
 if TYPE_CHECKING:
     from structures.zone import Zone
@@ -401,7 +403,7 @@ class InstructionFactory:
     def create_from_data(cls, opcode: int, data: bytes) -> tuple[EventInstruction, bytes]:
         """Create an instruction by parsing binary data."""
         instruction = cls.create(opcode)
-        parameters, remaining = instruction.parse_parameters(data)
+        _parameters, remaining = instruction.parse_parameters(data)
         return instruction, remaining
 
     @classmethod
@@ -604,7 +606,7 @@ class Script:
             self._cached_size = total
         return self._cached_size
 
-    def accept(self, visitor: "ScriptVisitor"):
+    def accept(self, visitor: "ScriptVisitor") -> None:
         """Accept a visitor for processing."""
         return visitor.visit_script(self)
 
@@ -632,7 +634,7 @@ class ScriptVisitor(ABC):
     """Abstract base class for script visitors."""
 
     @abstractmethod
-    def visit_script(self, script: Script):
+    def visit_script(self, script: Script) -> None:
         """Visit a script."""
 
     def visit_instruction(self, instruction: EventInstruction) -> None:
@@ -654,7 +656,7 @@ class ValidationVisitor(ScriptVisitor):
         self.errors: list[str] = []
         self.warnings: list[str] = []
 
-    def visit_script(self, script: Script):
+    def visit_script(self, script: Script) -> bool:
         """Validate an entire script."""
         self.errors.clear()
         self.warnings.clear()
@@ -749,7 +751,7 @@ class MemoryPool(ABC):
         """Allocate a block of memory."""
 
     @abstractmethod
-    def deallocate(self, block: MemoryBlock):
+    def deallocate(self, block: MemoryBlock) -> None:
         """Deallocate a block of memory."""
 
     @abstractmethod
@@ -1058,7 +1060,7 @@ class EventSystem:
 class LufiaEventSystem:
     """Integration layer for the Lufia II event system with existing Zone/MapEvent classes."""
 
-    def __init__(self, config: EventSystemConfig = None) -> None:
+    def __init__(self, config: EventSystemConfig | None = None) -> None:
         self.config = config or EventSystemConfig()
         self.processor = ScriptProcessor(self.config)
         self.compiled_scripts: dict[str, CompiledScript] = {}
@@ -1078,7 +1080,7 @@ class LufiaEventSystem:
 
         # Load event lists (A, B, C, D classes)
         for event_list in zone.event._event_lists:
-            for event_script in event_list._events:
+            for event_script in event_list.events:
                 compiled = self._load_event_script(event_script, zone)
                 if compiled:
                     compiled_scripts.append(compiled)
@@ -1113,7 +1115,7 @@ class LufiaEventSystem:
         except Exception:
             return None
 
-    def _load_event_script(self, event_script, zone: "Zone") -> CompiledScript | None:
+    def _load_event_script(self, event_script: EventScript, zone: "Zone") -> CompiledScript | None:
         """Load an individual event script."""
         try:
             from helpers.files import read_file

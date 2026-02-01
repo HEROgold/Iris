@@ -5,7 +5,7 @@ from logger import iris
 
 logger = logging.getLogger(f"{iris.name}.Addresses")
 
-def address_to_lorom(address: int):
+def address_to_lorom(address: int) -> int:
     logger.debug(f"Transforming to lorom {address=}")
     if address > 0x3fffff:
         msg = "LOROM address out of range."
@@ -18,7 +18,7 @@ def address_to_lorom(address: int):
 
 
 
-def address_from_lorom(lorom_address: int):
+def address_from_lorom(lorom_address: int) -> int:
     logger.debug(f"Transforming from lorom {lorom_address=}")
     lorom_address &= 0x7FFFFF
     base = (lorom_address >> 1) & 0xFFFF8000

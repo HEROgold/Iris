@@ -33,7 +33,7 @@ class BackupFile:
     def __init__(self, file: Path) -> None:
         self.file = file
 
-    def __enter__(self):
+    def __enter__(self) -> Path:
         self.original = self.file
         self.temp = self.original.with_suffix(".tmp")
         shutil.copy(self.original, self.temp)

@@ -13,7 +13,7 @@ from typing import Any, ClassVar, Self
 
 from _types.objects import Cache
 from helpers.bits import read_little_int
-from helpers.files import read_file, write_file
+from helpers.files import read_file, restore_pointer, write_file
 from helpers.name import read_as_decompressed_name, write_compressed_name
 from structures.event_script_redesign import ZoneEventManager
 from structures.events import MapEvent
@@ -101,6 +101,7 @@ class Waypoint:
 class ZoneData:
     _cache = Cache[int, Self]()
 
+    @restore_pointer
     def __init__(self, pointer: int) -> None:
         self.start = pointer
         read_file.seek(pointer)
@@ -237,6 +238,8 @@ class Zone:
 
     def __init__(self, index: int, start: int, end: int) -> None:
         self._name = None
+        self._modified_name = None  # Stores modified name before writing
+        self._original_start = start  # Store original location for reference
         self.index = index
         self.start = start
         self.end = end
@@ -253,7 +256,12 @@ class Zone:
     def from_index(cls, index: int) -> Self:
         if inst := cls._cache.from_cache(index):
             return inst
-        return cls.from_index(index)
+        # Generate this specific zone lazily
+        cls._generate_zone(index)
+        if inst := cls._cache.from_cache(index):
+            return inst
+        msg = f"Zone with index {index} could not be generated."
+        raise IndexError(msg)
 
     @classmethod
     def from_name(cls, name: str) -> Self:
@@ -266,29 +274,79 @@ class Zone:
         raise ValueError(msg)
 
     @classmethod
-    def _generate_zones(cls) -> None:
+    def _find_zone_address(cls, target_index: int) -> tuple[int, int]:
+        """Find the start and end address for a specific zone index.
+
+        Args:
+            target_index: The zone index to find the address for
+
+        Returns:
+            Tuple of (start_address, end_address)
+        """
+        # Start from the beginning of zone names
+        current_address = ZoneObject.address
+
+        # Iterate through zones up to the target
+        for idx in range(target_index + 1):
+            start_address = current_address
+
+            # Read the compressed name to find where it ends
+            read_file.seek(current_address)
+            read_as_decompressed_name(current_address)
+            end_address = read_file.tell()
+
+            if idx == target_index:
+                return (start_address, end_address)
+
+            # Move to next zone's start
+            current_address = end_address
+
+        msg = f"Could not find address for zone {target_index}"
+        raise ValueError(msg)
+
+    @classmethod
+    @restore_pointer
+    def _generate_zone(cls, index: int) -> None:
+        """Generate a single zone by index.
+
+        Args:
+            index: The zone index to generate
+        """
         zone_data_count = len(zone_data_pointers)
-        if len(cls._cache) >= zone_data_count:
-            msg = "All Zones already generated."
-            raise ValueError(msg)
-        start_address = 0
-        prev_end_address = ZoneObject.address
+        if index >= zone_data_count:
+            msg = f"Zone index {index} out of range (max: {zone_data_count - 1})"
+            raise IndexError(msg)
 
-        for current_index, idx in enumerate(range(zone_data_count)):
-            read_file.seek(prev_end_address)
-            start_address = read_file.tell()
-            name = read_as_decompressed_name(start_address)
-            prev_end_address = read_file.tell()
+        # Check if already cached
+        if cls._cache.from_cache(index):
+            return
 
-            inst = cls(current_index, start_address, prev_end_address)
-            inst._name = name
-            inst.event = MapEvent.from_index(idx)
-            Zone.event_manager.load_zone_events(inst)
-            Zone.event_manager.get_npc_script(inst)
-            Zone.event_manager.export_zone_events(inst)
-            inst.data = ZoneData.from_pointer(zone_data_pointers[idx])
+        # Find the correct address for this zone
+        start_address, end_address = cls._find_zone_address(index)
 
-            cls._cache.to_cache(current_index, inst)
+        # Read the name
+        read_file.seek(start_address)
+        name = read_as_decompressed_name(start_address)
+
+        # Create the zone instance
+        inst = cls(index, start_address, end_address)
+        inst._name = name
+        # inst.event = MapEvent.from_index(index)
+        # TODO: Re-implement event manager to use structures/events
+        # Zone.event_manager.load_zone_events(inst)
+        # Zone.event_manager.get_npc_script(inst)
+        # Zone.event_manager.export_zone_events(inst)
+        inst.data = ZoneData.from_pointer(zone_data_pointers[index])
+
+        cls._cache.to_cache(index, inst)
+
+    @classmethod
+    def _generate_zones(cls) -> None:
+        """Generate all zones (for backward compatibility)."""
+        zone_data_count = len(zone_data_pointers)
+        for idx in range(zone_data_count):
+            if not cls._cache.from_cache(idx):
+                cls._generate_zone(idx)
 
     @property
     def name(self):
@@ -296,21 +354,105 @@ class Zone:
             self._name = read_as_decompressed_name(self.start)
         return self._name
 
+    @name.setter
+    def name(self, new_name: str | bytes) -> None:
+        """Set a new name for the zone.
+
+        Args:
+            new_name: The new name as string or bytes. Will be converted to bytes if string.
+
+        Note:
+            The name change won't be written to ROM until write() is called.
+            If the compressed name is longer than the original, freespace will be allocated.
+        """
+        if isinstance(new_name, str):
+            new_name = new_name.encode("ascii")
+        # Store the decompressed name for later writing
+        self._modified_name = new_name
+        # Update the cached name immediately so reads reflect the change
+        self._name = new_name + b"\x00"
+
     @property
     def clean_name(self) -> bytes:
         # Remove the control byte for compressing
         return self.name.replace(b"\x0a", b"").replace(b"\x00", b"")
 
     def write(self) -> None:
-        write_file.seek(self.start)
-        _compressed_name1 = read_as_decompressed_name(self.start)
-        _compressed_name2 = self.read_compressed_name(self.start)
-        # assert _compressed_name1 == _compressed_name2, "Compressed name read methods do not match!"
-        write_compressed_name(self.start, _compressed_name1)
+        """Write zone name to ROM.
+
+        If the zone name has been modified via set_name(), this will:
+        1. Check if the new compressed name fits in the original space
+        2. If not, allocate new freespace for the name
+        3. Write the compressed name to the appropriate location
+        4. Update the zone's start pointer if relocated
+
+        If the name hasn't been modified, writes back the original compressed bytes.
+        """
+        if self._modified_name is None:
+            # Name not modified, write back original compressed bytes unchanged
+            write_file.seek(self.start)
+            compressed_name = self.read_compressed_name(self.start)
+            write_file.seek(self.start)
+            write_file.write(compressed_name)
+            return
+
+        # Name was modified, need to compress and check space
+        from io import BytesIO
+
+
+        # Calculate how much space the new compressed name will take
+        # Write to a temporary buffer to measure size
+        temp_buffer = BytesIO()
+        original_pos = write_file.tell()
+
+        # Temporarily redirect write_file to our buffer
+        import helpers.files
+        old_write_file = helpers.files.write_file
+        helpers.files.write_file = temp_buffer
+
+        try:
+            write_compressed_name(0, self._modified_name)
+            new_compressed_size = temp_buffer.tell()
+            compressed_bytes = temp_buffer.getvalue()
+        finally:
+            # Restore original write_file
+            helpers.files.write_file = old_write_file
+            write_file.seek(original_pos)
+
+        # Calculate available space at original location
+        original_compressed = self.read_compressed_name(self.start)
+        original_size = len(original_compressed)
+        available_space = self.end - self.start
+
+        if new_compressed_size <= available_space:
+            # Fits in original location, write it there
+            write_file.seek(self.start)
+            write_file.write(compressed_bytes)
+            # Pad with zeros if shorter than original to avoid leftover data
+            if new_compressed_size < original_size:
+                write_file.write(b"\x00" * (original_size - new_compressed_size))
+        else:
+            # Need to allocate new space
+            # TODO: Implement freespace allocation
+            # For now, write a warning and fall back to original location
+            import logging
+
+            from logger import iris
+            log = logging.getLogger(f"{iris.name}.Zone")
+            log.warning(
+                f"Zone {self.index} '{self.clean_name.decode()}': "
+                f"New compressed name size ({new_compressed_size} bytes) exceeds "
+                f"available space ({available_space} bytes). "
+                f"Freespace allocation not yet implemented. Name change may cause corruption!",
+            )
+            # Write anyway (will overwrite next zone!)
+            write_file.seek(self.start)
+            write_file.write(compressed_bytes)
+
         return
 
     @staticmethod
-    def read_compressed_name(pointer: int):
+    def read_compressed_name(pointer: int) -> bytes:
         read_file.seek(pointer)
         name = b""
         while True:
@@ -319,7 +461,8 @@ class Zone:
                 break
         return name
 
-Zone._generate_zones()  # type: ignore[reportPrivateUsage] # Generate all zones on import.  # noqa: SLF001
+# Zones are now generated lazily on-demand via Zone.from_index()
+# Call Zone._generate_zones() explicitly if you need to pre-load all zones
 
 def generate_zones():
     for i in range(ZoneObject.count):

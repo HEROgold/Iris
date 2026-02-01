@@ -240,7 +240,7 @@ class Monster(TablePointer):
         self.stats.gold /= self.scale
 
     @property
-    def stats(self):
+    def stats(self) -> ScalableRpgStats:
         return self._stats
 
     @stats.setter

@@ -30,24 +30,24 @@ from tables import (
 )
 
 
-def get_items():
+def get_items() -> list[Item]:
     return [
         Item.from_index(i)
         for i in range(ItemObject.count)
     ]
-def get_spells():
+def get_spells() -> list[Spell]:
     return [
         Spell.from_pointer(pointer)
         for pointer in SpellObject.pointers
     ]
-def get_chests():
+def get_chests() -> list[AddressChest | PointerChest]:
     return (
         [PointerChest.from_pointer(i) for i in ChestObject.pointers] +
         [AddressChest.from_table(BlueChestObject.address, i * BlueChestObject.item_index) for i in range(BlueChestObject.count)] +
         [AddressChest.from_table(AncientChest1Object.address, i * AncientChest1Object.item_index) for i in range(AncientChest1Object.count)] +
         [AddressChest.from_table(AncientChest2Object.address, i * AncientChest2Object.item_index) for i in range(AncientChest2Object.count)]
     )
-def get_monsters():
+def get_monsters() -> list[Monster]:
     return [
         Monster.from_index(i)
         for i in range(MonsterObject.count)
@@ -60,7 +60,7 @@ def start_char_with_equipment(char: PlayableCharacter, equipment: InitialEquipme
     char.equipment.write()
 
 
-def randomize_starting_equipment(char: PlayableCharacter):
+def randomize_starting_equipment(char: PlayableCharacter) -> PlayableCharacter:
     iris.info(f"Randomizing starting equipment for {char=}.")
     char.equipment.weapon = Item.from_index(random.randint(0 ,466))
     char.equipment.armor = Item.from_index(random.randint(0 ,466))

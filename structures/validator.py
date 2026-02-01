@@ -6,11 +6,11 @@ class ABCValidator[VT](metaclass=ABCMeta):
     def __init__(self, default: VT | None = None) -> None:
         self._default = default
 
-    def __set_name__(self, owner: type, name: str):
+    def __set_name__(self, owner: type, name: str) -> None:
         self.name = name
         self.private = "_" + name
 
-    def __get__(self, obj: object, obj_type: object):
+    def __get__(self, obj: object, obj_type: object) -> VT:
         # obj_type is the class in which the variable is defined
         # so it can be different than type of T
         return cast("VT", getattr(obj, self.private, self._default))
@@ -21,7 +21,7 @@ class ABCValidator[VT](metaclass=ABCMeta):
 
 
 class ExistsValidator[T](ABCValidator[T]):
-    def __get__(self, obj: object, obj_type: object):
+    def __get__(self, obj: object, obj_type: object) -> T:
         value = super().__get__(obj, obj_type)
         if value is None:
             msg = f"{self.name!r} cannot be None"

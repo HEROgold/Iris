@@ -90,7 +90,7 @@ class ShopSection:
         yield from self._gen_items(next_section)
 
     @restore_pointer
-    def fix_spell_section(self, start: int):
+    def fix_spell_section(self, start: int) -> int:
         """A fix for spell shop sections."""
         j = 0
         read_file.seek(start)
@@ -201,7 +201,7 @@ class Shop(TablePointer):
         return inst
 
     @restore_pointer
-    def _find_alternative_end(self, start: int, stop: int):
+    def _find_alternative_end(self, start: int, stop: int) -> ShopSection | None:
         read_file.seek(stop - 2) # -2 > Length of alternative end.
         read = read_file.read(2)
 

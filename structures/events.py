@@ -2,21 +2,21 @@ from __future__ import annotations
 
 import logging
 from string import ascii_letters, digits, punctuation
-from typing import TYPE_CHECKING, Self, TypedDict, Optional, List
+from typing import TYPE_CHECKING, Self, TypedDict
 
 from _types.objects import Cache
-from abc_.pointers import TablePointer
+from abc_.pointers import ReferencePointer, TablePointer
 from constants import POINTER_SIZE
 from enums.event_scripts import EventClass
 from helpers.bits import read_little_int
-from helpers.files import read_file, restore_pointer
+from helpers.files import read_file, restore_pointer, write_file
 from helpers.name import read_as_decompressed_name
 from logger import iris
 from structures.word import Word
 from tables import EventInstObject, MapEventObject
 
+
 # Import the new event system
-from .event_script_redesign import ZoneEventManager, CompiledScript
 
 
 if TYPE_CHECKING:
@@ -24,34 +24,49 @@ if TYPE_CHECKING:
 
 
 # TODO: find out what this is used for.
-class Event(TablePointer):
+# This might JUST be metadata
+class Event(ReferencePointer):
     _event_script: EventScript | None
-    zone: Zone
+    zone: Zone | None
     event_class: EventClass
     event_index: int
-
-    def __init__(self, address: int, index: int) -> None:
-        super().__init__(address, index)
+    _zone_index: int
+    _event_class_value: int
 
     @classmethod
     def from_index(cls, index: int) -> Self:
-        return cls.from_table(EventInstObject.address, index)
+        return cls.from_reference(EventInstObject.address, index, EventInstObject.reference_pointer)
 
     @classmethod
-    def from_table(cls, address: int, index: int) -> Self:
-        from structures.zone import Zone
-        inst = cls(address, index)
-        inst.pointer
+    def from_reference(cls, address: int, index: int, size: int) -> Self:
+        from structures.zone import Zone  # noqa: PLC0415
+        inst = cls(address, index, size)
         read_file.seek(inst.pointer)
-        inst.zone = Zone.from_index(read_little_int(read_file, 1))
-        inst.event_class = EventClass(read_little_int(read_file, 1))
+        reference = read_little_int(read_file, 2)
+        read_file.seek(reference)
+
+        zone_index = read_little_int(read_file, 1)
+        inst._zone_index = zone_index  # Store original zone index
+        # Handle invalid/sentinel zone indices (0xFF, 0xF7, etc.)
+        # Some events don't have valid zones
+        inst.zone = Zone.from_index(zone_index)
+
+        # TODO: Pass this class, from the EventList
+        # Or: pass eventlist to the script.
+        inst.event_class = EventClass(0)
+
         inst.event_index = read_little_int(read_file, 1)
-        # inst._event_script = EventScript(pointer, 0)
-        # inst._event_script.read() # TESTING TEMP
+        inst._event_script = EventScript(inst.pointer, 0, inst.event_index, inst.event_class)
+        inst._event_script.read()
         return inst
 
     def write(self) -> None:
-        return
+        """Write event data back to ROM."""
+        from helpers.files import write_file
+        write_file.seek(self.pointer)
+        write_file.write(bytes([self._zone_index]))
+        write_file.write(bytes([self._event_class_value]))
+        write_file.write(bytes([self.event_index]))
 
     def parse_text(self) -> None:
         # TODO: Read from Terrorwave and parse using read_file reader.
@@ -65,7 +80,7 @@ class Event(TablePointer):
         # TODO: Read from Terrorwave and parse using read_file reader.
         pass
 
-    def parse_pointers(self, count: int, pointers: bytes):
+    def parse_pointers(self, count: int, pointers: bytes) -> list[int]:
         # TODO: transform to read_file reader.
         res: list[int] = []
         for i in range(count - 1):
@@ -131,6 +146,15 @@ For example, Tile 01 will call script D-01.
 
 """
 
+class XEventList(Event): pass
+class AEventList(Event): pass
+class BEventList(Event): pass
+class CEventList(Event): pass
+class DEventList(Event): pass
+# Not documented! \/, but these are present in terrorwave as EventList.index
+class EEventList(Event): pass
+class FEventList(Event): pass
+
 class MapEvent(TablePointer):
     _cache = Cache[int, Self]()
 
@@ -141,7 +165,7 @@ class MapEvent(TablePointer):
         eventlist_highbyte: bytes,
         npc_lowbytes: bytes,
         npc_highbyte: bytes,
-        map_name_pointer: int,
+        map_name_offset: int,
     ) -> None:
         self.logger = logging.getLogger(f"{iris.name}.{__class__.__name__}")
         self.pointer = pointer
@@ -149,8 +173,9 @@ class MapEvent(TablePointer):
         self._eventlist_highbyte = eventlist_highbyte
         self._npc_lowbytes = npc_lowbytes
         self._npc_highbyte = npc_highbyte
-        self._map_name_offset = map_name_pointer
+        self._map_name_offset = map_name_offset
         self._event_lists: list[EventList] = []
+        self._gen_scripts()
 
     @classmethod
     def from_index(cls, index: int) -> Self:
@@ -174,8 +199,6 @@ class MapEvent(TablePointer):
         inst.address = address
         inst.index = index
 
-        # inst._gen_scripts()
-
         cls._cache.to_cache(index, inst)
         return inst
 
@@ -184,17 +207,22 @@ class MapEvent(TablePointer):
         identifier = read_file.read(2)
         assert identifier == b"PH"
 
-        self._npc_script = EventScript(self.base_pointer, self.npc_offset)
+        self._event_lists.append(EventList(self.base_pointer, self.npc_offset, EventClass.NPC_SCRIPT))
+        npc_script = EventScript(self.base_pointer, self.npc_offset, -1, EventClass.NPC_SCRIPT)
+        assert self._event_lists[0].events[0] == npc_script
+        self._npc_script = npc_script
 
-        for _ in range(6):
+        read_file.seek(self.event_list_pointer+2)
+        for i in range(6):
             offset = int.from_bytes(read_file.read(2), byteorder="little")
-            event_list = EventList(self.event_list_pointer, offset)
-            self._event_lists.append(event_list)
+            self._event_lists.append(EventList(self.event_list_pointer, offset, EventClass(i)))
 
-        self._npc_script.read()
-        for event in self._event_lists:
-            event.read()
+        for i in self._event_lists:
+            i.read()
 
+    @property
+    def npc_script(self) -> EventScript:
+        return self._event_lists[0].events[0]
 
     @property
     def map_name_pointer(self) -> int:
@@ -212,7 +240,7 @@ class MapEvent(TablePointer):
         )
 
     @property
-    def base_pointer(self):
+    def base_pointer(self) -> int:
         assert self.pointer & 0xff8000 == 0x38000
         return self.pointer & 0xff8000
 
@@ -244,36 +272,87 @@ class MapEvent(TablePointer):
         assert self.npc_pointer == pointer
 
     def write(self) -> None:
-        return
+        write_file.seek(self.pointer)
+        write_file.write(self._eventlist_lowbytes)
+        write_file.write(self._eventlist_highbyte)
+        write_file.write(self._npc_lowbytes)
+        write_file.write(self._npc_highbyte)
+        write_file.write(self._map_name_offset.to_bytes(2, "little"))
+        write_file.seek(self.event_list_pointer)
+        write_file.write(b"PH")
+        for i in self._event_lists:
+            i.write()
+        # Fix offset of npc-script. Special case of EventList
+        write_file.seek(self.npc_script.base_pointer)
+        write_file.write(self.npc_offset.to_bytes(2, "little"))
 
 
 # Keep existing classes for backward compatibility
 class EventList:
     # TODO: add caching?
-    def __init__(self, pointer: int, offset: int) -> None:
-        self.pointer = pointer
+    def __init__(self, pointer: int, offset: int, event_class: EventClass) -> None:
+        self.base_pointer = pointer
         self.offset = offset
-        self._events: list[EventScript] = []
-        self._gen_scripts() # Terrorwave only points to self.pointer for NPC scripts.
+        self.pointer = self.base_pointer + self.offset
+        self.event_class = event_class
+        self.events: list[EventScript] = []
+        self._gen_scripts()
 
     @restore_pointer
     def _gen_scripts(self) -> None:
-        read_file.seek(self.pointer + self.offset)
+        read_file.seek(self.pointer)
+
+        if self.event_class is EventClass.NPC_SCRIPT:
+            self.events.append(EventScript(self.base_pointer, self.offset, -1, self.event_class))
+            return
+
         while True:
             index = read_little_int(read_file, 1)
-            # Do we need to keep track of these indices?
 
             if index == 0xFF:
                 break
 
             offset = read_little_int(read_file, 2)
-            script = EventScript(self.pointer, offset)
-            self._events.append(script)
-
+            script = EventScript(self.base_pointer, offset, index, self.event_class)
+            self.events.append(script)
 
     def read(self) -> None:
-        for event in self._events:
+        for event in self.events:
             event.read()
+
+    def write(self) -> None:
+        # FIXME: SETUP_MAP events, (aka X-scripts) have wrong base_pointer?
+        if self.event_class is not EventClass.NPC_SCRIPT:
+            write_file.seek(self.base_pointer + 2 + self.event_class.value*2)
+            write_file.write(self.offset.to_bytes(2, byteorder="little"))
+        for event in self.events:
+            event.write()
+        if self.event_class is not EventClass.NPC_SCRIPT: # Maybe we do write FF on NPC_SCRIPT
+            write_file.seek(self.pointer + len(self.events) * 3)
+            write_file.write(b"\xFF")
+
+
+    def __repr__(self) -> str:
+        return f"EventList(pointer={self.pointer:#06x}, class={self.event_class})"
+
+    def __str__(self) -> str:
+        """Format event list for human-readable output."""
+        if not self.events:
+            return "    (Empty event list)"
+
+        max_len = 5
+        lines: list[str] = []
+        for idx, event in enumerate(self.events):
+            lines.append(f"    Event {idx}: {event.pointer:#06x}")
+            # Show first few instructions if available
+            if hasattr(event, "_pretty_script") and event._pretty_script:  # pyright: ignore[reportPrivateUsage] # noqa: SLF001
+                for _i, (opcode, args, desc) in enumerate(event._pretty_script[:max_len]):  # pyright: ignore[reportPrivateUsage] # noqa: SLF001
+                    args_hex = args.hex() if args else ""
+                    lines.append(f"        {opcode}({args_hex}): {desc}")
+                if len(event._pretty_script) > max_len:  # pyright: ignore[reportPrivateUsage] # noqa: SLF001
+                    lines.append(f"        ... ({len(event._pretty_script) - max_len} more instructions)")  # pyright: ignore[reportPrivateUsage] # noqa: SLF001
+
+        return "\n".join(lines)
 
 
 
@@ -281,7 +360,185 @@ class OpCode(TypedDict):
     params: int
     comment: str
 
-
+# Terrorwave instructions:
+_ = {
+    (0x00, (0)),     # End Event
+    (0x01, (2)),     # Check for item (as in locked doors)
+    (0x02, (2)),     # Check for item (as in locked doors)
+    (0x03, (2)),     # Check for item (as in locked doors)
+    (0x04, (2)),     # Check for item (as in locked doors)
+    (0x05, (2)),     # Check for item (as in locked doors)
+    (0x06, (2)),     # Check for item (as in locked doors)
+    (0x07, (1)),     # UNVERIFIED
+    (0x08, ("text")),   # 
+    (0x0c, (0)),     # NOP?
+    (0x0d, (0)),     # NOP?
+    (0x10, ("pointers")),   # Set Up Branching Event
+    (0x11, (0)),     # ERROR?
+    (0x12, (1,"pointers")),     # Branch on Variable
+    (0x13, ("text")),   # 
+    (0x14, ("variable")),   # Branch on Game State (inventory, stats, etc.)
+    (0x15, (1,"addr")),     # Branch on Flag
+    (0x16, (1,1,1)),     # Warp to Map & Event
+    (0x17, (1)),     # Call Inn at Price
+    (0x18, (1)),     # Call Shop
+    (0x19, (0)),     # Call Church
+    (0x1a, (1)),     # Set Event Flag
+    (0x1b, (1)),     # Clear Event Flag
+    (0x1c, ("addr")),   # Jump
+    (0x1d, (1,1)),       # Set Variable
+    (0x1e, (1,1)),       # Add Value to Variable
+    (0x20, (1,1)),       # Get Item 0XX
+    (0x21, (1,1)),       # Get Item 1XX
+    (0x22, (2)),     # Get Gold
+    (0x23, (1,1)),       # Learn Spell
+    (0x24, (1,1)),       # Remove Item 0XX
+    (0x25, (1,1)),       # Remove Item 1XX
+    (0x28, (0)),     #                  
+    (0x29, (1,1,1)),     # Increase party member stats
+    (0x2b, (1)),     # Character Joins Party
+    (0x2c, (1)),     # Character Leaves party
+    (0x2d, (1)),     # Character Appears
+    (0x2e, (1)),     # Character Disappears
+    (0x30, (1,1)),       # Teleport Character
+    (0x31, (1,1)),       # Change Facing
+    (0x32, (1,1)),       # Change NPC wander behavior (misc byte)
+    (0x33, (1,1)),       # Move Character to Location
+    (0x34, (1,1)),       # Change Character Sprite
+    (0x35, (1,1,1)),     # Move roaming NPC
+    (0x37, (1)),     # Pause
+    (0x38, (1)),     # Pause (Longer)
+    (0x39, (0)),     #                  
+    (0x3b, (1)),     # Move Camera
+    (0x3c, (0)),     # Gather Behind Maxim
+    (0x3d, (1)),     # Hide Behind Maxim
+    (0x40, (2)),     # Key check? (Only used in Ancient Cave lobby)
+    (0x42, (0)),     # DUPLICATE - 00 End Event
+    (0x41, (1,1)),       # Camera related (follow for X steps?)
+    (0x43, (1,1)),       # Overwrite Map Tiles
+    (0x45, (1,1,1)),     #                  
+    (0x47, (1)),     # Thinking On/Off
+    (0x48, (1,1)),       #                
+    (0x49, (1)),     #                  
+    (0x4a, (1)),     #                  
+    (0x4b, (1)),     # Play BGM
+    (0x4c, (1)),     # Play Sound
+    (0x4d, (1)),     #                  
+    (0x4f, (1)),     #                  
+    (0x50, (0)),     #                  
+    (0x51, (0)),     #                  
+    (0x53, (1)),     # Invoke Battle
+    (0x54, (1)),     # Open locked door?
+    (0x55, (1)),     #                  
+    (0x56, (0)),     # Stop Earthquake
+    (0x57, (0)),     #                  
+    (0x58, (1)),     # Fadeout
+    (0x59, (1)),     # Luminosity
+    (0x5a, (1,1,1)),     # Start Earthquake
+    (0x5b, (1,1)),       # Play Cutscene
+    (0x5e, (1)),     #                  
+    (0x60, (1,1)),    #                
+    (0x61, ("text")),   # Maxim Speaks
+    (0x62, ("text")),   # Selan Speaks
+    (0x63, ("text")),   # Guy Speaks
+    (0x64, ("text")),   # Artea Speaks
+    (0x65, ("text")),   # Dekar Speaks
+    (0x66, ("text")),   # Tia Speaks
+    (0x67, ("text")),   # Lexis Speaks
+    (0x68, (1,1)),       # Load NPC
+    (0x69, (1)),     # Set Map Properties (escapable, etc.)
+    (0x6a, (1,"addr")),     # Branch on NOT Flag
+    (0x6b, (0)),     #                  
+    (0x6c, (1,1,1)),     # Move Character by Distance
+    (0x6d, ("text")),   # Credits Text
+    (0x6e, ("text")),   # Credits Text
+    (0x6f, (1)),     # Change Music
+    (0x70, (0)),     # Silence
+    (0x71, (0)),     #                  
+    (0x72, (0)),     #                  
+    (0x73, (1,1)),       # Play Animation
+    (0x74, (1)),     # Set Battle BG
+    (0x75, (0)),     #                  
+    (0x76, (0)),     #                  
+    (0x77, (1)),     # DUPLICATE - BE
+    (0x78, (0)),     #                  
+    (0x79, (0)),     #                  
+    (0x7b, (1,1)),       # Load Monster NPC
+    (0x7c, (1)),     # Change Ship Type
+    (0x7d, (1)),     # Relocate Ship
+    (0x7e, (1)),     # Set Ship Exists/Unexists
+    (0x7f, (1)),     # Set Party On/Off Ship
+    (0x80, (1)),     # Set Ship Sprite
+    (0x81, (1)),     # Capsule Monster Joins & Renames
+    (0x82, (0)),     #                  
+    (0x83, (1)),     # Call Exit (Only used for Chaed)
+    (0x85, (1,1)),    #                
+    (0x86, (1,1)),       # Character Movement?
+    (0x87, (1,1)),    #                
+    (0x88, (0)),     #                  
+    (0x89, (1)),     #                  
+    (0x8a, (0)),     #                  
+    (0x8b, (1,1,1)),    #                  
+    (0x8c, (1,1,1)),     # (related to item acquisition sprite)
+    (0x8d, (1,1,1,1,1,1)),       # Play Wave-Warping Animation
+    (0x8e, (1,1,1)),    #                  
+    (0x8f, (1,1,1)),     # Wave motion up-down
+    (0x90, (1,1,1)),     # Wave motion right-left
+    (0x91, (1,1)),    #                
+    (0x92, (1)),     #                  
+    (0x94, (1,1,1)),    #                  
+    (0x95, (1,1,1)),     # Screen tint animation
+    (0x97, (0)),     #                  
+    (0x98, (1,1)),       # Thunder Warp
+    (0x99, (1)),     #                  
+    (0x9a, (1)),     #                  
+    (0x9c, (1,1,1)),    #                  
+    (0x9d, (1)),     #                  
+    (0x9e, ("text")),   # 
+    (0x9f, (1,1,1)),     # Wave motion shrink
+    (0xa0, (1,1,1,1,1,1)),                #                
+    (0xa1, (1,1)),        #                
+    (0xa2, (1)),    #                  
+    (0xa3, (1,1)),       # Play NPC focused animation
+    (0xa4, (0)),     # Screen Mosaic
+    (0xa5, (0)),     # Call Game Load Screen
+    (0xa6, (0)),    #                  
+    (0xa7, (1)),    #                  
+    (0xa8, (1)),     # Ancient Cave Item Management
+    (0xa9, (1,1)),        #                
+    (0xaa, (0)),    #                  
+    (0xab, (1)),     # Check Dragon Eggs Obtained
+    (0xad, (1,1,1)),     # Dragon eggs related?
+    (0xae, (1)),    #                  
+    (0xaf, (1,1)),       # Character Flicker
+    (0xb0, (1)),    #                  
+    (0xb1, (1,1)),       # Character ???
+    (0xb3, (1)),     # Party Members Change Facing
+    (0xb4, (1,1,1)),        #                  
+    (0xb5, (0)),    #                  
+    (0xb6, (1,1)),        #                
+    (0xb7, (1)),    #                  
+    (0xb8, (0)),    #                  
+    (0xb9, (1)),     # Fill IP Bar
+    (0xba, (1)),    #                  
+    (0xbb, (0)),     # Call game report
+    (0xbc, (0)),    #                  
+    (0xbd, (1,1)),        #                
+    (0xbe, (1)),     # DUPLICATE - 77
+    (0xbf, (1,1,1)),        #                  
+    (0xc0, (1,1,1)),        #                  
+    (0xc1, (1,1)),        #                
+    (0xc2, (1,1,1,1,1,1)),                #                
+    (0xc3, (1,1,1,1,1,1)),                #                
+    (0xc4, (1,1)),       # Scroll Screen
+    (0xc5, (0)),    #                  
+    (0xc6, (1,1)),       # Play Sprite Animation
+    (0xc7, (0)),
+    (0xc9, (1,1,1,1,1,1,1)),
+    (0xca, (1,1,1)),
+    (0xcb, (1)),
+    (0xcc, (0)),
+}
 
 # Refer to L2_ScriptEvents.txt for more information.
 op_codes: dict[int, OpCode] = {
@@ -390,7 +647,7 @@ op_codes: dict[int, OpCode] = {
     0x66: {"params": 0, "comment":" => Tia speaks"},
     0x67: {"params": 0, "comment":" => Lexis speaks"},
     0x68: {"params": 2, "comment":""" XX YY => Character XX use sprite YY (used in map pre-scripts)"""},
-    0x69: {"params": 1, "comment":" XX => ?"},
+    0x69: {"params": 1, "comment":" XX => ?"}, # After 'music for battle?', start of MasterJelly battle?
     0x6A: {"params": 3, "comment":""" XX YY YY => If the event flag numberXX is clear  => JUMP TO [script start offset + ZZYY]"""},
     0x6B: {"params": 0, "comment":" => ?"},
     0x6C: {"params": 3, "comment":""" XX YY ZZ => character XX moves; YY: horizontally, ZZ: vertically"""},
@@ -517,14 +774,14 @@ class TextScript:
 
     @property
     @restore_pointer
-    def pre_data(self):
+    def pre_data(self) -> bytes:
         pointer = self.pointer - 0x1000
         assert pointer >= 0
         read_file.seek(pointer)
         return read_file.read(0x1000)
 
     @restore_pointer
-    def read(self):
+    def read(self) -> bytes:
         read_file.seek(self.pointer)
         b = b""
         while True:
@@ -552,7 +809,7 @@ class TextScript:
 
     # TODO: parse the rest of the text. Below line displays compressed to full text.
     # b'\x05P \x88 Elc\xf2!\x00' > "Welcome to Elcid!"
-    def pretty_read(self):
+    def pretty_read(self) -> str:
         """Decompresses words from a text, and returns the text."""
         text = self.read()
         result = ""
@@ -597,23 +854,39 @@ class EventScriptV2:
 class EventScript:
     _seen: list[int]
 
-    def __init__(self, base_pointer: int, offset: int) -> None:
+    def __init__(self, base_pointer: int, offset: int, index: int, event_class: EventClass) -> None:
         self.logger = logging.getLogger(f"{iris.name}.{__class__.__name__}")
         self.base_pointer = base_pointer
         self.offset = offset
+        self.pointer = self.base_pointer + self.offset
+        self.index = index # Index of -1 means it's an NPC Script
+        self.event_class = event_class
         self._script: list[bytes] = []
-        self._pretty_script: list[tuple[str, bytes, str]] = []
+        self._pretty_script: list[tuple[str, bytes, str, int]] = []
         self._children = set()
         self._parent: Self | None = None
         self._text_mode = False
 
-    @property
-    def pointer(self) -> int:
-        return self.base_pointer + self.offset
+    def __eq__(self, other: Self) -> bool: # pyright: ignore[reportIncompatibleMethodOverride]
+        return (
+            self.base_pointer == other.base_pointer
+            and self.offset == other.offset
+            and self.pointer == other.pointer
+            and self.index == other.index
+            and self.event_class == other.event_class
+            and self._script == other._script
+            and self._pretty_script == other._pretty_script
+            and self._children == other._children
+            and self._parent == other._parent
+            and self._text_mode == other._text_mode
+        )
+
+    def __hash__(self) -> int:
+        return id(self)
+
     @property
     def size(self) -> int:
-        child_size = sum([child.size for child in self.children])
-        return len(self._script) + child_size
+        return len(self._script) + sum([child.size for child in self.children])
     @property
     def children(self) -> set[Self]:
         return self._children
@@ -627,11 +900,45 @@ class EventScript:
             parent._children.add(self)
             self._seen = parent._seen
 
+    # @restore_pointer
+    # def read_scripts(self, next_pointer: int) -> None:
+    #     scripts = []
+    #     all_pointers = sorted(MapEventObject.ALL_POINTERS)
+    #     for index, script_pointer in sorted(self.script_pointers):
+    #         next_pointer = next(cur_pointer for cur_pointer in all_pointers if cur_pointer > script_pointer)
+    #         script = MapEventObject.Script(script_pointer, next_pointer - script_pointer, self, index=index)
+    #         script.deallocate()
+    #         scripts.append(script)
+
+    def create_pointer(self, addr: bytes) -> tuple[int, bool]:
+        # Creates pointers/offsets to jump targets.
+        offset = int.from_bytes(addr, byteorder="little")
+        pointer = self.base_pointer + offset
+        is_local_pointer = (
+            self.pointer <= pointer < self.pointer + self.size
+        )
+        # Terrorwave doesn't use non-local pointers, so we don't need to either.
+        assert is_local_pointer
+        return (
+            (offset - (self.pointer - self.base_pointer), is_local_pointer)
+            if is_local_pointer else
+            (pointer, is_local_pointer)
+        )
+
+    def parse_text(self):
+        return None
+
     # TODO: implement a writing method.
-    # should be able to write the script back, and update pointers etc.
+    # should be able to write the script back, (pointers are updated on EventList before write)
+    # \/ Only required for writing custom scripts. We're not there yet. So for now we'll
+    # keep the write as simple as we can
     # When writing, hitting a branch should keep track of how many branches we've seen
     # and then index using that number on self._children to get that branch's script.
     # From there we can modify pointers as required.
+    def write(self) -> None:
+        write_file.seek(self.base_pointer + self.offset) # base + offset = pointer...
+        write_file.write(b"".join(self._script))
+
 
     @restore_pointer
     def read(self, offset: int = 0) -> None:
@@ -660,10 +967,10 @@ class EventScript:
 
             self._script.append(byte)
             self._script.append(args)
-            self._pretty_script.append((hex(op_code), args, description))
+            self._pretty_script.append((hex(op_code), args, description, _address))
 
             if op_code in [0x10, 0x12]:
-                print(f"To Implement: {op_code=}, {args=}")
+                pass
 
             if op_code in ENTER_TEXT_MODE and self._text_mode is False:
                 self._text_mode = True # Debugging purposes.
@@ -679,7 +986,7 @@ class EventScript:
             elif op_code == 0x06:
                 if args[1] != 0x20:
                     # What is args[1] == 0x0A? (relative pointer jump)
-                    print(args) # Figure out the meaning when arg[1] != 0x20
+                    pass # Figure out the meaning when arg[1] != 0x20
             elif op_code == 0x08:
                 text = TextScript(self.pointer + offset) # TODO: figure out how to set uncompressed text.
                 b = text.read()
@@ -713,7 +1020,6 @@ class EventScript:
                 assert pointer_count+1 == len(_pointers)
 
                 # Maybe we branch/jump, then do something else?
-                print(read_file.tell() + _pointers[pointer_count])
                 read_file.seek(read_file.tell() + _pointers[pointer_count])
                 self._branch(self.pointer + _pointers[pointer_count])
                 # offset += _pointers[pointer_count]
@@ -721,7 +1027,6 @@ class EventScript:
                 read_file.seek(restore)
                 if pointer_count == 0:
                     read_file.seek(read_file.tell() - 1)
-                print(pointer_count, _pointers[pointer_count])
             elif op_code == 0x14:
                 offset = self.instruction_parsing(offset, args)
             elif op_code == 0x15:
@@ -746,7 +1051,6 @@ class EventScript:
                 b = text_script.read()
                 offset += len(b)
                 read_file.seek(self.pointer + offset)
-                print(b)
 
             elif op_code == 0xCC:
                 tell = read_file.tell()
@@ -756,7 +1060,6 @@ class EventScript:
                     data.append(byte)
                     if byte == b"\x20":
                         break
-                print((tell, data))
                 read_file.seek(tell)
             elif op_code in []:
                 # The listed opcodes, don't require special handling. or are unknown.
@@ -768,10 +1071,10 @@ class EventScript:
         assert len(self._stack) == 0, f"Script restore stack not empty: {self._stack}"
         s = "\n"
         for i in self._pretty_script:
-            s += f"    {i[0]} + {i[1]}: {i[2]}\n"
+            s += f"    {i[0]} + {i[1]}: {i[2]} @{i[3]}\n"
         self.logger.debug(s)
 
-    def instruction_parsing(self, offset: int, args: bytes):
+    def instruction_parsing(self, offset: int, args: bytes) -> int:
         # TODO: figure out a better name for this method.
         flag = None
         while True:
@@ -834,6 +1137,25 @@ class EventScript:
             self.logger.warning(f"Repeat at branch detected in EventScript {self.pointer=} at {jump=}")
             return
         self._seen.append(self.base_pointer + jump)
-        child = EventScript(self.base_pointer, jump)
+        child = EventScript(self.base_pointer, jump, self.index, self.event_class)
         child.parent = self
         child.read()
+
+    def __repr__(self) -> str:
+        return f"EventScript(pointer={self.pointer:#06x}, instructions={len(self._pretty_script)})"
+
+    def __str__(self) -> str:
+        """Format event script for human-readable output."""
+        if not hasattr(self, "_pretty_script") or not self._pretty_script:
+            return f"Script at {self.pointer:#06x} (not yet read)"
+
+        lines = [f"Script at {self.pointer:#06x}:"]
+        for opcode, args, desc in self._pretty_script:
+            args_hex = args.hex() if args else ""
+            lines.append(f"    {opcode}({args_hex}): {desc}")
+
+        # Show child branches if any
+        if self._children:
+            lines.append(f"    [Has {len(self._children)} branch(es)]")
+
+        return "\n".join(lines)

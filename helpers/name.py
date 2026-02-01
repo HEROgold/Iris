@@ -1,6 +1,6 @@
 from bitstring import BitArray
 
-from helpers.addresses import address_from_lorom, address_to_lorom
+from helpers.addresses import address_from_lorom
 from helpers.files import read_file, restore_pointer, write_file
 
 
@@ -134,9 +134,8 @@ def write_compressed_name(pointer: int, name: bytes) -> None:
 
     # Write null terminator
     # write_file.write(END)
-    return None
 
-def test_compression_round_trip(name: str, test_pointer: int = 0x100000) -> bool:
+def test_compression_round_trip(name: bytes, test_pointer: int = 0x100000) -> bool:
     """
     Test that compression and decompression work correctly for a given name.
 

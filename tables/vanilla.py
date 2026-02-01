@@ -1,3 +1,6 @@
+from typing import ClassVar
+
+
 class EventInstObject:
     reference_pointer = 2
     address = 0x4A14
@@ -10,7 +13,7 @@ class IPAttackObject:
     target_cursor = 1
     target_mode = 1
     ip_cost = 1
-    pointers = [
+    pointers: ClassVar[list[int]] = [
         0x21060,
         0x21074,
         0x21084,
@@ -184,7 +187,7 @@ class IPAttackObject:
 
 class CharLevelObject:
     level = 1
-    pointers = [
+    pointers: ClassVar[list[int]] = [
         0x2B2B6,
         0x2B2D3,
         0x2B2F7,
@@ -197,7 +200,7 @@ class CharLevelObject:
 
 class CharExpObject:
     xp = 3
-    pointers = [
+    pointers: ClassVar[list[int]] = [
         0x2B2BB,
         0x2B2DF,
         0x2B2FC,
@@ -215,7 +218,7 @@ class InitialEquipObject:
     helmet = 2
     ring = 2
     jewel = 2
-    pointers = [
+    pointers: ClassVar[list[int]] = [
         0x2B2BE,
         0x2B2E2,
         0x2B2FF,
@@ -263,7 +266,7 @@ class ChestObject:
     misc1: bytes = b"u00 u01 u02 u03 u04 u05 item_high_bit u07"
     misc2 = 1
     item_low_byte = 1
-    pointers = [
+    pointers: ClassVar[list[int]] = [
         0x8BABB,
         0x8BABE,
         0x8BAC1,
@@ -477,7 +480,7 @@ class SpellObject:
     mp_cost = 1
     zero = 2
     price = 2
-    pointers = [
+    pointers: ClassVar[list[int]] = [
         0xAFAAB,
         0xAFACD,
         0xAFAEF,
@@ -540,7 +543,7 @@ class MonsterObject:
     misc = 1
     address = 0xB05C0
     count = 224
-    grouped = ["224", "point1", "b05c0", "2"]
+    grouped: ClassVar[list[str]] = ["224", "point1", "b05c0", "2"]
 
 
 class ItemObject:
@@ -561,7 +564,7 @@ class ItemObject:
     zero = 2
     address = 0xB4F69
     count = 467
-    grouped = ["467", "point1", "b4f69", "2"]
+    grouped: ClassVar[list[str]] = ["467", "point1", "b4f69", "2"]
 
 
 class CharGrowthObject:
@@ -573,7 +576,8 @@ class CharGrowthObject:
     gut = 1
     mgr = 1
     unk = 1
-    pointers = [
+    # float to avoid re-using int on class obj. It's only for type checker.
+    pointers: ClassVar[list[float]] = [
         0xBB62C,
         0xBB634,
         0xBB63C,
@@ -749,7 +753,7 @@ class CapsuleObject:
     magic_resistance_factor = 1
     address = 0xBDCB8
     count = 35
-    grouped = ["35", "point1", "bdcb8", "2"]
+    grouped: ClassVar[list[str]] = ["35", "point1", "bdcb8", "2"]
 
 
 class ShopObject:
@@ -763,7 +767,7 @@ class CapAttackObject:
     animation = 1
     address = 0xBF63B
     count = 84
-    grouped = ["84", "point1", "bf63b", "2"]
+    grouped: ClassVar[list[str]] = ["84", "point1", "bf63b", "2"]
 
 
 class ItemNameObject:
@@ -782,7 +786,7 @@ class TownSpriteObject:
     unknown = 1
     palette_index = 1
     sprite_pointer = 3
-    pointers = [
+    pointers: ClassVar[list[int]] = [
         0x27F1F6,
         0x27F1FB,
         0x27F200,

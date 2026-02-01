@@ -88,7 +88,7 @@ class Spell(Pointer):
         original = read_file.tell()
         read_file.seek(pointer)
 
-        name = read_file.read(SpellObject.name_text).decode() # type: ignore
+        name = read_file.read(SpellObject.name_text).decode()
         _unk1 = read_little_int(read_file, SpellObject.unk1)
         element = read_little_int(read_file, SpellObject.element)
         characters = CastableSpells.from_byte(read_file.read(1))

@@ -227,7 +227,7 @@ class Item(TablePointer):
             iris.warning(f"{item_flag=} also increases DFP (increases AGL).")
 
     @property
-    def is_coin_set(self):
+    def is_coin_set(self) -> bool:
         return 0x18a <= self.index <= 0x18d
 
     def write(self) -> None:

@@ -1,3 +1,6 @@
+from collections.abc import Iterable
+
+
 class Cache[K, V]:
     def __init__(self) -> None:
         self._cache: dict[K, V] = {}
@@ -10,10 +13,10 @@ class Cache[K, V]:
     def to_cache(self, key: K, value: V) -> None:
         self._cache[key] = value
 
-    def keys(self):
+    def keys(self) -> Iterable[K]:
         return self._cache.keys()
 
-    def values(self):
+    def values(self) -> Iterable[V]:
         return self._cache.values()
 
     def __contains__(self, key: K) -> bool:

@@ -665,7 +665,7 @@ class BattleScript:
         self.read()
 
     @property
-    def size(self):
+    def size(self) -> int:
         type_size = 1
         offset_size = 2
         return len(self.bytecode) + type_size + offset_size
@@ -678,7 +678,7 @@ class BattleScript:
         return self.monster.pointer + self.offset
 
     @property
-    def end(self):
+    def end(self) -> int:
         return self.pointer + self.size
 
     @property

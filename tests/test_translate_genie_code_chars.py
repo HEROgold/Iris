@@ -1,7 +1,7 @@
 from patcher import translate_game_genie_code_snes
 
 
-def test_translate_genie_code_chars():
+def test_translate_genie_code_chars() -> None:
     code = "ABCD-EFFF"
     code = code.replace("-", "")
     address, data = translate_game_genie_code_snes(code)

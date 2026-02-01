@@ -47,17 +47,17 @@ from tables.vanilla import (
 )
 
 
-def test_capsules():
+def test_capsules() -> None:
     for index in range(CapsuleObject.count):
         assert CapsuleMonster.from_table(CapsuleObject.address, index)
 
 
-def test_characters():
+def test_characters() -> None:
     for index in range(CharacterObject.count):
         assert PlayableCharacter.from_table(CharacterObject.address, index)
 
 
-def test_chests():
+def test_chests() -> None:
     for pointer in ChestObject.pointers:
         assert PointerChest.from_pointer(pointer)
     for index in range(AncientChest1Object.count):
@@ -66,73 +66,73 @@ def test_chests():
         assert AddressChest.from_table(AncientChest2Object.address, index)
 
 
-def test_events():
+def test_events() -> None:
     for i in range(EventInstObject.count):
         assert Event.from_index(i)
 
 
-def test_bosses():
+def test_bosses() -> None:
     for i in range(BossFormationObject.count):
         pointer = find_table_pointer(BossFormationObject.address, i)
         assert BattleFormation.from_pointer(pointer)
 
 
-def test_formations():
+def test_formations() -> None:
     for i in range(FormationObject.count):
         assert BattleFormation.from_table(FormationObject.address, i)
 
 
-def test_map_formations():
+def test_map_formations() -> None:
     for i in range(MapFormationsObject.count):
         pointer = find_table_pointer(MapFormationsObject.address, i)
         assert BattleFormation.from_pointer(pointer)
 
 
-def test_ip_attacks():
+def test_ip_attacks() -> None:
     for pointer in IPAttackObject.pointers:
         assert IPAttack.from_pointer(pointer)
 
 
-def test_items():
+def test_items() -> None:
     for index in range(ItemObject.count):
         assert Item.from_table(ItemObject.address, index)
 
 
-def test_maidens():
+def test_maidens() -> None:
     assert Lisa
     assert Marie
     assert Clare
 
 
-def test_monsters():
+def test_monsters() -> None:
     for index in range(MonsterObject.count):
         assert Monster.from_table(MonsterObject.address, index)
 
 
-def test_npcs():
+def test_npcs() -> None:
     for index in range(RoamingNPCObject.count):
         assert RoamingNPC.from_reference(RoamingNPCObject.address, index)
 
 
-def test_priests():
+def test_priests() -> None:
     pass  # TODO: Implement PriestObject/From npc?
 
 
-def test_rewards():
+def test_rewards() -> None:
     pass
 
 
-def test_shops():
+def test_shops() -> None:
     for index in range(ShopObject.count):
         assert Shop.from_table(ShopObject.address, index)
 
 
-def test_spells():
+def test_spells() -> None:
     for pointer in SpellObject.pointers:
         assert Spell.from_pointer(pointer)
 
 
-def test_palettes():
+def test_palettes() -> None:
     for i in range(CapPaletteObject.count):
         palette = CapsulePallette.from_index(i)
         palette.write()
@@ -141,7 +141,7 @@ def test_palettes():
         over_pallette.write()
 
 
-def test_sprites():
+def test_sprites() -> None:
     for i in range(CapSpritePTRObject.count):
         capsule_sprite = CapsuleSprite.from_index(i)
         capsule_sprite.write()
@@ -156,11 +156,11 @@ def test_sprites():
         over_sprite.write()
 
 
-def test_maps():
+def test_maps() -> None:
     for i in range(MapEventObject.count):
         assert MapEvent.from_index(i)
 
 
-def test_words():
+def test_words() -> None:
     for index in range(WordObject.count):
         assert Word.from_table(WordObject.address, index)
