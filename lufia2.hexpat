@@ -198,11 +198,34 @@ struct Capsule {
 };
 Capsule capsules[35] @ 0xBDCB8;
 
-// Shop pointers
-struct Shop {
-    u16 reference_pointer;
+// Shop pointers and definitions
+struct ShopItem {
+    u16 item_index;
+    u16 price;
 };
-Shop shops[63] @ 0xBEE9F;
+
+// Shop data header: read by `Shop.from_table` as `unknown1`, `shop_type`, `zero`.
+// The shop body (sections and items) follows this 3-byte header and is
+// variable-length; code in `structures/shop.py` discovers section boundaries
+// using the next table pointer for the following shop.
+struct ShopDef {
+    u8 identifier; // unknown1 in code, mapped to ShopIdentifier
+    u8 shop_type;  // mapped to ShopTypes
+    u8 zero;       // should be 0x00
+    // shop sections and items follow here (variable length)
+};
+
+// Each entry in the shops table is a 2-byte reference to the shop data.
+// The reference values are likely offsets; if they need a bank/base addition,
+// adjust accordingly when viewing in ImHex.
+struct ShopPointer {
+    u16 reference_pointer;
+    // Shop data is stored at base + reference_pointer. Base address taken from
+    // vanilla layout: first shop start at 0x000BF09F.
+    ShopDef shop @ (0x000BF09F + reference_pointer);
+};
+
+ShopPointer shops[63] @ 0xBEE9F;
 
 // Cap attacks
 struct CapAttack {
@@ -228,3 +251,167 @@ struct MapMeta {
     u24 reference_pointer;
 };
 MapMeta mapMeta[242] @ 0x27FCBC;
+
+// --- Mirrors of classes from src/tables/vanilla.py ---
+
+// EventInstObject
+struct EventInstObject {
+    u16 reference_pointer;
+};
+EventInstObject eventInstObjects[205] @ 0x4A14;
+
+// IPAttackObject (pointer list - scattered addresses)
+struct IPAttackObject {
+    u16 effect;
+    u8 animation;
+    u8 target_cursor;
+    u8 target_mode;
+    u8 ip_cost;
+};
+// Pointers: see `IPAttackObject.pointers` in src/tables/vanilla.py
+
+// CharLevelObject (per-character pointers)
+struct CharLevelObject {
+    u8 level;
+};
+// Pointers: see `CharLevelObject.pointers` in src/tables/vanilla.py
+
+// CharExpObject
+struct CharExpObject {
+    u24 xp;
+};
+// Pointers: see `CharExpObject.pointers` in src/tables/vanilla.py
+
+// InitialEquipObject
+struct InitialEquipObject {
+    u16 weapon;
+    u16 armor;
+    u16 shield;
+    u16 helmet;
+    u16 ring;
+    u16 jewel;
+};
+// Pointers: see `InitialEquipObject.pointers` in src/tables/vanilla.py
+
+// ChestObject (many individual chest pointers)
+struct ChestObject {
+    u8 misc1; // bitfields: u00 u01 u02 u03 u04 u05 item_high_bit u07
+    u8 misc2;
+    u8 item_low_byte;
+};
+// Chest pointers: see `ChestObject.pointers` in src/tables/vanilla.py
+
+// SpellObject
+struct SpellObject {
+    u8 name[8];
+    u8 unk1;
+    u8 element;
+    u8 characters_flags;
+    u8 unk4;
+    u8 mp_cost;
+    u16 zero;
+    u16 price;
+};
+// Spell pointers: see `SpellObject.pointers` in src/tables/vanilla.py
+
+// ItemObject (record layout placeholder)
+struct ItemObject {
+    u8 usability;
+    u8 unknown;
+    u8 targetting;
+    u8 icon;
+    u8 sprite;
+    u16 price;
+    u8 item_type;
+    u8 equipability;
+    u8 misc1;
+    u8 misc2;
+    u16 zero;
+};
+ItemObject itemObjects[467] @ 0xB4F69;
+
+// CharGrowthObject (per-character pointers)
+struct CharGrowthObject {
+    u8 hp;
+    u8 mp;
+    u8 strength;
+    u8 agl;
+    u8 int;
+    u8 gut;
+    u8 mgr;
+    u8 unk;
+};
+// Pointers: see `CharGrowthObject.pointers` in src/tables/vanilla.py
+
+// TownSpriteObject (pointer list)
+struct TownSpriteObject {
+    u8 unknown;
+    u8 palette_index;
+    u24 sprite_pointer;
+};
+// Pointers: see `TownSpriteObject.pointers` in src/tables/vanilla.py
+
+// CapSpritePTRObject alias (already have CapSpritePtr above)
+struct CapSpritePTRObject {
+    u24 sprite_pointer;
+};
+CapSpritePTRObject capSpritePTRObjects[35] @ 0x1384BC;
+
+
+// Event instance pointers
+struct EventInst {
+    u16 reference_pointer;
+};
+EventInst eventInstances[205] @ 0x4A14;
+
+// IP Attack struct placeholder
+struct IPAttack {
+    u16 effect;
+    u8 animation;
+    u8 target_cursor;
+    u8 target_mode;
+    u8 ip_cost;
+};
+// Pointers for IPAttacks (scattered addresses) - see vanilla.py for full list
+// 0x21060, 0x21074, 0x21084, 0x21097, 0x210A1, ...
+
+// Chest entry placeholder
+struct Chest {
+    u8 misc1[1]; // bitfields: u00 u01 u02 u03 u04 u05 item_high_bit u07
+    u8 misc2;
+    u8 item_low_byte;
+};
+// Many chest pointers exist (see vanilla.py `ChestObject.pointers`) — listed there.
+
+// Spell entry (partial)
+struct Spell {
+    u8 name[8];
+    u8 unk1;
+    u8 element;
+    u8 characters_flags; // bitmask for which characters can use
+    u8 unk4;
+    u8 mp_cost;
+    u16 zero;
+    u16 price;
+};
+// Spell pointers are listed in vanilla.py (many addresses)
+
+// Item record (partial layout, conservative fields)
+struct Item {
+    u8 usability; // bitflags / enum
+    u8 unknown;
+    u8 targeting;
+    u8 icon;
+    u8 sprite;
+    u16 price;
+    u8 item_type;
+    u8 equipability;
+    u8 misc1;
+    u8 misc2;
+    u16 zero;
+};
+Item items[467] @ 0xB4F69;
+
+// Char growth pointers (per-character pointers) - see vanilla.py `CharGrowthObject.pointers`
+// Town sprite pointers (see `TownSpriteObject.pointers` near 0x27F1F6)
+
