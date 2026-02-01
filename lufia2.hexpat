@@ -358,12 +358,6 @@ struct CapSpritePTRObject {
 CapSpritePTRObject capSpritePTRObjects[35] @ 0x1384BC;
 
 
-// Event instance pointers
-struct EventInst {
-    u16 reference_pointer;
-};
-EventInst eventInstances[205] @ 0x4A14;
-
 // IP Attack struct placeholder
 struct IPAttack {
     u16 effect;
