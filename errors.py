@@ -15,3 +15,7 @@ class SpellNotFound(Exception):
 
 class FileEntryReadException(Exception):
     pass
+
+
+class EventFreeSpaceError(Exception):
+    pass

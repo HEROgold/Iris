@@ -15,8 +15,7 @@ from _types.objects import Cache
 from helpers.bits import read_little_int
 from helpers.files import read_file, restore_pointer, write_file
 from helpers.name import read_as_decompressed_name, write_compressed_name
-from structures.event_script_redesign import ZoneEventManager
-from structures.events import MapEvent
+from structures.event_script import MapEvent, ZoneEventManager
 from structures.zone_data_pointers import zone_data_pointers
 from tables.zones import ZoneObject
 
@@ -331,11 +330,9 @@ class Zone:
         # Create the zone instance
         inst = cls(index, start_address, end_address)
         inst._name = name
-        # inst.event = MapEvent.from_index(index)
-        # TODO: Re-implement event manager to use structures/events
-        # Zone.event_manager.load_zone_events(inst)
-        # Zone.event_manager.get_npc_script(inst)
-        # Zone.event_manager.export_zone_events(inst)
+        inst.event = MapEvent.from_index(index)
+        Zone.event_manager.load_zone_events(inst)
+        # get_npc_script / export_zone_events are called on demand, not necessarily here.
         inst.data = ZoneData.from_pointer(zone_data_pointers[index])
 
         cls._cache.to_cache(index, inst)

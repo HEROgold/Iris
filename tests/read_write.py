@@ -203,7 +203,6 @@ def test_roaming_npc() -> None:
         assert_files_are_same()
 
 def test_events() -> None:
-    # FIXME
     for i in range(EventInstObject.count):
         event = Event.from_index(i)
         event.write()
@@ -374,9 +373,7 @@ def test_ancient_chests() -> None:
 
 
 def test_map_events() -> None:
-    # FIXME
-    # EventScript(0x3B21B).read()
     for i in range(MapEventObject.count):
         event = MapEvent.from_index(i)
-        event.write() # FIXME: i=1, diff data at 0x38000
+        event.write()
         assert_files_are_same(event)
