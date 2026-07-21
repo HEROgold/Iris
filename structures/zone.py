@@ -9,7 +9,7 @@
 
 
 from dataclasses import dataclass
-from typing import Any, ClassVar, Self
+from typing import ClassVar, Self, SupportsIndex
 
 from _types.objects import Cache
 from helpers.bits import read_little_int
@@ -24,10 +24,10 @@ from tables.zones import ZoneObject
 # Be able to determine which items are from what zone.
 @dataclass
 class Boundary:
-    west: Any
-    north: Any
-    south: Any
-    east: Any
+    west: SupportsIndex
+    north: SupportsIndex
+    south: SupportsIndex
+    east: SupportsIndex
 
     def __bytes__(self) -> bytes:
         return bytes([self.west, self.north, self.south, self.east])

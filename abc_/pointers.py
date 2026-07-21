@@ -38,7 +38,7 @@ class TablePointer(ABC):
     @classmethod
     @abstractmethod
     def from_table(cls, address: int, index: int) -> Self:
-        pass
+        """Get an instance of the class from a table address and index."""
 
 class ReferencePointer(ABC):
     address: int
@@ -57,4 +57,4 @@ class ReferencePointer(ABC):
     @classmethod
     @abstractmethod
     def from_reference(cls, address: int, index: int, size: int) -> Self:
-        pass
+        """Get an instance of the class from a reference address, index, and size."""
