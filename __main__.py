@@ -26,6 +26,7 @@ from patches.HEROgold import (
     set_rom_name,
     swap_pierre_danielle_sprites,
 )
+from patches.HEROgold.party_toggle import party_toggle_in_elcid
 from patches.RealCritical import (
     ac_more_enemies,
     fix_cave_chest_table,
@@ -130,6 +131,7 @@ def main() -> None:
     gorem_to_golem()
     swap_pierre_danielle_sprites()
     guy_the_mage()
+    party_toggle_in_elcid()  # event-script demo: Elcid townspeople toggle party join/leave
 
     # Apply RealCritical patches
     fix_menu()
