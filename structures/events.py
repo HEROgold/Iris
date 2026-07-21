@@ -370,13 +370,13 @@ _ = {
     (0x05, (2)),     # Check for item (as in locked doors)
     (0x06, (2)),     # Check for item (as in locked doors)
     (0x07, (1)),     # UNVERIFIED
-    (0x08, ("text")),   # 
+    (0x08, ("text")),
     (0x0c, (0)),     # NOP?
     (0x0d, (0)),     # NOP?
     (0x10, ("pointers")),   # Set Up Branching Event
     (0x11, (0)),     # ERROR?
     (0x12, (1,"pointers")),     # Branch on Variable
-    (0x13, ("text")),   # 
+    (0x13, ("text")),
     (0x14, ("variable")),   # Branch on Game State (inventory, stats, etc.)
     (0x15, (1,"addr")),     # Branch on Flag
     (0x16, (1,1,1)),     # Warp to Map & Event
@@ -394,7 +394,7 @@ _ = {
     (0x23, (1,1)),       # Learn Spell
     (0x24, (1,1)),       # Remove Item 0XX
     (0x25, (1,1)),       # Remove Item 1XX
-    (0x28, (0)),     #                  
+    (0x28, (0)),
     (0x29, (1,1,1)),     # Increase party member stats
     (0x2b, (1)),     # Character Joins Party
     (0x2c, (1)),     # Character Leaves party
@@ -408,7 +408,7 @@ _ = {
     (0x35, (1,1,1)),     # Move roaming NPC
     (0x37, (1)),     # Pause
     (0x38, (1)),     # Pause (Longer)
-    (0x39, (0)),     #                  
+    (0x39, (0)),
     (0x3b, (1)),     # Move Camera
     (0x3c, (0)),     # Gather Behind Maxim
     (0x3d, (1)),     # Hide Behind Maxim
@@ -416,28 +416,28 @@ _ = {
     (0x42, (0)),     # DUPLICATE - 00 End Event
     (0x41, (1,1)),       # Camera related (follow for X steps?)
     (0x43, (1,1)),       # Overwrite Map Tiles
-    (0x45, (1,1,1)),     #                  
+    (0x45, (1,1,1)),
     (0x47, (1)),     # Thinking On/Off
-    (0x48, (1,1)),       #                
-    (0x49, (1)),     #                  
-    (0x4a, (1)),     #                  
+    (0x48, (1,1)),
+    (0x49, (1)),
+    (0x4a, (1)),
     (0x4b, (1)),     # Play BGM
     (0x4c, (1)),     # Play Sound
-    (0x4d, (1)),     #                  
-    (0x4f, (1)),     #                  
-    (0x50, (0)),     #                  
-    (0x51, (0)),     #                  
+    (0x4d, (1)),
+    (0x4f, (1)),
+    (0x50, (0)),
+    (0x51, (0)),
     (0x53, (1)),     # Invoke Battle
     (0x54, (1)),     # Open locked door?
-    (0x55, (1)),     #                  
+    (0x55, (1)),
     (0x56, (0)),     # Stop Earthquake
-    (0x57, (0)),     #                  
+    (0x57, (0)),
     (0x58, (1)),     # Fadeout
     (0x59, (1)),     # Luminosity
     (0x5a, (1,1,1)),     # Start Earthquake
     (0x5b, (1,1)),       # Play Cutscene
-    (0x5e, (1)),     #                  
-    (0x60, (1,1)),    #                
+    (0x5e, (1)),
+    (0x60, (1,1)),
     (0x61, ("text")),   # Maxim Speaks
     (0x62, ("text")),   # Selan Speaks
     (0x63, ("text")),   # Guy Speaks
@@ -448,21 +448,21 @@ _ = {
     (0x68, (1,1)),       # Load NPC
     (0x69, (1)),     # Set Map Properties (escapable, etc.)
     (0x6a, (1,"addr")),     # Branch on NOT Flag
-    (0x6b, (0)),     #                  
+    (0x6b, (0)),
     (0x6c, (1,1,1)),     # Move Character by Distance
     (0x6d, ("text")),   # Credits Text
     (0x6e, ("text")),   # Credits Text
     (0x6f, (1)),     # Change Music
     (0x70, (0)),     # Silence
-    (0x71, (0)),     #                  
-    (0x72, (0)),     #                  
+    (0x71, (0)),
+    (0x72, (0)),
     (0x73, (1,1)),       # Play Animation
     (0x74, (1)),     # Set Battle BG
-    (0x75, (0)),     #                  
-    (0x76, (0)),     #                  
+    (0x75, (0)),
+    (0x76, (0)),
     (0x77, (1)),     # DUPLICATE - BE
-    (0x78, (0)),     #                  
-    (0x79, (0)),     #                  
+    (0x78, (0)),
+    (0x79, (0)),
     (0x7b, (1,1)),       # Load Monster NPC
     (0x7c, (1)),     # Change Ship Type
     (0x7d, (1)),     # Relocate Ship
@@ -470,68 +470,68 @@ _ = {
     (0x7f, (1)),     # Set Party On/Off Ship
     (0x80, (1)),     # Set Ship Sprite
     (0x81, (1)),     # Capsule Monster Joins & Renames
-    (0x82, (0)),     #                  
+    (0x82, (0)),
     (0x83, (1)),     # Call Exit (Only used for Chaed)
-    (0x85, (1,1)),    #                
+    (0x85, (1,1)),
     (0x86, (1,1)),       # Character Movement?
-    (0x87, (1,1)),    #                
-    (0x88, (0)),     #                  
-    (0x89, (1)),     #                  
-    (0x8a, (0)),     #                  
-    (0x8b, (1,1,1)),    #                  
+    (0x87, (1,1)),
+    (0x88, (0)),
+    (0x89, (1)),
+    (0x8a, (0)),
+    (0x8b, (1,1,1)),
     (0x8c, (1,1,1)),     # (related to item acquisition sprite)
     (0x8d, (1,1,1,1,1,1)),       # Play Wave-Warping Animation
-    (0x8e, (1,1,1)),    #                  
+    (0x8e, (1,1,1)),
     (0x8f, (1,1,1)),     # Wave motion up-down
     (0x90, (1,1,1)),     # Wave motion right-left
-    (0x91, (1,1)),    #                
-    (0x92, (1)),     #                  
-    (0x94, (1,1,1)),    #                  
+    (0x91, (1,1)),
+    (0x92, (1)),
+    (0x94, (1,1,1)),
     (0x95, (1,1,1)),     # Screen tint animation
-    (0x97, (0)),     #                  
+    (0x97, (0)),
     (0x98, (1,1)),       # Thunder Warp
-    (0x99, (1)),     #                  
-    (0x9a, (1)),     #                  
-    (0x9c, (1,1,1)),    #                  
-    (0x9d, (1)),     #                  
-    (0x9e, ("text")),   # 
+    (0x99, (1)),
+    (0x9a, (1)),
+    (0x9c, (1,1,1)),
+    (0x9d, (1)),
+    (0x9e, ("text")),
     (0x9f, (1,1,1)),     # Wave motion shrink
-    (0xa0, (1,1,1,1,1,1)),                #                
-    (0xa1, (1,1)),        #                
-    (0xa2, (1)),    #                  
+    (0xa0, (1,1,1,1,1,1)),
+    (0xa1, (1,1)),
+    (0xa2, (1)),
     (0xa3, (1,1)),       # Play NPC focused animation
     (0xa4, (0)),     # Screen Mosaic
     (0xa5, (0)),     # Call Game Load Screen
-    (0xa6, (0)),    #                  
-    (0xa7, (1)),    #                  
+    (0xa6, (0)),
+    (0xa7, (1)),
     (0xa8, (1)),     # Ancient Cave Item Management
-    (0xa9, (1,1)),        #                
-    (0xaa, (0)),    #                  
+    (0xa9, (1,1)),
+    (0xaa, (0)),
     (0xab, (1)),     # Check Dragon Eggs Obtained
     (0xad, (1,1,1)),     # Dragon eggs related?
-    (0xae, (1)),    #                  
+    (0xae, (1)),
     (0xaf, (1,1)),       # Character Flicker
-    (0xb0, (1)),    #                  
+    (0xb0, (1)),
     (0xb1, (1,1)),       # Character ???
     (0xb3, (1)),     # Party Members Change Facing
-    (0xb4, (1,1,1)),        #                  
-    (0xb5, (0)),    #                  
-    (0xb6, (1,1)),        #                
-    (0xb7, (1)),    #                  
-    (0xb8, (0)),    #                  
+    (0xb4, (1,1,1)),
+    (0xb5, (0)),
+    (0xb6, (1,1)),
+    (0xb7, (1)),
+    (0xb8, (0)),
     (0xb9, (1)),     # Fill IP Bar
-    (0xba, (1)),    #                  
+    (0xba, (1)),
     (0xbb, (0)),     # Call game report
-    (0xbc, (0)),    #                  
-    (0xbd, (1,1)),        #                
+    (0xbc, (0)),
+    (0xbd, (1,1)),
     (0xbe, (1)),     # DUPLICATE - 77
-    (0xbf, (1,1,1)),        #                  
-    (0xc0, (1,1,1)),        #                  
-    (0xc1, (1,1)),        #                
-    (0xc2, (1,1,1,1,1,1)),                #                
-    (0xc3, (1,1,1,1,1,1)),                #                
+    (0xbf, (1,1,1)),
+    (0xc0, (1,1,1)),
+    (0xc1, (1,1)),
+    (0xc2, (1,1,1,1,1,1)),
+    (0xc3, (1,1,1,1,1,1)),
     (0xc4, (1,1)),       # Scroll Screen
-    (0xc5, (0)),    #                  
+    (0xc5, (0)),
     (0xc6, (1,1)),       # Play Sprite Animation
     (0xc7, (0)),
     (0xc9, (1,1,1,1,1,1,1)),
@@ -925,7 +925,7 @@ class EventScript:
             (pointer, is_local_pointer)
         )
 
-    def parse_text(self):
+    def parse_text(self) -> None:
         return None
 
     # TODO: implement a writing method.

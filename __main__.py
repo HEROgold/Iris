@@ -1,5 +1,4 @@
 from args import args
-from constants import ASCII_ART_COLORIZED, PROJECT_NAME, VERSION
 from helpers.files import new_file, read_file, write_file
 from logger import iris
 from patcher import (
@@ -13,7 +12,6 @@ from patches.genie_codes import (
     AIRSHIP_ANYWHERE,
     ALWAYS_DROP_33,
     CAPSULE_ALWAYS_LOVE_FOOD,
-    DEBUG_MODE,
     ELCID_REPORT,
     MASTER_ONE_SHOT,
     NO_SCENARIO_ITEMS,
@@ -41,8 +39,6 @@ from tests.read_write import read_write_all
 
 
 def main() -> None:
-    print(ASCII_ART_COLORIZED)
-    print(f"You are using the Lufia II randomizer {PROJECT_NAME} version {VERSION}.\n")
 
     if args.debug:
         iris.setLevel("DEBUG")

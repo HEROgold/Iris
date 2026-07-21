@@ -306,7 +306,7 @@ def write_patch(patch: PatchData, validation: PatchData, no_verify: bool = False
                     if validate != code[:len(validate)]:
                         error = f"Patch {patch:s}-{address:x} did not pass validation."
                         if no_verify:
-                            print(f'WARNING: {error:s}')
+                            pass
                         else:
                             raise Exception(error)
                 else:

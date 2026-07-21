@@ -3,9 +3,6 @@ from typing import Self
 
 
 class IntFlagOperations(IntFlag):
-    def __contains__(self, other: Self) -> bool:
-        return self & other == other
-
     def __add__(self, other: Self) -> Self:  # type: ignore[reportIncompatibleMethodOverride]
         """Same as __or__."""
         return self | other

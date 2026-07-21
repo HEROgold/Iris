@@ -16,7 +16,7 @@ from structures.character import (
     PlayableCharacter,
 )
 from structures.chest import AddressChest, PointerChest
-from structures.events import Event, EventScript, MapEvent
+from structures.events import Event, MapEvent
 from structures.formation import BattleFormation
 from structures.ip_attack import IPAttack
 from structures.item import Item
