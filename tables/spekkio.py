@@ -7,6 +7,7 @@ class EventInstObject:
     reference_pointer = 2
     address = 0x4A14
     count = 205
+    size = reference_pointer
 
 
 @dataclass
@@ -186,6 +187,7 @@ class IPAttackObject:
         0x21B17,
         0x21B2A,
     ]
+    size = sum((effect, animation, target_cursor, target_mode, ip_cost))
 
 
 @dataclass
@@ -200,6 +202,7 @@ class CharLevelObject:
         0x2B359,
         0x2B376,
     ]
+    size = level
 
 
 @dataclass
@@ -214,6 +217,7 @@ class CharExpObject:
         0x2B35E,
         0x2B383,
     ]
+    size = xp
 
 
 @dataclass
@@ -233,6 +237,7 @@ class InitialEquipObject:
         0x2B361,
         0x2B386,
     ]
+    size = sum((weapon, armor, shield, helmet, ring, jewel))
 
 
 @dataclass
@@ -241,6 +246,7 @@ class OverPaletteObject:
     unknown = 12
     address = 0x36CA6
     count = 3
+    size = sum((palette_index, unknown))
 
 
 @dataclass
@@ -249,6 +255,7 @@ class OverSpriteObject:
     sprite_pointer = 3
     address = 0x37086
     count = 6
+    size = sum((unknown, sprite_pointer))
 
 
 @dataclass
@@ -260,6 +267,7 @@ class MapEventObject:
     map_name_pointer = 2
     address = 0x38010
     count = 242
+    size = sum((eventlist_lowbytes, eventlist_highbyte, npc_lowbytes, npc_highbyte, map_name_pointer))
 
 
 @dataclass
@@ -270,6 +278,7 @@ class RoamingNPCObject:
     map_npc_index = 1
     address = 0x3AE4E
     count = 34
+    size = sum((map_npc_event_index, sprite_index, map_index, map_npc_index))
 
 
 @dataclass
@@ -450,6 +459,11 @@ class ChestObject:
         0x8BDA0,
         0x8BDA3,
     ]
+    size = sum((
+        1,  # misc1 (bytes flags)
+        misc2,
+        item_low_byte,
+    ))
 
 
 @dataclass
@@ -457,6 +471,7 @@ class CapsuleLevelObject:
     level = 1
     address = 0x764C4
     count = 7
+    size = level
 
 
 @dataclass
@@ -464,6 +479,7 @@ class WordObject:
     word_pointer = 2
     address = 0x76A00
     count = 640
+    size = word_pointer
 
 
 @dataclass
@@ -471,6 +487,7 @@ class AncientChest2Object:
     item_index = 2
     address = 0x8FFDC
     count = 9
+    size = item_index
 
 
 @dataclass
@@ -478,6 +495,7 @@ class BlueChestObject:
     item_index = 2
     address = 0x30D880
     count = 42
+    size = item_index
 
 
 @dataclass
@@ -485,6 +503,7 @@ class AncientChest1Object:
     item_index = 2
     address = 0xA713D
     count = 31
+    size = item_index
 
 
 @dataclass
@@ -539,6 +558,16 @@ class SpellObject:
         0xAFEEC,
         0xAFF02,
     ]
+    size = sum((
+        name_text,
+        unk1,
+        element,
+        1,  # characters (bytes flags)
+        unk4,
+        mp_cost,
+        zero,
+        price,
+    ))
 
 
 @dataclass
@@ -562,6 +591,24 @@ class MonsterObject:
     address = 0x282000
     count = 240
     grouped: ClassVar[list[str]] = ["240", "point1", "282000", "2"]
+    size = sum((
+        name_text,
+        level,
+        unknown,
+        battle_sprite,
+        palette,
+        hp,
+        mp,
+        attack,
+        defense,
+        agility,
+        intelligence,
+        guts,
+        magic_resistance,
+        xp,
+        gold,
+        misc,
+    ))
 
 
 @dataclass
@@ -584,6 +631,19 @@ class ItemObject:
     address = 0xB4F69
     count = 467
     grouped: ClassVar[list[str]] = ["467", "point1", "b4f69", "2"]
+    size = sum((
+        1,  # usability (bytes flags)
+        1,  # unknown (bytes flags)
+        targetting,
+        icon,
+        sprite,
+        price,
+        1,  # item_type (bytes flags)
+        1,  # equipability (bytes flags)
+        1,  # misc1 (bytes flags)
+        1,  # misc2 (bytes flags)
+        zero,
+    ))
 
 
 @dataclass
@@ -689,6 +749,7 @@ class CharGrowthObject:
         0xBB924,
         0xBB92C,
     ]
+    size = sum((hp, mp, str, agl, int, gut, mgr, unk))  # noqa: A003
 
 
 @dataclass
@@ -702,6 +763,7 @@ class CharacterObject:
     mgr = 2
     address = 0xBB93C
     count = 7
+    size = sum((hp, mp, str, agl, int, gut, mgr))  # noqa: A003
 
 
 @dataclass
@@ -709,6 +771,7 @@ class MapFormationsObject:
     reference_pointer = 2
     address = 0xBB9AC
     count = 248
+    size = reference_pointer
 
 
 @dataclass
@@ -716,6 +779,7 @@ class FormationObject:
     monster_indexes = 8 # List
     address = 0xBBE93
     count = 192
+    size = monster_indexes
 
 
 @dataclass
@@ -723,6 +787,7 @@ class BossFormationObject:
     reference_pointer = 2
     address = 0xBC53D
     count = 39
+    size = reference_pointer
 
 
 @dataclass
@@ -731,6 +796,7 @@ class SpriteMetaObject:
     height_misc = 1
     address = 0xBCA64
     count = 134
+    size = sum((width, height_misc))
 
 
 @dataclass
@@ -753,6 +819,10 @@ class CapPaletteObject:
     colorF = 2  # noqa: N815
     address = 0xBD258
     count = 35
+    size = sum((
+        color0, color1, color2, color3, color4, color5, color6, color7,
+        color8, color9, colorA, colorB, colorC, colorD, colorE, colorF,
+    ))
 
 
 @dataclass
@@ -780,6 +850,28 @@ class CapsuleObject:
     address = 0xBDCB8
     count = 35
     grouped: ClassVar[list[str]] = ["35", "point1", "bdcb8", "2"]
+    size = sum((
+        name_text,
+        zero,
+        capsule_class,
+        alignment,
+        start_skills,
+        upgrade_skills,
+        hp,
+        attack,
+        defense,
+        strength,
+        agility,
+        intelligence,
+        guts,
+        magic_resistance,
+        hp_factor,
+        strength_factor,
+        agility_factor,
+        intelligence_factor,
+        guts_factor,
+        magic_resistance_factor,
+    ))
 
 
 @dataclass
@@ -787,6 +879,7 @@ class ShopObject:
     reference_pointer = 2
     address = 0xBEE9F
     count = 66
+    size = reference_pointer
 
 
 @dataclass
@@ -796,6 +889,7 @@ class CapAttackObject:
     address = 0xBF63B
     count = 84
     grouped: ClassVar[list[str]] = ["84", "point1", "bf63b", "2"]
+    size = sum((unknown, animation))
 
 
 @dataclass
@@ -803,6 +897,7 @@ class ItemNameObject:
     name_text = 12  # String
     address = 0xF47E8
     count = 467
+    size = name_text
 
 
 @dataclass
@@ -810,6 +905,7 @@ class CapSpritePTRObject:
     sprite_pointer = 3
     address = 0x1384BC
     count = 35
+    size = sprite_pointer
 
 
 @dataclass
@@ -826,6 +922,7 @@ class TownSpriteObject:
         0x27F20A,
         0x27F20F,
     ]
+    size = sum((unknown, palette_index, sprite_pointer))
 
 
 @dataclass
@@ -833,6 +930,7 @@ class MonsterMoveObject:
     movement = 1
     address = 0x27F6B5
     count = 112
+    size = movement
 
 
 @dataclass
@@ -840,6 +938,7 @@ class MapMetaObject:
     reference_pointer = 3
     address = 0x27FCBC
     count = 242
+    size = reference_pointer
 
 
 addresses = {

@@ -5,44 +5,7 @@ from typing import Self
 from abc_.pointers import Pointer, ReferencePointer
 from helpers.bits import read_little_int
 from helpers.files import read_file, write_file
-from tables import CapPaletteObject, CapSpritePTRObject, OverPaletteObject, OverSpriteObject, SpriteMetaObject, TownSpriteObject
-
-
-TOWN_SPRITE_SIZE = sum([
-    TownSpriteObject.unknown,
-    TownSpriteObject.palette_index,
-    TownSpriteObject.sprite_pointer,
-])
-SPRITE_META_SIZE = sum([
-    SpriteMetaObject.width,
-    SpriteMetaObject.height_misc,
-])
-OVER_SPRITE_SIZE = sum([
-    OverSpriteObject.unknown,
-    OverSpriteObject.sprite_pointer,
-])
-OVER_PALLETTE_SIZE = sum([
-    OverPaletteObject.palette_index,
-    OverPaletteObject.unknown,
-])
-CAP_PALETTE_SIZE = sum([
-    CapPaletteObject.color0,
-    CapPaletteObject.color1,
-    CapPaletteObject.color2,
-    CapPaletteObject.color3,
-    CapPaletteObject.color4,
-    CapPaletteObject.color5,
-    CapPaletteObject.color6,
-    CapPaletteObject.color7,
-    CapPaletteObject.color8,
-    CapPaletteObject.color9,
-    CapPaletteObject.colorA,
-    CapPaletteObject.colorB,
-    CapPaletteObject.colorC,
-    CapPaletteObject.colorD,
-    CapPaletteObject.colorE,
-    CapPaletteObject.colorF,
-])
+from tables import CapPaletteObject, CapSpritePTRObject, OverPaletteObject, OverSpriteObject, SpriteMetaObject
 
 
 class CapsulePallette(ReferencePointer):
@@ -51,7 +14,7 @@ class CapsulePallette(ReferencePointer):
 
     @classmethod
     def from_index(cls, index: int) -> Self:
-        return cls.from_reference(CapPaletteObject.address, index, CAP_PALETTE_SIZE)
+        return cls.from_reference(CapPaletteObject.address, index, CapPaletteObject.size)
 
     @classmethod
     def from_reference(cls, address: int, index: int, size: int) -> Self:
@@ -96,7 +59,7 @@ class OverPallette(ReferencePointer):
 
     @classmethod
     def from_index(cls, index: int) -> Self:
-        return cls.from_reference(OverPaletteObject.address, index, OVER_PALLETTE_SIZE)
+        return cls.from_reference(OverPaletteObject.address, index, OverPaletteObject.size)
 
     @classmethod
     def from_reference(cls, address: int, index: int, size: int) -> Self:
@@ -120,7 +83,7 @@ class OverSprite(ReferencePointer):
 
     @classmethod
     def from_index(cls, index: int) -> Self:
-        return cls.from_reference(OverSpriteObject.address, index, OVER_SPRITE_SIZE)
+        return cls.from_reference(OverSpriteObject.address, index, OverSpriteObject.size)
 
     @classmethod
     def from_reference(cls, address: int, index: int, size: int) -> Self:
@@ -153,7 +116,7 @@ class SpriteMeta(ReferencePointer):
 
     @classmethod
     def from_index(cls, index: int) -> Self:
-        return cls.from_reference(SpriteMetaObject.address, index, SPRITE_META_SIZE)
+        return cls.from_reference(SpriteMetaObject.address, index, SpriteMetaObject.size)
 
     @classmethod
     def from_reference(cls, address: int, index: int, size: int) -> Self:

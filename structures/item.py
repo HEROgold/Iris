@@ -12,22 +12,6 @@ from structures.word import Word
 from tables import ItemNameObject, ItemObject
 
 
-ITEM_SIZE = sum(
-    [
-        1,  #ItemObject.usability,
-        1,  #ItemObject.unknown,
-        ItemObject.targetting,
-        ItemObject.icon,
-        ItemObject.sprite,
-        ItemObject.price,
-        1,  #ItemObject.item_type,
-        1,  #ItemObject.equipability,
-        1,  #ItemObject.misc1,
-        1,  #ItemObject.misc2,
-        ItemObject.zero,
-    ],
-)
-
 class ItemName(TablePointer):
     def __init__(self, address: int, index: int) -> None:
         self.address = address
