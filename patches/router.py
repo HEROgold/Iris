@@ -7,7 +7,7 @@ from enum import Enum
 
 from structures.item import Item
 from structures.zone import Zone
-from tables.zones import ZoneObject
+from tables import ZoneObject
 
 
 class KeyItems(Enum):

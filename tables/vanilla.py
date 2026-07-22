@@ -1,12 +1,15 @@
+from dataclasses import dataclass
 from typing import ClassVar
 
 
+@dataclass
 class EventInstObject:
     reference_pointer = 2
     address = 0x4A14
     count = 205
 
 
+@dataclass
 class IPAttackObject:
     effect = 2
     animation = 1
@@ -185,6 +188,7 @@ class IPAttackObject:
     ]
 
 
+@dataclass
 class CharLevelObject:
     level = 1
     pointers: ClassVar[list[int]] = [
@@ -198,6 +202,7 @@ class CharLevelObject:
     ]
 
 
+@dataclass
 class CharExpObject:
     xp = 3
     pointers: ClassVar[list[int]] = [
@@ -211,6 +216,7 @@ class CharExpObject:
     ]
 
 
+@dataclass
 class InitialEquipObject:
     weapon = 2
     armor = 2
@@ -229,6 +235,7 @@ class InitialEquipObject:
     ]
 
 
+@dataclass
 class OverPaletteObject:
     palette_index = 1
     unknown = 12
@@ -236,6 +243,7 @@ class OverPaletteObject:
     count = 3
 
 
+@dataclass
 class OverSpriteObject:
     unknown = 3
     sprite_pointer = 3
@@ -243,6 +251,7 @@ class OverSpriteObject:
     count = 6
 
 
+@dataclass
 class MapEventObject:
     eventlist_lowbytes = 2
     eventlist_highbyte = 1
@@ -253,6 +262,7 @@ class MapEventObject:
     count = 242
 
 
+@dataclass
 class RoamingNPCObject:
     map_npc_event_index = 1
     sprite_index = 1
@@ -262,6 +272,7 @@ class RoamingNPCObject:
     count = 34
 
 
+@dataclass
 class ChestObject:
     misc1: bytes = b"u00 u01 u02 u03 u04 u05 item_high_bit u07"
     misc2 = 1
@@ -441,36 +452,42 @@ class ChestObject:
     ]
 
 
+@dataclass
 class CapsuleLevelObject:
     level = 1
     address = 0x764C4
     count = 7
 
 
+@dataclass
 class WordObject:
     word_pointer = 2
     address = 0x76A00
     count = 640
 
 
+@dataclass
 class AncientChest2Object:
     item_index = 2
     address = 0x8FFDC
     count = 9
 
 
+@dataclass
 class BlueChestObject:
     item_index = 2
     address = 0xA6EA0
     count = 41
 
 
+@dataclass
 class AncientChest1Object:
     item_index = 2
     address = 0xA713D
     count = 31
 
 
+@dataclass
 class SpellObject:
     name_text = 8   # String
     unk1 = 1
@@ -524,6 +541,7 @@ class SpellObject:
     ]
 
 
+@dataclass
 class MonsterObject:
     name_text = 13  # String
     level = 1
@@ -546,6 +564,7 @@ class MonsterObject:
     grouped: ClassVar[list[str]] = ["224", "point1", "b05c0", "2"]
 
 
+@dataclass
 class ItemObject:
     usability: bytes = (
         b"consumable equipable u02 cursed fruit unsellable usable_menu usable_battle"
@@ -567,6 +586,7 @@ class ItemObject:
     grouped: ClassVar[list[str]] = ["467", "point1", "b4f69", "2"]
 
 
+@dataclass
 class CharGrowthObject:
     hp = 1
     mp = 1
@@ -576,8 +596,7 @@ class CharGrowthObject:
     gut = 1
     mgr = 1
     unk = 1
-    # float to avoid re-using int on class obj. It's only for type checker.
-    pointers: ClassVar[list[float]] = [
+    pointers: ClassVar[list[float]] = [ # float as int here is (intelligence)
         0xBB62C,
         0xBB634,
         0xBB63C,
@@ -672,6 +691,7 @@ class CharGrowthObject:
     ]
 
 
+@dataclass
 class CharacterObject:
     hp = 2
     mp = 2
@@ -684,24 +704,28 @@ class CharacterObject:
     count = 7
 
 
+@dataclass
 class MapFormationsObject:
     reference_pointer = 2
     address = 0xBB9AC
     count = 248
 
 
+@dataclass
 class FormationObject:
     monster_indexes = 8 # List
     address = 0xBBE93
     count = 192
 
 
+@dataclass
 class BossFormationObject:
     reference_pointer = 2
     address = 0xBC53D
     count = 39
 
 
+@dataclass
 class SpriteMetaObject:
     width = 1
     height_misc = 1
@@ -709,6 +733,7 @@ class SpriteMetaObject:
     count = 134
 
 
+@dataclass
 class CapPaletteObject:
     color0 = 2
     color1 = 2
@@ -720,16 +745,17 @@ class CapPaletteObject:
     color7 = 2
     color8 = 2
     color9 = 2
-    colorA = 2
-    colorB = 2
-    colorC = 2
-    colorD = 2
-    colorE = 2
-    colorF = 2
+    colorA = 2  # noqa: N815
+    colorB = 2  # noqa: N815
+    colorC = 2  # noqa: N815
+    colorD = 2  # noqa: N815
+    colorE = 2  # noqa: N815
+    colorF = 2  # noqa: N815
     address = 0xBD258
     count = 35
 
 
+@dataclass
 class CapsuleObject:
     name_text = 12  # String
     zero = 1
@@ -756,12 +782,14 @@ class CapsuleObject:
     grouped: ClassVar[list[str]] = ["35", "point1", "bdcb8", "2"]
 
 
+@dataclass
 class ShopObject:
     reference_pointer = 2
     address = 0xBEE9F
     count = 63
 
 
+@dataclass
 class CapAttackObject:
     unknown = 1
     animation = 1
@@ -770,18 +798,21 @@ class CapAttackObject:
     grouped: ClassVar[list[str]] = ["84", "point1", "bf63b", "2"]
 
 
+@dataclass
 class ItemNameObject:
     name_text= 12   # String
     address = 0xF47E8
     count = 467
 
 
+@dataclass
 class CapSpritePTRObject:
     sprite_pointer = 3
     address = 0x1384BC
     count = 35
 
 
+@dataclass
 class TownSpriteObject:
     unknown = 1
     palette_index = 1
@@ -797,12 +828,14 @@ class TownSpriteObject:
     ]
 
 
+@dataclass
 class MonsterMoveObject:
     movement = 1
     address = 0x27F6B5
     count = 112
 
 
+@dataclass
 class MapMetaObject:
     reference_pointer = 3
     address = 0x27FCBC
@@ -1080,3 +1113,8 @@ addresses = {
         "Invisible",
     ],
 }
+
+
+class ZoneObject:
+    address = 0x00038810
+    count = 0xF2

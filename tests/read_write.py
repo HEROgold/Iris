@@ -27,9 +27,6 @@ from structures.spell import Spell
 from structures.sprites import CapsulePallette, CapsuleSprite, OverPallette, OverSprite, SpriteMeta, TownSprite
 from structures.word import Word
 from structures.zone import Zone
-from tables import (
-    ZoneObject,
-)
 from tables.kureji import ShopObject as ShopObjectKureji
 from tables.vanilla import (
     AncientChest1Object,
@@ -65,6 +62,7 @@ from tables.vanilla import (
     SpriteMetaObject,
     TownSpriteObject,
     WordObject,
+    ZoneObject,
 )
 
 
