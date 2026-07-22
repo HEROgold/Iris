@@ -13,7 +13,7 @@ through Iris' own structures (no free-floating byte pokes):
 
 The template records are variable-length and packed back-to-back (Selan's is longer than Maxim's
 precisely because she starts with more spells), so adding a spell to Maxim's list shifts every later
-character down by one byte. :meth:`PlayableCharacter.set_starting_spells` handles that reflow; the one
+character down by one byte. :meth:`StartingSpells.write` handles that reflow; the one
 byte the block grows by lands in the unused "Ancient Cave stat bonus" padding after Lexis, so nothing
 the main game reads is disturbed.
 """
@@ -31,12 +31,13 @@ def maxim_starts_with_warp() -> None:
 
     if any(spell.index == warp.index for spell in maxim.starting_spells):
         iris.info("Maxim already starts with Warp; nothing to do.")
-        return
+        return  # membership check iterates the StartingSpells list-like in place
 
     # 1) Let Maxim cast Warp -- his bit is clear in the vanilla caster mask (Selan/Artea/Tia only).
     warp.characters |= CastableSpells.MAXIM
     warp.write()
 
-    # 2) Add Warp to Maxim's (empty) starting-spell list.
-    maxim.starting_spells = *maxim.starting_spells, warp
+    # 2) Add Warp to Maxim's (empty) starting-spell list, then flush the reflowed template block.
+    maxim.starting_spells.append(warp)  # validated by StartingSpells.insert
+    maxim.starting_spells.write()
     iris.info(f"Maxim now starts with Warp (spell {warp.index:#04x}); caster mask set and template updated.")
