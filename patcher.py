@@ -1,5 +1,6 @@
 import shutil
 import struct
+import subprocess
 from os.path import getsize
 from pathlib import Path
 from typing import cast
@@ -9,11 +10,46 @@ from bitstring import BitArray
 from args import args
 from enums.patches import Patch
 from helpers.addresses import address_from_lorom
-from helpers.files import BackupFile, new_file
+from helpers.files import BackupFile, new_file, write_file
 from logger import iris
 from patches.parser import PatchData, PatchParser
 from structures.item import Item
 from structures.zone import Zone
+
+# The bundled asar assembler. We shell out to the .exe (not the DLL bindings) because the
+# shipped asar.dll is 32-bit and Iris runs under 64-bit Python, so the DLL cannot be loaded.
+# A subprocess is architecture-independent (WOW64).
+ASAR_EXE = Path(__file__).parent/"patches"/"asar191"/"asar.exe"
+
+
+def apply_asm_patch(asm_path: Path, include_dirs: list[Path] | None = None, *, fix_checksum: bool = True) -> None:
+    """Assemble a 65816 asar patch onto the current per-seed ROM using the bundled asar.exe.
+
+    asar keys header detection off the file *extension*: a ``.smc`` is treated as headered, so every
+    write lands 512 bytes too high and the output gains a copier header. We therefore assemble on a
+    headerless ``.sfc`` copy of ``new_file`` and copy the result back, keeping the ``write_file`` handle
+    in sync so later structure writes see asar's output (e.g. the ROM expanded to 3MB).
+    """
+    if include_dirs is None:
+        include_dirs = []
+    write_file.flush()  # push buffered structure writes to disk before asar reads new_file
+    sfc = new_file.with_suffix(".sfc")
+    shutil.copyfile(new_file, sfc)
+    cmd = [str(ASAR_EXE), *(f"-I{d}" for d in include_dirs),
+           f"--fix-checksum={'on' if fix_checksum else 'off'}", "--no-title-check", str(asm_path), str(sfc)]
+    iris.debug(f"Running asar: {cmd}")
+    result = subprocess.run(cmd, capture_output=True, text=True, check=False)  # noqa: S603
+    if result.returncode != 0:
+        sfc.unlink(missing_ok=True)
+        msg = f"asar failed to assemble {asm_path.name}:\n{result.stdout}\n{result.stderr}"
+        raise RuntimeError(msg)
+    data = sfc.read_bytes()
+    write_file.seek(0)
+    write_file.write(data)
+    write_file.truncate()
+    write_file.flush()
+    sfc.unlink(missing_ok=True)
+    iris.info(f"Assembled {asm_path.name} ({len(data)} bytes).")
 
 
 def apply_patch(patch: Patch) -> Path:

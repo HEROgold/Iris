@@ -41,7 +41,7 @@ class AddressChest(TablePointer):
 
 class PointerChest(Pointer):
     misc1: bytes
-    misc2: bytes
+    misc2: bytes # Seems to be some form of index.
     index: int | None = None  # global chest index, when built via from_index (identity for tracing back)
 
     def __init__(self, item: Item) -> None:
