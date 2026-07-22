@@ -20,8 +20,7 @@ from helpers.files import read_file, restore_pointer, write_file
 from helpers.name import read_as_decompressed_name, write_compressed_name
 from structures.event_script import MapEvent, ZoneEventManager
 from structures.zone_data_pointers import zone_data_pointers
-from tables import MapMetaObject
-from tables.zones import ZoneObject
+from tables import MapMetaObject, ZoneObject
 
 
 # The ROM table that locates each map's ZoneData: one 3-byte little-endian LoROM address per map index

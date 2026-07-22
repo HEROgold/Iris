@@ -1,3 +1,5 @@
+from args import args
+from enums.patches import Patch
 from helpers.bits import find_table_pointer
 from structures.capsule import CapsuleMonster
 from structures.character import PlayableCharacter
@@ -19,36 +21,35 @@ from structures.sprites import (
     TownSprite,
 )
 from structures.word import Word
-from tables.kureji import (
+from tests.reset_file import test_equal
+
+
+args.selected_patch = Patch.KUREJI # Force the patch to KUREJI for testing purposes
+from tables import (  # noqa: E402
     AncientChest1Object,
     AncientChest2Object,
+    BossFormationObject,
     CapPaletteObject,
     CapSpritePTRObject,
     CapsuleObject,
     CharacterObject,
     ChestObject,
-    ItemObject,
-    MonsterObject,
-    ShopObject,
-    SpellObject,
-)
-
-# TODO: Figure out if this is the correct approach for kureji.
-from tables.vanilla import (
-    BossFormationObject,
     EventInstObject,
     FormationObject,
     IPAttackObject,
+    ItemObject,
     MapEventObject,
     MapFormationsObject,
+    MonsterObject,
     OverPaletteObject,
     OverSpriteObject,
     RoamingNPCObject,
+    ShopObject,
+    SpellObject,
     SpriteMetaObject,
     TownSpriteObject,
     WordObject,
 )
-from tests.reset_file import test_equal
 
 
 def test_bosses() -> None:

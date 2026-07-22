@@ -1,3 +1,5 @@
+from args import args
+from enums.patches import Patch
 from helpers.bits import find_table_pointer
 from structures.capsule import CapsuleMonster
 from structures.character import PlayableCharacter
@@ -19,7 +21,11 @@ from structures.sprites import (
     TownSprite,
 )
 from structures.word import Word
-from tables.frue import (
+from tests.reset_file import test_equal
+
+
+args.selected_patch = Patch.FRUE # Force the patch to FRUE for testing purposes
+from tables import (  # noqa: E402
     AncientChest1Object,
     AncientChest2Object,
     BossFormationObject,
@@ -44,7 +50,6 @@ from tables.frue import (
     TownSpriteObject,
     WordObject,
 )
-from tests.reset_file import test_equal
 
 
 def test_bosses() -> None:

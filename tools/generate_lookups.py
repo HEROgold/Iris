@@ -66,8 +66,8 @@ from tables import (
     ShopObject,
     SpellObject,
     WordObject,
+    ZoneObject,
 )
-from tables.zones import ZoneObject
 
 
 LOOKUPS_DIR = Path(__file__).resolve().parent.parent / "lookups"

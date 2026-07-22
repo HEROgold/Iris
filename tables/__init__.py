@@ -13,7 +13,7 @@ Not all patches include all objects, some only include the one's that differ.
 from args import args
 from enums.patches import Patch
 
-from .zones import ZoneObject
+from .vanilla import ZoneObject
 
 
 if args.selected_patch.value >= Patch.VANILLA.value:
