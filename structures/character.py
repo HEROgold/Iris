@@ -1,5 +1,5 @@
-from collections.abc import Iterable
-from typing import Self
+from collections.abc import Iterable, MutableSequence
+from typing import Self, overload
 
 from abc_.pointers import Pointer, TablePointer
 from abc_.stats import RpgStats
@@ -92,6 +92,102 @@ class InitialEquipment(Pointer):
         write_file.write(self.ring.index.to_bytes(InitialEquipObject.ring, "little"))
         write_file.write(self.jewelry.index.to_bytes(InitialEquipObject.jewel, "little"))
 
+class StartingSpells(MutableSequence[Spell], Pointer):
+    """A character's new-game spell list: the ``0xFF``-terminated block in the party template.
+
+    Behaves like a ``list[Spell]`` -- iterate, index, slice, ``append``, etc. -- while validating that every
+    element is a :class:`Spell`. Internally it stores only the raw spell *indices* and builds
+    :class:`Spell` objects lazily, so merely constructing one (e.g. for every character in
+    :meth:`PlayableCharacter.from_table`) never decodes a spell. Nothing touches the ROM until :meth:`write`.
+    """
+
+    def __init__(self, spells: Iterable[Spell]) -> None:
+        self._indices: list[int] = [self._validated(spell).index for spell in spells]
+        # Byte length of the pristine on-ROM list (spell indices + the 0xFF terminator). Kept separate from
+        # the in-memory list so write() can reflow later records against the ORIGINAL length; overwritten by
+        # from_pointer to the value actually read from the ROM.
+        self._rom_length = len(self._indices) + 1
+
+    def __repr__(self) -> str:
+        return f"<StartingSpells: {self._indices}>"
+
+    @property
+    def spells(self) -> list[Spell]:
+        """The spells as :class:`Spell` objects (built on demand from the stored indices)."""
+        return [Spell.from_index(index) for index in self._indices]
+
+    @staticmethod
+    def _validated(spell: Spell) -> Spell:
+        if not isinstance(spell, Spell):
+            msg = f"starting spell must be a Spell, got {type(spell).__name__}"
+            raise TypeError(msg)
+        return spell
+
+    @overload
+    def __getitem__(self, index: int) -> Spell: ...
+    @overload
+    def __getitem__(self, index: slice) -> list[Spell]: ...
+    def __getitem__(self, index: int | slice) -> Spell | list[Spell]:
+        if isinstance(index, slice):
+            return [Spell.from_index(i) for i in self._indices[index]]
+        return Spell.from_index(self._indices[index])
+
+    @overload
+    def __setitem__(self, index: int, value: Spell) -> None: ...
+    @overload
+    def __setitem__(self, index: slice, value: Iterable[Spell]) -> None: ...
+    def __setitem__(self, index: int | slice, value: Spell | Iterable[Spell]) -> None:
+        if isinstance(index, slice):
+            self._indices[index] = [self._validated(spell).index for spell in value]  # type: ignore[union-attr]
+        else:
+            self._indices[index] = self._validated(value).index  # type: ignore[union-attr]
+
+    def __delitem__(self, index: int | slice) -> None:
+        del self._indices[index]
+
+    def __len__(self) -> int:
+        return len(self._indices)
+
+    def insert(self, index: int, value: Spell) -> None:
+        self._indices.insert(index, self._validated(value).index)
+
+    @classmethod
+    def from_pointer(cls, pointer: int) -> Self:
+        read_file.seek(pointer)
+        indices: list[int] = []
+        while (value := read_file.read(1)[0]) != SPELL_TERMINATOR:
+            indices.append(value)
+        inst = cls([])
+        inst._indices = indices
+        inst._rom_length = len(indices) + 1
+        Pointer.__init__(inst, pointer)
+        return inst
+
+    def write(self) -> None:
+        """Replace this character's new-game spell list in the output ROM, reflowing the records after it.
+
+        The seven characters' template records are packed back-to-back and the game parses them
+        sequentially, so a spell list that changes length shifts every byte after it -- this character's
+        own EXP/equipment and every later character's record. We reproduce that shift in the output ROM;
+        any growth is absorbed by the unused padding after the last record.
+
+        This is a **terminal write** for the party-template block: it copies the record tail from the
+        pristine source ROM, so it must run BEFORE the fixed-offset EXP/equipment writers in
+        :meth:`PlayableCharacter.write` (otherwise it would clobber their values back to vanilla). Grow at
+        most one spell list per run; growing a list moves Iris' read-side EXP/equipment offsets out of sync
+        with the shifted layout, so a grown character's other template fields can no longer be written.
+        """
+        list_start = self.pointer
+        old_len = self._rom_length  # pristine list length read from the source ROM (+ 0xFF terminator)
+        new_bytes = bytes(self._indices) + bytes([SPELL_TERMINATOR])
+
+        block_end = InitialEquipObject.pointers[-1] + RECORD_TAIL_AFTER_EQUIP  # end of last record (exclusive)
+        read_file.seek(list_start + old_len)
+        tail = read_file.read(block_end - (list_start + old_len))  # this + later characters, shifted
+
+        write_file.seek(list_start)
+        write_file.write(new_bytes + tail)
+
 class CharacterGrowth(Pointer):
     def __init__(
         self,
@@ -158,6 +254,7 @@ class PlayableCharacter(TablePointer):
         self.xp = CharacterExperience(0)
         self.level = CharacterLevel(0)
         self.equipment = InitialEquipment(0, 0, 0, 0, 0, 0)
+        self.starting_spells = StartingSpells([])
 
     def __repr__(self) -> str:
         return f"<PlayableCharacter: {self.name}>"
@@ -195,54 +292,19 @@ class PlayableCharacter(TablePointer):
         inst.xp = CharacterExperience.from_pointer(CharExpObject.pointers[index])
         inst.level = CharacterLevel.from_pointer(CharLevelObject.pointers[index])
         inst.equipment = InitialEquipment.from_pointer(InitialEquipObject.pointers[index])
+        inst.starting_spells = StartingSpells.from_pointer(CharLevelObject.pointers[index] + STARTING_SPELLS_GAP)
 
         inst.address = address
         inst.index = index
         inst.pointer = address + index * CHARACTER_SIZE
         return inst
 
-    @property
-    def spell_list_pointer(self) -> int:
-        """File offset of this character's 0xFF-terminated starting-spell list (in the party template)."""
-        return CharLevelObject.pointers[self.index] + STARTING_SPELLS_GAP
-
-    @property
-    def starting_spells(self) -> list[Spell]:
-        """The spells this character knows at new-game start (read from the party template)."""
-        read_file.seek(self.spell_list_pointer)
-        spells: list[Spell] = []
-        while (value := read_file.read(1)[0]) != SPELL_TERMINATOR:
-            spells.append(Spell.from_index(value))
-        return spells
-
-    @starting_spells.setter
-    def starting_spells(self, spells: Iterable[Spell]) -> None:
-        """Replace this character's new-game spell list and write it to the ROM.
-
-        The seven characters' template records are packed back-to-back and the game parses them
-        sequentially, so a spell list that changes length shifts every byte after it -- this character's
-        own EXP/equipment and every later character's record. We reproduce that shift in the output ROM;
-        any growth is absorbed by the unused padding after the last record.
-
-        This is a **terminal write** for the party-template block: it changes the on-ROM layout without
-        moving Iris' (read-side) field offsets, which still point at the pristine source ROM. Apply it
-        after any other reads/writes of the later characters' template data, and grow at most one spell
-        list per run.
-        """
-        spells = list(spells)
-        list_start = self.spell_list_pointer
-        old_len = len(self.starting_spells) + 1  # + 0xFF terminator
-        new_bytes = bytes(s.index for s in spells) + bytes([SPELL_TERMINATOR])
-
-        block_end = InitialEquipObject.pointers[-1] + RECORD_TAIL_AFTER_EQUIP  # end of last record (exclusive)
-        read_file.seek(list_start + old_len)
-        tail = read_file.read(block_end - (list_start + old_len))  # this + later characters, shifted
-
-        write_file.seek(list_start)
-        write_file.write(new_bytes + tail)
-
     def write(self) -> None:
         # FIXME: some data are shuffled after writing.
+
+        # Reflow the party-template block FIRST: it copies this record's tail (incl. EXP/equipment) from the
+        # pristine ROM, so the fixed-offset xp/equipment writers below must run afterwards to keep their values.
+        self.starting_spells.write()
 
         level_start = CharLevelObject.pointers[self.index]
         name_start = level_start - NAME_LENGTH
