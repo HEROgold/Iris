@@ -55,9 +55,6 @@ def main() -> None:
 
     set_rom_name(b"Lufia II (Iris patch)") # For identification purposes.
 
-    # Required to be ran before Zone's are generated?
-    # Identify that's the real cause, and fix it.
-    # (Should always be able to edit scripts of a zone, using read() and write() to properly place it's code.)
     party_toggle_in_elcid()  # event-script demo: Elcid townspeople toggle party join/leave
 
     apply_patch(args.selected_patch) # TODO: test with others besides Vanilla.

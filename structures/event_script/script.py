@@ -4,10 +4,10 @@ Parsing is linear over the script's byte range (bounded by the next known pointe
 in terrorwave's ``Script.parse``: there is no recursive branch-following -- jumps become local
 :class:`Address` operands. Two write modes exist:
 
-- **Mode A (frozen):** an unmodified script writes its original bytes back verbatim. This is what
-  makes the byte-identity round-trip pass.
-- **Mode B (dirty):** a modified script is recompiled and relocated by :mod:`compiler` /
-  :mod:`allocator`; its bytes are placed by the owning :class:`EventList` / :class:`MapEvent`.
+- **Mode A (frozen):** an unmodified script is a no-op -- its bytes are already correct in the
+  working ROM (a copy of the source), so byte-identity round-trips hold without re-writing anything.
+- **Mode B (dirty):** a modified script is recompiled in place at its original pointer and must fit
+  the original slot (the write path does not relocate scripts).
 """
 
 import logging
@@ -166,15 +166,28 @@ class EventScript:
         return instructions
 
     def write(self) -> None:
-        """Write the script's bytes. Frozen scripts write verbatim (Mode A)."""
+        """Persist the script's bytes -- only if it was modified.
+
+        - **Mode A (frozen):** an unmodified script is a **no-op**. Its bytes are already correct in the
+          working ROM (a copy of the source), so re-writing them is pointless and, in a patch pipeline,
+          would clobber any edits an earlier patch made to this region. Leaving frozen scripts untouched
+          is what keeps ``write()`` confined to the scripts that actually changed.
+        - **Mode B (dirty):** recompile in place at ``self.pointer`` and write. The write path is
+          in-place only (no relocation), so the recompiled bytes must fit the original slot -- bounded by
+          ``len(self.raw)`` (the next known pointer). Overrunning it would corrupt the following script,
+          so raise instead.
+        """
         if not self.dirty:
-            write_file.seek(self.pointer)
-            write_file.write(self.raw)
             return
-        # Mode B: recompile in place. Relocation of dirty scripts is coordinated by the owning
-        # EventList/MapEvent; here we emit the fresh bytes at the current pointer.
         from structures.event_script.compiler import compile_script  # noqa: PLC0415
 
         data = compile_script(self, script_pointer=self.pointer)
+        if len(data) > len(self.raw):
+            msg = (
+                f"Event script {self.pointer:#07x} (class {self.event_class.name}, index {self.index}) "
+                f"compiled to {len(data)}B, exceeding its {len(self.raw)}B slot; the in-place write path "
+                f"cannot relocate scripts."
+            )
+            raise ValueError(msg)
         write_file.seek(self.pointer)
         write_file.write(data)
