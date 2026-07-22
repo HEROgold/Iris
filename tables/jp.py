@@ -180,6 +180,11 @@ class ChestObject:
         0x9BD29,
         0x9BD2C,
     ]
+    size = sum((
+        1,  # misc1 (bytes flags)
+        misc2,
+        item_low_byte,
+    ))
 
 
 @dataclass
@@ -187,6 +192,7 @@ class AncientChest2Object:
     item_index = 2
     address = 0xB7139
     count = 9
+    size = item_index
 
 
 @dataclass
@@ -194,6 +200,7 @@ class BlueChestObject:
     item_index = 2
     address = 0xB6E4C
     count = 41
+    size = item_index
 
 
 @dataclass
@@ -201,6 +208,7 @@ class AncientChest1Object:
     item_index = 2
     address = 0xB70E9
     count = 31
+    size = item_index
 
 
 @dataclass
@@ -254,6 +262,15 @@ class SpellObject:
         0x97B8B,
         0x97BA1,
     ]
+    size = sum((
+        unk1,
+        element,
+        1,  # characters (bytes flags)
+        unk4,
+        mp_cost,
+        zero,
+        price,
+    ))
 
 
 @dataclass
@@ -499,6 +516,23 @@ class MonsterObject:
         0x8CA39,
         0x8CA9E,
     ]
+    size = sum((
+        level,
+        unknown,
+        battle_sprite,
+        palette,
+        hp,
+        mp,
+        attack,
+        defense,
+        agility,
+        intelligence,
+        guts,
+        magic_resistance,
+        xp,
+        gold,
+        misc,
+    ))
 
 
 @dataclass
@@ -522,6 +556,20 @@ class ItemObject:
     address = 0x93CE6
     count = 467
     grouped: ClassVar[list[str]] = ["467", "point1", "93ce6", "2"]
+    size = sum((
+        name_text,
+        1,  # usability (bytes flags)
+        1,  # unknown (bytes flags)
+        targetting,
+        icon,
+        sprite,
+        price,
+        1,  # item_type (bytes flags)
+        1,  # equipability (bytes flags)
+        1,  # misc1 (bytes flags)
+        1,  # misc2 (bytes flags)
+        zero,
+    ))
 
 
 @dataclass
@@ -627,6 +675,7 @@ class CharGrowthObject:
         0x8D307,
         0x8D30F,
     ]
+    size = sum((hp, mp, str, agl, int, gut, mgr, unk))  # noqa: A003
 
 
 @dataclass
@@ -640,6 +689,7 @@ class CharacterObject:
     mgr = 2
     address = 0x8D31F
     count = 7
+    size = sum((hp, mp, str, agl, int, gut, mgr))  # noqa: A003
 
 
 @dataclass
@@ -662,6 +712,10 @@ class CapPaletteObject:
     colorF = 2  # noqa: N815
     address = 0xF97F4
     count = 35
+    size = sum((
+        color0, color1, color2, color3, color4, color5, color6, color7,
+        color8, color9, colorA, colorB, colorC, colorD, colorE, colorF,
+    ))
 
 
 @dataclass
@@ -689,6 +743,28 @@ class CapsuleObject:
     address = 0x8E447
     count = 35
     grouped: ClassVar[list[str]] = ["35", "point1", "8e447", "2"]
+    size = sum((
+        name_text,
+        zero,
+        capsule_class,
+        alignment,
+        start_skills,
+        upgrade_skills,
+        hp,
+        attack,
+        defense,
+        strength,
+        agility,
+        intelligence,
+        guts,
+        magic_resistance,
+        hp_factor,
+        strength_factor,
+        agility_factor,
+        intelligence_factor,
+        guts_factor,
+        magic_resistance_factor,
+    ))
 
 
 @dataclass
@@ -757,6 +833,11 @@ class ShopObject:
         0x8FD32,
         0x8FD6B,
     ]
+    size = sum((
+        unknown0,
+        1,  # shop_type (bytes flags)
+        unknown2,
+    ))
 
 
 @dataclass
@@ -764,6 +845,7 @@ class CapSpritePTRObject:
     sprite_pointer = 3
     address = 0x1384BC
     count = 35
+    size = sprite_pointer
 
 
 @dataclass
@@ -771,6 +853,7 @@ class MonsterMoveObject:
     movement = 1
     address = 0x27F6B5
     count = 112
+    size = movement
 
 
 addresses = {

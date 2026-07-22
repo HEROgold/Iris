@@ -237,15 +237,6 @@ class CharacterGrowth(Pointer):
         write_file.write(self.unk.to_bytes(CharGrowthObject.unk, "little"))
 
 NAME_LENGTH = 6
-CHARACTER_SIZE = sum([
-    CharacterObject.hp,
-    CharacterObject.mp,
-    CharacterObject.str,
-    CharacterObject.agl,
-    CharacterObject.int,
-    CharacterObject.gut,
-    CharacterObject.mgr,
-])
 
 class PlayableCharacter(TablePointer):
     def __init__(self, name: str) -> None:
@@ -274,7 +265,7 @@ class PlayableCharacter(TablePointer):
 
         inst = cls(name)
 
-        read_file.seek(CharacterObject.address + index * CHARACTER_SIZE)
+        read_file.seek(CharacterObject.address + index * CharacterObject.size)
 
         inst.stats = RpgStats(
             health_points = read_little_int(read_file, CharacterObject.hp),
@@ -296,7 +287,7 @@ class PlayableCharacter(TablePointer):
 
         inst.address = address
         inst.index = index
-        inst.pointer = address + index * CHARACTER_SIZE
+        inst.pointer = address + index * CharacterObject.size
         return inst
 
     def write(self) -> None:
@@ -311,7 +302,7 @@ class PlayableCharacter(TablePointer):
         write_file.seek(name_start)
         write_file.write(self.name.encode("ascii"))
 
-        write_file.seek(CharacterObject.address + self.index * CHARACTER_SIZE)
+        write_file.seek(CharacterObject.address + self.index * CharacterObject.size)
         write_file.write(self.stats.health_points.to_bytes(CharacterObject.hp, "little"))
         write_file.write(self.stats.mana_points.to_bytes(CharacterObject.mp, "little"))
         write_file.write(self.stats.attack.to_bytes(CharacterObject.str, "little"))

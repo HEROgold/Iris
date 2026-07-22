@@ -30,24 +30,6 @@ class MonsterSprite:
 
 
 TABLE_SIZE = MonsterObject.count * 2
-MONSTER_SIZE: int = sum([
-    MonsterObject.name_text, # type: ignore  name_text is actually an int.
-    MonsterObject.level,
-    MonsterObject.unknown,
-    MonsterObject.battle_sprite,
-    MonsterObject.palette,
-    MonsterObject.hp,
-    MonsterObject.mp,
-    MonsterObject.attack,
-    MonsterObject.defense,
-    MonsterObject.agility,
-    MonsterObject.intelligence,
-    MonsterObject.guts,
-    MonsterObject.magic_resistance,
-    MonsterObject.xp,
-    MonsterObject.gold,
-    MonsterObject.misc,
-])
 
 class Monster(TablePointer):
     name: str
@@ -84,7 +66,7 @@ class Monster(TablePointer):
 
     @property
     def total_size(self) -> int:
-        size = MONSTER_SIZE
+        size = MonsterObject.size
         if self.attack_script:
             size += self.attack_script.size
         if self.defense_script:
@@ -204,25 +186,26 @@ class Monster(TablePointer):
         else:
             self.movement = 0x0
 
-
     def apply_scale(self) -> None:
+        # TODO: properly validate scaling behaviour.
         if self._scaled:
             return
         self._scaled = True
         # Scale stats
-        self.stats.health_points = self.scale
-        self.stats.attack = self.scale
-        self.stats.defense = self.scale
-        self.stats.agility = self.scale
-        self.stats.intelligence = self.scale
-        self.stats.guts = self.scale
-        self.stats.magic_resistance = self.scale
+        self.stats.health_points *= self.scale
+        self.stats.attack *= self.scale
+        self.stats.defense *= self.scale
+        self.stats.agility *= self.scale
+        self.stats.intelligence *= self.scale
+        self.stats.guts *= self.scale
+        self.stats.magic_resistance *= self.scale
         # Scale rewards
         self.stats.level = self.scale
         self.stats.xp = self.scale
         self.stats.gold = self.scale
 
     def undo_scale(self) -> None:
+        # TODO: properly validate scaling behaviour.
         if not self._scaled:
             return
         self._scaled = False
