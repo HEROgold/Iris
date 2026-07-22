@@ -279,6 +279,41 @@ class ChestLocation:
         local_order = [location.chest_index for location in on_map].index(self.chest_index)
         return placements[local_order]
 
+    def move_to(self, zone: "Zone", x: int, y: int) -> None:
+        """Move this chest's openable interaction (its ZoneData section-18 record) to ``(x, y)`` in ``zone``.
+
+        The interaction (press-A-to-open + contents) moves; the chest **sprite** does not (it lives in the
+        map's tile layer, a future editor feature -- see the lufia2-object-layout skill). So the chest is
+        visible + openable only if the destination tile already carries a chest sprite; on any other tile it
+        is openable-but-invisible.
+
+        Same-zone moves are written in place and preserve contents. A **cross-zone** move detaches the record
+        from the source map and appends it to ``zone`` (relocating both ZoneData blobs); this shifts the
+        global chest order, so fix chest **contents** separately afterwards. Raises if this chest's placement
+        record can't be resolved (a few maps' chest tables don't line up -- see :attr:`placement`).
+        """
+        placement = self.placement
+        if placement is None:
+            msg = f"Chest {self.chest_index:#04x}: placement unavailable (map {self.map_index:#04x} table mismatch)."
+            raise ValueError(msg)
+
+        source = self.zone
+        if zone.index == source.index:
+            placement.x, placement.y = x, y
+            source.data.set_chests(source.data.chests)
+            source.data.write_section18_inplace()  # same length -> no relocation
+            return
+
+        # Cross-zone: detach from the source map, re-slot, and append to the target map.
+        source.data.chests.remove(placement)
+        source.data.set_chests(source.data.chests)
+        placement.slot_id = len(zone.data.chests)
+        placement.x, placement.y = x, y
+        zone.data.chests.append(placement)
+        zone.data.set_chests(zone.data.chests)
+        source.data.write_relocated(source.index)
+        zone.data.write_relocated(zone.index)
+
     @property
     def x(self) -> int | None:
         """Map tile X of this chest, or None if placement is unavailable."""

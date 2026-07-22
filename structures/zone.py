@@ -12,12 +12,23 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, ClassVar, Self, SupportsIndex
 
 from _types.objects import Cache
+from constants import EMPTY_BYTES
+from helpers.addresses import address_to_lorom
 from helpers.bits import read_little_int
 from helpers.files import read_file, restore_pointer, write_file
 from helpers.name import read_as_decompressed_name, write_compressed_name
 from structures.event_script import MapEvent, ZoneEventManager
 from structures.zone_data_pointers import zone_data_pointers
+from tables import MapMetaObject
 from tables.zones import ZoneObject
+
+
+# The ROM table that locates each map's ZoneData: one 3-byte little-endian LoROM address per map index
+# (see the lufia2-object-layout skill). Used to repoint a ZoneData blob after it is relocated.
+ZONE_DATA_POINTER_TABLE = MapMetaObject.address
+CHEST_SECTION = 18
+SECTION_COUNT = 21
+_free_cursor = EMPTY_BYTES[0].start  # simple bump allocator into the first freespace region
 
 
 if TYPE_CHECKING:
@@ -257,6 +268,53 @@ class ZoneData:
             if offset == 0x2C:
                 assert offset_data == b"\xff"
             self.parsed_data[i] = offset_data
+
+    def set_chests(self, chests: "list[Chest]") -> None:
+        """Replace section 18 (the chest-placement table) with ``chests`` (0xFF-terminated)."""
+        self.chests = list(chests)
+        self.parsed_data[CHEST_SECTION] = b"".join(bytes(chest) for chest in chests) + b"\xff"
+
+    def rebuild(self) -> bytes:
+        """Reassemble the whole ZoneData blob from ``parsed_data`` (canonical layout).
+
+        Empty sections (``b"\\xff"``) share offset ``0x2C`` (satisfying the parser's assert); every
+        non-empty section gets its own offset, laid out in index order. Two pad bytes trail the last
+        section for the parser's ``size-2`` end convention. The result parses back identically and is
+        read by the game via the offset table (byte-for-byte identity with the original is NOT a goal).
+        """
+        empty = b"\xff"
+        offsets = [0x2C] * SECTION_COUNT           # default: empty -> 0x2C (data index 42)
+        body = bytearray(empty)                    # the shared empty marker at data index 42
+        cursor = 43                                # data index of the first non-empty section
+        for i in range(SECTION_COUNT):
+            section = self.parsed_data[i]
+            if section == empty:
+                continue
+            offsets[i] = cursor + 2                 # offset == data index + 2
+            body += section
+            cursor += len(section)
+        body += b"\x00\x00"                         # pad for the last section's size-2 end
+        offset_table = b"".join(offset.to_bytes(2, "little") for offset in offsets)
+        data = offset_table + bytes(body)
+        return len(data).to_bytes(2, "little") + data
+
+    def write_relocated(self, map_index: int) -> None:
+        """Rebuild this ZoneData, write it into free space, and repoint the map's pointer-table entry."""
+        global _free_cursor  # noqa: PLW0603
+        blob = self.rebuild()
+        pointer = _free_cursor
+        write_file.seek(pointer)
+        write_file.write(blob)
+        _free_cursor += len(blob)
+        write_file.seek(ZONE_DATA_POINTER_TABLE + map_index * 3)
+        write_file.write(address_to_lorom(pointer).to_bytes(3, "little"))
+        self.start = pointer
+
+    def write_section18_inplace(self) -> None:
+        """Write section 18 back at its current location (only valid when its length is unchanged)."""
+        offset18 = int.from_bytes(self.data[CHEST_SECTION * 2 : CHEST_SECTION * 2 + 2], "little")
+        write_file.seek(self.start + offset18)
+        write_file.write(self.parsed_data[CHEST_SECTION])
 
 
 
