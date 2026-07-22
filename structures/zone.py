@@ -18,6 +18,7 @@ from helpers.addresses import address_to_lorom
 from helpers.bits import read_little_int
 from helpers.files import read_file, restore_pointer, write_file
 from helpers.name import read_as_decompressed_name, write_compressed_name
+from logger import iris
 from structures.event_script import EventScript, MapEvent, ZoneEventManager
 from structures.zone_data_pointers import zone_data_pointers
 from tables import MapMetaObject, ZoneObject
@@ -130,6 +131,7 @@ class ZoneData:
 
     @restore_pointer
     def __init__(self, pointer: int) -> None:
+        iris.debug(f"Creating ZoneData from {pointer=:#08x}")
         self.start = pointer
         read_file.seek(pointer)
         self.size = read_little_int(read_file, 2)
@@ -364,6 +366,7 @@ class Zone:
         }
 
     def __init__(self, index: int, start: int, end: int) -> None:
+        iris.debug(f"Creating Zone from {index=} ({start=:#08x}, {end=:#08x})")
         self._name = None
         self._modified_name = None  # Stores modified name before writing
         self._original_start = start  # Store original location for reference
@@ -562,6 +565,7 @@ class Zone:
 
         If the name hasn't been modified, writes back the original compressed bytes.
         """
+        iris.debug(f"Writing Zone {self.index} name={self.clean_name.decode(errors='replace')!r} → start={self.start:#08x}")
         if self._modified_name is None:
             # Name not modified, write back original compressed bytes unchanged
             write_file.seek(self.start)
@@ -609,11 +613,7 @@ class Zone:
             # Need to allocate new space
             # TODO: Implement freespace allocation
             # For now, write a warning and fall back to original location
-            import logging
-
-            from logger import iris
-            log = logging.getLogger(f"{iris.name}.Zone")
-            log.warning(
+            iris.warning(
                 f"Zone {self.index} '{self.clean_name.decode()}': "
                 f"New compressed name size ({new_compressed_size} bytes) exceeds "
                 f"available space ({available_space} bytes). "

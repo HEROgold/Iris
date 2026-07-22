@@ -13,7 +13,7 @@ file_handler.setLevel(logging.DEBUG)
 iris = logging.getLogger("Iris")
 iris.setLevel(1)
 iris.addHandler(file_handler)
-# iris.addHandler(stream_handler)
+iris.addHandler(stream_handler)
 
 dump = logging.getLogger("Iris.Dump")
 dump.addHandler(logging.FileHandler("iris.dump.log", mode="w"))

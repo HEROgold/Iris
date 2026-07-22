@@ -1,8 +1,10 @@
 from helpers.files import write_file
 from helpers.headers import remove_header_offset
+from logger import iris
 
 
 def bunny_girls() -> None:
+    iris.info("Applying RealCritical patch: bunny_girls (sprite replacement).")
     write_file.seek(remove_header_offset(0x123E0A))
     write_file.write(bytes.fromhex("0C 00 32 0C 5A 38"))
     write_file.seek(remove_header_offset(0x123E1D))
@@ -68,6 +70,7 @@ def bunny_girls() -> None:
 
 
 def fix_shrine_tile_set() -> None:
+    iris.info("Applying RealCritical patch: fix_shrine_tile_set.")
     write_file.seek(remove_header_offset(0x138575))
     write_file.write(bytes.fromhex("7F 5A 07 32 60 07 2F 6A 07 41 71 07 47"))
     write_file.seek(remove_header_offset(0x1385D8))

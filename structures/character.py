@@ -5,6 +5,7 @@ from abc_.pointers import Pointer, TablePointer
 from abc_.stats import RpgStats
 from helpers.bits import read_little_int
 from helpers.files import read_file, write_file
+from logger import iris
 from tables import CharacterObject, CharExpObject, CharGrowthObject, CharLevelObject, InitialEquipObject
 
 from .item import Item
@@ -309,6 +310,7 @@ class PlayableCharacter(TablePointer):
 
     def write(self) -> None:
         # FIXME: some data are shuffled after writing.
+        iris.debug(f"Writing PlayableCharacter {self.index} {self.name!r} → {self.pointer=:#08x}")
 
         # Reflow the party-template block FIRST: it copies this record's tail (incl. EXP/equipment) from the
         # pristine ROM, so the fixed-offset xp/equipment writers below must run afterwards to keep their values.

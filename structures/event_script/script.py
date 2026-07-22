@@ -35,6 +35,7 @@ class EventScript:
     """A single event script: opcode/operand instructions parsed from a contiguous byte range."""
 
     def __init__(self, base_pointer: int, offset: int, index: int, event_class: EventClass) -> None:
+        log.debug(f"Creating EventScript {index=} {event_class.name} → pointer={base_pointer + offset:#08x}")
         self.base_pointer = base_pointer
         self.offset = offset
         self.pointer = base_pointer + offset
@@ -189,5 +190,6 @@ class EventScript:
                 f"cannot relocate scripts."
             )
             raise ValueError(msg)
+        log.debug(f"Writing EventScript {self.index=} {self.event_class.name} ({len(data)}B) → {self.pointer=:#08x}")
         write_file.seek(self.pointer)
         write_file.write(data)

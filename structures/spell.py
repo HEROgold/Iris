@@ -6,6 +6,7 @@ from enums.flags import CastableSpells
 from errors import SpellNotFound
 from helpers.bits import read_little_int
 from helpers.files import read_file, write_file
+from logger import iris
 from tables import SpellObject
 
 
@@ -116,6 +117,7 @@ class Spell(Pointer):
         return SpellObject.pointers.index(self.pointer)
 
     def write(self) -> None:
+        iris.debug(f"Writing Spell {self.index} {self.name!r} → {self.pointer=:#08x}")
         write_file.seek(self.pointer)
 
         write_file.write(self.name.encode())

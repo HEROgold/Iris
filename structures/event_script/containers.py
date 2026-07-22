@@ -120,6 +120,7 @@ class MapEvent:
         npc_highbyte: bytes,
         map_name_offset: int,
     ) -> None:
+        log.debug(f"Creating MapEvent from {pointer=:#08x}")
         self.pointer = pointer
         self._eventlist_lowbytes = eventlist_lowbytes
         self._eventlist_highbyte = eventlist_highbyte
