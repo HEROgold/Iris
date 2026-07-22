@@ -4,10 +4,12 @@ These values must be applied to the .sfc version of the game. They will not work
 """
 from helpers.files import write_file
 from helpers.headers import remove_header_offset
+from logger import iris
 
 
 def ac_more_enemies() -> None:
     """Increase the number of enemies in ancient cave battles."""
+    iris.info("Applying RealCritical patch: ac_more_enemies (more ancient-cave battle enemies).")
     write_file.seek(remove_header_offset(0xA5B71))
     write_file.write(bytes.fromhex("17"))
     write_file.seek(remove_header_offset(0xA5B77))
@@ -77,6 +79,7 @@ def ac_more_enemies() -> None:
 
 def fix_cave_chest_table() -> None:
     """Fix the ancient cave chest table to match the original game."""
+    iris.info("Applying RealCritical patch: fix_cave_chest_table.")
     write_file.seek(remove_header_offset(0x19376))
     write_file.write(bytes.fromhex("5C4AD8E16B"))
     write_file.seek(remove_header_offset(0xB6078))
@@ -103,6 +106,7 @@ def fix_cave_chest_table() -> None:
 
 def fix_menu() -> None:
     """Fix the menu to avoid softlocks."""
+    iris.info("Applying RealCritical patch: fix_menu.")
     write_file.seek(remove_header_offset(0xDA0))
     write_file.write(bytes.fromhex("4C1AFC"))
     write_file.seek(remove_header_offset(0x7E1A))
@@ -110,12 +114,14 @@ def fix_menu() -> None:
 
 def gift_mode() -> None:
     """Enable gift mode, basically NG+."""
+    iris.info("Applying RealCritical patch: gift_mode (NG+).")
     write_file.seek(remove_header_offset(0x16B9E))
     write_file.write(bytes.fromhex("A902"))
 
 def killer_names() -> None:
     """Change the names of the killers in the game to "Killer"."""
     # FIXME: This is a placeholder. This should be done with Iris.
+    iris.info("Applying RealCritical patch: killer_names.")
     write_file.seek(remove_header_offset(0xB3105))
     write_file.write(bytes.fromhex("4B 69 6C 6C 65 72"))
     write_file.seek(remove_header_offset(0xB3152))
@@ -130,6 +136,7 @@ def killer_names() -> None:
     write_file.write(bytes.fromhex("4B 69 6C 6C 65 72"))
 
 def jelly_damage_display() -> None:
+    iris.info("Applying RealCritical patch: jelly_damage_display.")
     write_file.seek(remove_header_offset(0xB097E))
     write_file.write(bytes.fromhex("C748"))
     write_file.seek(remove_header_offset(0xB5087))

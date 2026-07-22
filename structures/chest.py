@@ -36,6 +36,7 @@ class AddressChest(TablePointer):
         return inst
 
     def write(self) -> None:
+        iris.debug(f"Writing AddressChest item={self.item.index} → {self.pointer=:#08x}")
         write_file.seek(self.pointer)
         write_file.write(self.item.index.to_bytes(2, "little"))
 
@@ -84,6 +85,7 @@ class PointerChest(Pointer):
         return inst
 
     def write(self) -> None:
+        iris.debug(f"Writing PointerChest item={self.item.index} → {self.pointer=:#08x}")
         # Encode the 9-bit item index: bit 6 of misc1 is the high bit, item_low_byte the low 8 bits.
         # (Ports terrorwave ChestObject.set_item; preserves the other misc1 flag bits.)
         misc1 = int.from_bytes(self.misc1, "little")

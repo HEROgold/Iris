@@ -316,6 +316,7 @@ class Monster(TablePointer):
             update_pointer_table(start, monster.index, offset)
 
     def write(self) -> None:
+        iris.debug(f"Writing Monster {self.index} {self.name!r} → {self.pointer=:#08x}")
         stats = self.stats.to_int()
         write_file.seek(self.pointer)
         has_end_byte = False

@@ -35,6 +35,7 @@ class ItemName(TablePointer):
         return read_file.read(ItemNameObject.name_text).decode("ascii") # type: ignore
 
     def write(self) -> None:
+        iris.debug(f"Writing ItemName {self.name!r} → {self.pointer=:#08x}")
         write_file.seek(self.pointer)
         write_file.write(self.name.encode("ascii"))
 
@@ -215,6 +216,7 @@ class Item(TablePointer):
         return 0x18a <= self.index <= 0x18d
 
     def write(self) -> None:
+        iris.debug(f"Writing Item {self.index} {self.name_pointer.name!r} → {self.pointer=:#08x}")
         self.name_pointer.write()
 
         write_file.seek(self.pointer)

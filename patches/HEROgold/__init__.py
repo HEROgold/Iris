@@ -248,6 +248,7 @@ def swap_pierre_danielle_sprites() -> None:
 
 
 def guy_the_mage() -> None:
+    iris.info("Making Guy a mage (max MP, all spells).")
     guy = PlayableCharacter.from_index(1)
     guy.stats.mana_points = 0xFFFF
 
@@ -257,12 +258,14 @@ def guy_the_mage() -> None:
 
 
 def gorem_to_golem() -> None:
+    iris.info("Renaming 'Gorem' monsters to 'Golem'.")
     for monster in get_monsters():
         if "Gorem" in monster.name:
             monster.name = monster.name.replace("Gorem", "Golem")
             monster.write()
 
 def set_rom_name(name: bytes) -> None:
+    iris.info(f"Setting ROM name to {name!r}.")
     write_file.seek(0x007FC0)
     empty_name = bytes(21)
     assert len(name) <= len(empty_name)
