@@ -9,7 +9,7 @@
 
 
 from dataclasses import dataclass
-from typing import ClassVar, Self, SupportsIndex
+from typing import TYPE_CHECKING, ClassVar, Self, SupportsIndex
 
 from _types.objects import Cache
 from helpers.bits import read_little_int
@@ -18,6 +18,10 @@ from helpers.name import read_as_decompressed_name, write_compressed_name
 from structures.event_script import MapEvent, ZoneEventManager
 from structures.zone_data_pointers import zone_data_pointers
 from tables.zones import ZoneObject
+
+
+if TYPE_CHECKING:
+    from structures.chest_location import ChestLocation
 
 
 # TODO: Map items to chests, chest to zones.
@@ -97,6 +101,19 @@ class Waypoint:
         )
 
 
+@dataclass
+class Chest:
+    """A chest's physical placement on a map (ZoneData section 18 record)."""
+
+    slot_id: int  # per-map chest slot; usually 0,1,2,... but can skip on some maps
+    x: int
+    y: int
+    chest_type: int  # small 1-4 value; chest sprite/type or a flag (usually constant per map)
+
+    def __bytes__(self) -> bytes:
+        return bytes([self.slot_id, self.x, self.y, self.chest_type])
+
+
 class ZoneData:
     _cache = Cache[int, Self]()
 
@@ -113,6 +130,7 @@ class ZoneData:
         self._parse_exits()
         self._parse_tiles()
         self._parse_waypoints()
+        self._parse_chests()
         self._cache.to_cache(pointer, self)
 
     @classmethod
@@ -141,6 +159,29 @@ class ZoneData:
             waypoint_data = waypoint_data[6:]
             self.waypoints.append(waypoint)
         self.waypoint_shared_data = waypoint_data[1:] # Store the remaining data.
+
+    def _parse_chests(self) -> None:
+        """Parse section 18: the per-map chest-placement table (see docs/chest_system.md).
+
+        Records are 4 bytes ``[slot_id, x, y, type]`` terminated by ``0xFF``. Parsed tolerantly: not
+        every map has a clean chest table (section 18 matched chest counts on ~39/40 sampled maps), and
+        ZoneData is built for *every* zone, so anything unexpected yields an empty list rather than an error.
+        """
+        data_size = 4
+        chest_data = self.parsed_data[18]
+        self.chests: list[Chest] = []
+        if not chest_data or chest_data[-1] != 0xff or (len(chest_data) - 1) % data_size != 0:
+            return
+
+        for i in range(0, len(chest_data) - 1, data_size):
+            self.chests.append(
+                Chest(
+                    chest_data[i + 0],
+                    chest_data[i + 1],
+                    chest_data[i + 2],
+                    chest_data[i + 3],
+                ),
+            )
 
     def _parse_tiles(self) -> None:
         data_size = 5
@@ -373,6 +414,19 @@ class Zone:
     def clean_name(self) -> bytes:
         # Remove the control byte for compressing
         return self.name.replace(b"\x0a", b"").replace(b"\x00", b"")
+
+    @property
+    def chests(self) -> "list[ChestLocation]":
+        """The chests on this map, as ChestLocation hubs (sorted by global chest index).
+
+        Realizes the intent of ``_chest_indices``: the chest->map mapping lives in the ported CHEST_MAP
+        table, keyed by the same index as this zone. See ``structures.chest_location``.
+        """
+        from structures.chest_location import chests_by_map  # noqa: PLC0415  (avoid import cycle at load)
+
+        located = chests_by_map().get(self.index, [])
+        self._chest_indices = [location.chest_index for location in located]
+        return located
 
     def write(self) -> None:
         """Write zone name to ROM.
