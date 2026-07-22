@@ -108,7 +108,7 @@ class Monster(TablePointer):
         pointer = find_table_pointer(address, index)
         read_file.seek(pointer)
 
-        name_text = read_file.read(MonsterObject.name_text).decode() # type: ignore
+        name_text = read_file.read(MonsterObject.name_text).decode("latin-1")  # names use non-UTF-8 bytes
 
         level = read_little_int(read_file, MonsterObject.level)
         _unknown = read_little_int(read_file, MonsterObject.unknown)

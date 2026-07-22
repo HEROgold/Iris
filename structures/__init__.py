@@ -1,3 +1,5 @@
+"""Internally used structures for Iris. These are not meant to be used directly by the user."""
+
 from .boss import Boss, BossLocation
 from .capsule import CapsuleMonster
 from .character import PlayableCharacter

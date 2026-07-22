@@ -1,4 +1,5 @@
 # FIXME: Dead file
+# Formations/BossFormations could hould the data for bosses?
 
 from typing import Self
 
