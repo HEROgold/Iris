@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, ClassVar, Self, SupportsIndex
 
 from _types.objects import Cache
 from constants import EMPTY_BYTES
+from enums.event_scripts import EventClass
 from helpers.addresses import address_to_lorom
 from helpers.bits import read_little_int
 from helpers.files import read_file, restore_pointer, write_file
@@ -319,20 +320,49 @@ class ZoneData:
 
 
 
+@dataclass(frozen=True)
+class Entrance:
+    """A valid way a new game can spawn the player into a map.
+
+    Backed by a ``LOAD_MAP`` (A) event: ``cutscene`` is that event's index -- the ``entrance_cutscene``
+    byte ``set_spawn_location`` writes (it runs the event, which loads the map graphics and positions the
+    player). Frozen so it can live in a ``set``.
+    """
+
+    map_index: int
+    cutscene: int
+
+
 class Zone:
     event_manager: ClassVar[ZoneEventManager] = ZoneEventManager()
 
     event: MapEvent
     data: ZoneData
     _requirements: list[int]
-    _chest_indices: list[int]  # TODO
+    _chest_indices: list[int]
     _cache = Cache[int, Self]()
     npcs: list[NPC]
     exits: list[Exit]
     tiles: list[Tile]
     waypoints: list[Waypoint]
     connections: list[Self]
-    valid_entrances: list[int] # TODO: see set_spawn_location() for more details
+
+    @property
+    def valid_entrances(self) -> set[Entrance]:
+        """The entrances a new game can spawn the player at, for this map.
+
+        Derived live from the map's ``LOAD_MAP`` (A) events: their indices are the only valid
+        ``entrance_cutscene`` values (each runs an event that loads graphics + positions the player);
+        any other yields a black screen. Computing it from the events (rather than a static list) keeps it
+        correct when entrance scripts are added/edited for modding.
+        """
+        event = MapEvent.from_index(self.index)
+        return {
+            Entrance(self.index, script.index)
+            for event_list in event.event_lists
+            if event_list.event_class is EventClass.LOAD_MAP
+            for script in event_list.events
+        }
 
     def __init__(self, index: int, start: int, end: int) -> None:
         self._name = None
@@ -363,6 +393,8 @@ class Zone:
 
     @classmethod
     def from_name(cls, name: str) -> Self:
+        if not cls._cache.values():
+            cls._generate_zones()
         for zone in cls._cache.values():
             comparable_cname = zone.clean_name.decode().casefold()
             comparable_name = bytes(name, encoding="ascii").decode().casefold()

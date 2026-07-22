@@ -29,6 +29,16 @@ from tables import (
     SpellObject,
 )
 
+# from .maxim_warp import maxim_starts_with_warp  # pyright: ignore[reportUnusedImport] # noqa: F401
+# Importing maxim_warp causes   File "C:\Users\marti\Documents\GitHub\Iris\src\structures\battlescript.py", line 674, in get_arguments
+#    return op_codes[opcode]["params"]
+#           ~~~~~~~~^^^^^^^^
+#KeyError: 163
+#?
+# FIXME
+from .party_toggle import party_toggle_in_elcid  # pyright: ignore[reportUnusedImport] # noqa: F401
+from .unlock_warps import unlock_all_warp_destinations  # pyright: ignore[reportUnusedImport] # noqa: F401
+
 
 def get_items() -> list[Item]:
     return [

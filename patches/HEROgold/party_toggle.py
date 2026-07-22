@@ -94,9 +94,22 @@ def _toggle(character: PlayableCharacter) -> list[Instruction]:
 
 def party_toggle_in_elcid() -> None:
     """Turn Elcid's townspeople into join/leave toggles for the seven playable characters."""
+    # FIXME:
+    # Required to be ran before Zone's are generated?
+    # Identify that's the real cause, and fix it.
+    # (Should always be able to edit scripts of a zone, using read() and write() to properly place it's code.)
+    # We should avoid using compile_script here, and instead make it such that
+    # Zone.by_name("Elcid") returns the Zone object
+    # We should then edit that zone object, such that the MapEvent, MapEvent.event_lists, and MapEvent.event_lists.events are all properly updated
+    # and automatically written to the correct location in the ROM when MapEvent.write() is called.
+    # When that's properly set up and linked
+    # the sanity check is also not needed.
+    #
+    # Preferably, we even have helpers that help us easily objectify characters,
+    # and how we can interact/edit them and their relative script.
     iris.info("Building party join/leave toggle in Elcid (map 0x03).")
     event = MapEvent.from_index(ELCID)
-    characters = {slot: PlayableCharacter.from_index(index) for slot, index in _SLOT_TO_CHARACTER.items()}
+    characters: dict[Operand, PlayableCharacter] = {slot: PlayableCharacter.from_index(index) for slot, index in _SLOT_TO_CHARACTER.items()}
 
     # 1) Swap NPC sprites in the map-load (X) script. Same length -> safe in place.
     npc_script = event.npc_script

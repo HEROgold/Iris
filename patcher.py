@@ -16,11 +16,13 @@ from patches.parser import PatchData, PatchParser
 from structures.item import Item
 from structures.zone import Zone
 
+
 # The bundled asar assembler. We shell out to the .exe (not the DLL bindings) because the
 # shipped asar.dll is 32-bit and Iris runs under 64-bit Python, so the DLL cannot be loaded.
 # A subprocess is architecture-independent (WOW64).
 ASAR_EXE = Path(__file__).parent/"patches"/"asar191"/"asar.exe"
 
+parser = PatchParser()  # Script parser for patches.
 
 def apply_asm_patch(asm_path: Path, include_dirs: list[Path] | None = None, *, fix_checksum: bool = True) -> None:
     """Assemble a 65816 asar patch onto the current per-seed ROM using the bundled asar.exe.
@@ -199,8 +201,7 @@ def translate_game_genie_code_snes(code: str) -> tuple[int, int]:
     address: list[BitArray] = []
     for i, v  in enumerate(_b):
         encoded[genie_address_encrypted[i]] = v
-    for i, v in enumerate(genie_address_decrypted):
-        decoded.append(encoded[v])
+    decoded.extend(encoded[v] for v in genie_address_decrypted)
 
     binary_address = decoded[0:8], decoded[8:16], decoded[16:24]
     for i in binary_address:
@@ -273,7 +274,7 @@ def set_spawn_location(location: Zone, entrance_cutscene: int = 0x2) -> None:
     # VALIDATION
     # 0x01adab: 0xa9 0x03
     # 0x01adb3: 0xa9 0x02
-    if entrance_cutscene not in location.valid_entrances:
+    if entrance_cutscene not in {entrance.cutscene for entrance in location.valid_entrances}:
         msg = f"Invalid entrance cutscene {entrance_cutscene} for zone {location.name}."
         raise ValueError(msg)
 
@@ -287,13 +288,15 @@ def set_spawn_location(location: Zone, entrance_cutscene: int = 0x2) -> None:
         (0x01adb3, None): bytearray(b"\xa9\x02"),
     }
 
+    commit_patch(patch, validation)
+
+def commit_patch(patch: PatchData, validation: PatchData) -> None:
+    """Apply a patch to the ROM file."""
     verify_patch(patch, validation)
     write_patch(patch, validation)
     verify_after_patch(patch)
 
 
-# event_parser = EventPatchParser()  # Script parser for event patches.
-parser = PatchParser()  # Script parser for patches.
 
 def apply_absynnonym_patch(name: str) -> None:
     file = Path(__file__).parent/f"patches/absynnonym/patch_{name}.txt"

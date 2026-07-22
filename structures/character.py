@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 from typing import Self
 
 from abc_.pointers import Pointer, TablePointer
@@ -7,6 +8,16 @@ from helpers.files import read_file, write_file
 from tables import CharacterObject, CharExpObject, CharGrowthObject, CharLevelObject, InitialEquipObject
 
 from .item import Item
+from .spell import Spell
+
+
+# Bytes between a character's level offset and the start of the spell list:
+# level(1) + status(1) + unknown $7E:1854 (2). The list itself is 0xFF-terminated spell indices.
+STARTING_SPELLS_GAP = 4
+SPELL_TERMINATOR = 0xFF
+# A template record's tail, counted from its first equipment byte: 6 equipment slots (12) +
+# dungeon item (2) + a 0x00 record separator (1). Used to find the end of the last record.
+RECORD_TAIL_AFTER_EQUIP = 15
 
 
 class CharacterLevel(Pointer):
@@ -189,6 +200,46 @@ class PlayableCharacter(TablePointer):
         inst.index = index
         inst.pointer = address + index * CHARACTER_SIZE
         return inst
+
+    @property
+    def spell_list_pointer(self) -> int:
+        """File offset of this character's 0xFF-terminated starting-spell list (in the party template)."""
+        return CharLevelObject.pointers[self.index] + STARTING_SPELLS_GAP
+
+    @property
+    def starting_spells(self) -> list[Spell]:
+        """The spells this character knows at new-game start (read from the party template)."""
+        read_file.seek(self.spell_list_pointer)
+        spells: list[Spell] = []
+        while (value := read_file.read(1)[0]) != SPELL_TERMINATOR:
+            spells.append(Spell.from_index(value))
+        return spells
+
+    @starting_spells.setter
+    def starting_spells(self, spells: Iterable[Spell]) -> None:
+        """Replace this character's new-game spell list and write it to the ROM.
+
+        The seven characters' template records are packed back-to-back and the game parses them
+        sequentially, so a spell list that changes length shifts every byte after it -- this character's
+        own EXP/equipment and every later character's record. We reproduce that shift in the output ROM;
+        any growth is absorbed by the unused padding after the last record.
+
+        This is a **terminal write** for the party-template block: it changes the on-ROM layout without
+        moving Iris' (read-side) field offsets, which still point at the pristine source ROM. Apply it
+        after any other reads/writes of the later characters' template data, and grow at most one spell
+        list per run.
+        """
+        spells = list(spells)
+        list_start = self.spell_list_pointer
+        old_len = len(self.starting_spells) + 1  # + 0xFF terminator
+        new_bytes = bytes(s.index for s in spells) + bytes([SPELL_TERMINATOR])
+
+        block_end = InitialEquipObject.pointers[-1] + RECORD_TAIL_AFTER_EQUIP  # end of last record (exclusive)
+        read_file.seek(list_start + old_len)
+        tail = read_file.read(block_end - (list_start + old_len))  # this + later characters, shifted
+
+        write_file.seek(list_start)
+        write_file.write(new_bytes + tail)
 
     def write(self) -> None:
         # FIXME: some data are shuffled after writing.

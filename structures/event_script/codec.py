@@ -10,8 +10,8 @@ import re
 from collections import defaultdict
 
 from logger import iris
-from structures.event_script.opcodes import EXIT_TEXT_MODE, VALID_ASCII_CHARACTERS
 from structures.event_script.instructions import TextChunk
+from structures.event_script.opcodes import EXIT_TEXT_MODE, VALID_ASCII_CHARACTERS
 from structures.word import Word
 from tables import WordObject
 

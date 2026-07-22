@@ -1,5 +1,5 @@
 from args import args
-from helpers.files import new_file, read_file, write_file
+from helpers.files import read_file, write_file
 from logger import iris
 from patcher import (
     apply_absynnonym_patch,
@@ -23,10 +23,12 @@ from patches.HEROgold import (
     fix_boltfish,
     gorem_to_golem,
     guy_the_mage,
+    # maxim_starts_with_warp,
+    party_toggle_in_elcid,
     set_rom_name,
     swap_pierre_danielle_sprites,
+    unlock_all_warp_destinations,
 )
-from patches.HEROgold.party_toggle import party_toggle_in_elcid
 from patches.RealCritical import (
     ac_more_enemies,
     fix_cave_chest_table,
@@ -34,7 +36,7 @@ from patches.RealCritical import (
     jelly_damage_display,
     killer_names,
 )
-from patches.RealCritical.sprites import bunny_girls
+from patches.RealCritical.sprites import bunny_girls, fix_shrine_tile_set
 from structures.zone import Zone
 from tests.read_write import read_write_all
 
@@ -48,10 +50,15 @@ def main() -> None:
         read_write_all()
         # Cleanup after testing.
         write_file.close()
-        new_file.unlink()
+        # new_file.unlink()
         return
 
     set_rom_name(b"Lufia II (Iris patch)") # For identification purposes.
+
+    # Required to be ran before Zone's are generated?
+    # Identify that's the real cause, and fix it.
+    # (Should always be able to edit scripts of a zone, using read() and write() to properly place it's code.)
+    party_toggle_in_elcid()  # event-script demo: Elcid townspeople toggle party join/leave
 
     apply_patch(args.selected_patch) # TODO: test with others besides Vanilla.
     if args.fix_softlocks:
@@ -131,7 +138,9 @@ def main() -> None:
     gorem_to_golem()
     swap_pierre_danielle_sprites()
     guy_the_mage()
-    party_toggle_in_elcid()  # event-script demo: Elcid townspeople toggle party join/leave
+    # Dev/debug patches (not intended for release):
+    # maxim_starts_with_warp()  # dev fix: Maxim begins every game knowing Warp (field teleport)
+    unlock_all_warp_destinations()  # dev fix: every Warp destination available from a fresh save
 
     # Apply RealCritical patches
     fix_menu()
@@ -141,7 +150,7 @@ def main() -> None:
     fix_cave_chest_table()
     jelly_damage_display() # Should be done with Iris.  (When a more capable script parser is implemented.)
     bunny_girls()
-    # fix_shrine_tile_set() # FIXME: Currently prevents the game from booting. Find out which exactly.
+    fix_shrine_tile_set()
 
     # Randomize the game
     # randomize_all_spells()

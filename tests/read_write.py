@@ -186,6 +186,7 @@ def test_monsters() -> None:
 
 def test_map_meta() -> None:
     # TODO: This needs to be created, and then tested.
+    # Uses ZoneData.
     for _i in range(MapMetaObject.count):
         msg = ""
         raise NotImplementedError(msg)
@@ -203,6 +204,7 @@ def test_roaming_npc() -> None:
         assert_files_are_same()
 
 def test_events() -> None:
+    # Do we need to use structures/event_script/script.py?
     for i in range(EventInstObject.count):
         event = Event.from_index(i)
         event.write()

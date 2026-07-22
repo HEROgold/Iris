@@ -85,7 +85,7 @@ class Args(argparse.Namespace):
     fix_softlocks: bool
 
 
-
+# TODO: rewrite using herogold.args
 parser = argparse.ArgumentParser(prog=PROJECT_NAME, description="Randomize Lufia II: Rise of the Sinistrals.")
 parser.add_argument("-v", "--version", action="version", version=f"{PROJECT_NAME}, {VERSION}")
 parser.add_argument("-d", "--debug", action="store_true", help="Enable debug mode.")

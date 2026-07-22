@@ -2,26 +2,26 @@
 # Regenerate with: python tools/generate_lookups.py --file <rom> --vanilla
 """Named-access helper enums for vanilla game structures (auto-generated)."""
 
-from .items import Items
-from .monsters import Monsters
-from .monster_sprites import MonsterSprites
-from .spells import Spells
-from .capsules import Capsules
-from .zones import Zones
-from .shops import Shops
-from .formations import Formations
-from .blue_chests import BlueChests
 from .ancient_chests1 import AncientChests1
 from .ancient_chests2 import AncientChests2
-from .chests import Chests
-from .players import Players
-from .words import Words
-from .events import Events
-from .map_events import MapEvents
-from .ip_attacks import IPAttacks
+from .blue_chests import BlueChests
 from .boss_formations import BossFormations
-from .map_formations import MapFormations
+from .capsules import Capsules
+from .chests import Chests
+from .events import Events
+from .formations import Formations
+from .ip_attacks import IPAttacks
+from .items import Items
 from .maidens import Maidens
+from .map_events import MapEvents
+from .map_formations import MapFormations
+from .monster_sprites import MonsterSprites
+from .monsters import Monsters
+from .players import Players
+from .shops import Shops
+from .spells import Spells
+from .words import Words
+from .zones import Zones
 
 
 __all__ = [
