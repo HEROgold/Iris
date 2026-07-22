@@ -28,15 +28,6 @@ from tables import MapEventObject
 
 log = logging.getLogger(f"{iris.name}.MapEvent")
 
-MAP_EVENT_SIZE = sum(
-    [
-        MapEventObject.eventlist_lowbytes,
-        MapEventObject.eventlist_highbyte,
-        MapEventObject.npc_lowbytes,
-        MapEventObject.npc_highbyte,
-        MapEventObject.map_name_pointer,
-    ],
-)
 EVENT_MAGIC = b"PH"
 EVENT_LIST_COUNT = 6
 EVENT_HEADER_SIZE = 2 + (EVENT_LIST_COUNT * 2)  # magic + six relative pointers
@@ -90,15 +81,18 @@ class EventList:
         return [event.pointer for event in self.events]
 
     def write(self) -> None:
-        """Write the ``index, offset`` table (frozen lists write verbatim)."""
+        """Persist this list. Only a *dirty* table is rewritten; scripts persist themselves.
+
+        A frozen (unmodified) table is left untouched -- it is already correct in the working ROM (a
+        copy of the source), so re-writing it would be pointless and could clobber another patch's edit
+        to this region. Every script's :meth:`EventScript.write` is still called so modified scripts get
+        persisted (frozen scripts are no-ops there too).
+        """
         if self.event_class is EventClass.NPC_SCRIPT:
             for event in self.events:
                 event.write()
             return
-        if not self.dirty:
-            write_file.seek(self.pointer)
-            write_file.write(self.raw_table)
-        else:
+        if self.dirty:
             write_file.seek(self.pointer)
             for event in self.events:
                 offset = event.pointer - self.base_pointer
@@ -156,7 +150,7 @@ class MapEvent:
         if inst := cls._cache.from_cache(index):
             return inst
 
-        pointer = address + index * MAP_EVENT_SIZE
+        pointer = address + index * MapEventObject.size
         read_file.seek(pointer)
         inst = cls(
             pointer,
@@ -231,17 +225,14 @@ class MapEvent:
         return self.map_name.replace(b"\x0a", b"").replace(b"\x00", b"")
 
     def write(self) -> None:
-        """Write the map record, the event-list header, and every event list (frozen == verbatim)."""
-        write_file.seek(self.pointer)
-        write_file.write(self._eventlist_lowbytes)
-        write_file.write(self._eventlist_highbyte)
-        write_file.write(self._npc_lowbytes)
-        write_file.write(self._npc_highbyte)
-        write_file.write(self._map_name_offset.to_bytes(MapEventObject.map_name_pointer, "little"))
+        """Persist the map's event scripts. Only modified scripts (and dirty tables) are written.
 
-        write_file.seek(self.event_list_pointer)
-        write_file.write(self._header_raw)
-
+        The map record and the event-list header are never mutated by this subsystem (no relocation is
+        wired in), so they are left as-is in the working ROM rather than re-emitted verbatim -- that
+        keeps the write confined to the scripts that actually changed and avoids clobbering other
+        patches. If script relocation is added later, the record/header would need a dirty flag and
+        would be written here.
+        """
         for event_list in self.event_lists:
             event_list.write()
 

@@ -250,6 +250,23 @@ class PlayableCharacter(TablePointer):
     def __repr__(self) -> str:
         return f"<PlayableCharacter: {self.name}>"
 
+    @property
+    def party_flag(self) -> int:
+        """The event flag that tracks this character's party membership (Maxim=1 .. Lexis=7).
+
+        Vanilla convention: ``flag == character index + 1`` (e.g. ``6A(07 ...)`` gates Lexis dialogue).
+        Set on join (``2B`` + ``1A(flag)``), cleared on leave (``2C`` + ``1B(flag)``).
+        """
+        return self.index + 1
+
+    @property
+    def overworld_sprite(self) -> int:
+        """This character's overworld sprite index, as loaded by the map's ``0x68`` NPC-load opcode.
+
+        The overworld sprite index equals the character index.
+        """
+        return self.index
+
     @classmethod
     def from_index(cls, index: int) -> Self:
         return cls.from_table(CharacterObject.address, index)

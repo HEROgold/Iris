@@ -7,14 +7,16 @@ into the seven playable characters. Talking to one:
 - otherwise                                                    -> they **join**  (``2B`` + set flag)
 
 Membership uses the vanilla convention ``flag == character_index + 1`` (proved in the base game, e.g.
-``6A(07 ...)`` gating Lexis dialogue). Each NPC's overworld sprite is swapped to the character sprite
-via the existing ``0x68`` loads in the map-load (X) script.
+``6A(07 ...)`` gating Lexis dialogue), exposed as :attr:`PlayableCharacter.party_flag`. Each NPC's
+overworld sprite is swapped to the character sprite via the existing ``0x68`` loads in the map-load (X)
+script (:meth:`Zone.set_npc_sprite`).
 
 Why Elcid and not the tutorial cave: the event-script write path is **in-place only** (it does not
 relocate or add scripts), and NPC *placement* (positions/actor slots) is map data, not event-script
 data. So we cannot add new standing NPCs to a room -- we reuse a room that already has them. Every
-replacement script (32 bytes) is shorter than the original talk script, so the write stays inside the
-original byte range and never disturbs a neighbouring script.
+replacement script (32 bytes) is shorter than the original talk script, so it fits its slot; the write
+path enforces this and raises if a script would overrun (see :meth:`EventScript.write`), so this patch
+no longer needs to hand-check lengths or diff the ROM.
 
 Softlock safety: removing the party's last member (or the field leader when the party would empty)
 leaves no controllable character. The leave branch is therefore gated on an "any other member present?"
@@ -26,16 +28,11 @@ guaranteed-free and initialised to the real starting party size, which isn't saf
 without risking save state. The active-party size is left to the game's own limit.
 """
 
-from enums.event_scripts import EventClass
-from helpers.files import write_file
 from logger import iris
 from structures.character import PlayableCharacter
-from structures.event_script import MapEvent
-from structures.event_script.compiler import compile_script
 from structures.event_script.instructions import Address, Instruction, Operand
+from structures.zone import Zone
 
-
-ELCID = 0x03
 
 # Elcid (map 0x03) NPC slot -> playable-character index. The overworld sprite index equals the
 # character index, and the party-membership flag equals the character index + 1.
@@ -69,7 +66,7 @@ def _toggle(character: PlayableCharacter) -> list[Instruction]:
     ``LEAVE: 2C(character); 1B(flag); 00``     leave the party and clear the membership flag
     ``JOIN:  2B(character); 1A(flag); 00``     join the party and set the membership flag
     """
-    flag = character.index + 1
+    flag = character.party_flag
     others = [f for f in _MEMBER_FLAGS if f != flag]
 
     # 0x14 chain: (other0 set) OR (other1 set) OR ... -> branch-if-true to LEAVE (line 0x16).
@@ -93,63 +90,22 @@ def _toggle(character: PlayableCharacter) -> list[Instruction]:
 
 
 def party_toggle_in_elcid() -> None:
-    """Turn Elcid's townspeople into join/leave toggles for the seven playable characters."""
-    # FIXME:
-    # Required to be ran before Zone's are generated?
-    # Identify that's the real cause, and fix it.
-    # (Should always be able to edit scripts of a zone, using read() and write() to properly place it's code.)
-    # We should avoid using compile_script here, and instead make it such that
-    # Zone.by_name("Elcid") returns the Zone object
-    # We should then edit that zone object, such that the MapEvent, MapEvent.event_lists, and MapEvent.event_lists.events are all properly updated
-    # and automatically written to the correct location in the ROM when MapEvent.write() is called.
-    # When that's properly set up and linked
-    # the sanity check is also not needed.
-    #
-    # Preferably, we even have helpers that help us easily objectify characters,
-    # and how we can interact/edit them and their relative script.
+    """Turn Elcid's townspeople into join/leave toggles for the seven playable characters.
+
+    Callsite order no longer matters: the write path only persists the scripts this patch marks dirty
+    and leaves the rest of the ROM untouched, so it neither depends on running before Zone generation
+    nor clobbers other patches.
+    """
     iris.info("Building party join/leave toggle in Elcid (map 0x03).")
-    event = MapEvent.from_index(ELCID)
-    characters: dict[Operand, PlayableCharacter] = {slot: PlayableCharacter.from_index(index) for slot, index in _SLOT_TO_CHARACTER.items()}
+    zone = Zone.from_name("Elcid")
 
-    # 1) Swap NPC sprites in the map-load (X) script. Same length -> safe in place.
-    npc_script = event.npc_script
-    npc_length = len(npc_script.raw)
-    for instruction in npc_script.instructions:
-        if instruction.opcode == 0x68 and instruction.operands[0] in characters:
-            instruction.operands[1] = characters[instruction.operands[0]].index  # sprite index == character index
-    npc_script.dirty = True
-    assert len(compile_script(npc_script, script_pointer=npc_script.pointer)) == npc_length, (
-        "map-load script changed length; refusing to overrun the following script"
-    )
-
-    # 2) Replace each townspeople talk script with the toggle. Must stay <= original length.
-    talk_list = next(el for el in event.event_lists if el.event_class is EventClass.REFERENCED)
-    for script in talk_list.events:
-        if script.index not in characters:
-            continue
-        character = characters[script.index]
-        original_length = len(script.raw)
+    for slot, index in _SLOT_TO_CHARACTER.items():
+        character = PlayableCharacter.from_index(index)
+        zone.set_npc_sprite(slot, character.overworld_sprite)  # swap overworld sprite (0x68 load)
+        script = zone.referenced_script(slot)                  # talk script index == NPC slot
         script.instructions = _toggle(character)
         script.dirty = True
-        emitted = compile_script(script, script_pointer=script.pointer)
-        assert len(emitted) <= original_length, (
-            f"toggle for {character.name} ({len(emitted)}B) exceeds original script ({original_length}B)"
-        )
-        iris.info(f"  slot {script.index:#04x} {character.name} -> {len(emitted)}B toggle (from {original_length}B).")
+        iris.info(f"  slot {slot:#04x} {character.name} -> join/leave toggle.")
 
-    # 3) Sanity-check that *our* write is confined to the edited scripts, then persist the map.
-    # Snapshot the working ROM immediately before/after our write so earlier patches don't count.
-    write_file.seek(0)
-    before = write_file.read()
-    event.write()
-    write_file.flush()
-    write_file.seek(0)
-    after = write_file.read()
-
-    allowed = set(range(npc_script.pointer, npc_script.pointer + npc_length))
-    for script in talk_list.events:
-        if script.index in characters:
-            allowed.update(range(script.pointer, script.pointer + len(script.raw)))
-    stray = [i for i in range(len(before)) if before[i] != after[i] and i not in allowed]
-    assert not stray, f"patch touched bytes outside the edited scripts: {[hex(i) for i in stray[:8]]}"
-    iris.info("Party toggle applied; all changes confined to the edited scripts.")
+    zone.write_events()
+    iris.info("Party toggle applied.")

@@ -18,7 +18,7 @@ from helpers.addresses import address_to_lorom
 from helpers.bits import read_little_int
 from helpers.files import read_file, restore_pointer, write_file
 from helpers.name import read_as_decompressed_name, write_compressed_name
-from structures.event_script import MapEvent, ZoneEventManager
+from structures.event_script import EventScript, MapEvent, ZoneEventManager
 from structures.zone_data_pointers import zone_data_pointers
 from tables import MapMetaObject, ZoneObject
 
@@ -516,6 +516,40 @@ class Zone:
         located = chests_by_map().get(self.index, [])
         self._chest_indices = [location.chest_index for location in located]
         return located
+
+    def referenced_script(self, index: int) -> EventScript:
+        """Return this map's ``REFERENCED`` (talk) script with the given index.
+
+        Talk scripts are the interactive scripts an NPC runs when talked to; a talk script's index
+        equals the NPC slot (``0x50`` + npc index). Raises ``KeyError`` if no such script exists.
+        """
+        for event_list in self.event.event_lists:
+            if event_list.event_class is EventClass.REFERENCED:
+                for script in event_list.events:
+                    if script.index == index:
+                        return script
+        msg = f"Zone {self.index}: no REFERENCED script with index {index:#04x}."
+        raise KeyError(msg)
+
+    def set_npc_sprite(self, slot: int, sprite_index: int) -> None:
+        """Set the overworld sprite loaded for an NPC ``slot`` in this map's NPC-load script.
+
+        Finds the ``0x68`` (load NPC) instruction for ``slot`` and repoints its sprite operand, marking
+        the NPC-load script dirty so :meth:`write_events` persists it. Raises ``KeyError`` if the slot is
+        not loaded by this map.
+        """
+        npc_script = self.event.npc_script
+        for instruction in npc_script.instructions:
+            if instruction.opcode == 0x68 and instruction.operands[0] == slot:
+                instruction.operands[1] = sprite_index
+                npc_script.dirty = True
+                return
+        msg = f"Zone {self.index}: NPC slot {slot:#04x} is not loaded (no 0x68 for it)."
+        raise KeyError(msg)
+
+    def write_events(self) -> None:
+        """Persist this map's event scripts (only modified scripts are written)."""
+        self.event.write()
 
     def write(self) -> None:
         """Write zone name to ROM.
