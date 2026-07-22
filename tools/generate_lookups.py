@@ -20,8 +20,8 @@ The generated files are committed; regenerate them with this script rather than
 hand-editing.
 
 Excluded, on purpose: ``Boss``/``BossLocation`` (``structures/boss.py`` is a dead
-file with no table) and ``Priest`` (a bare stub with no data). ``Players`` already
-exists in ``characters.py`` and is only re-exported, not regenerated.
+file with no table) and ``Priest`` (a bare stub with no data). ``PlayableCharacter``
+is generated here as ``Players`` (mirroring the hand-written ``characters.py``).
 """
 
 import keyword
@@ -32,25 +32,40 @@ from typing import Any
 # Importing anything from the project pulls in ``args`` (which requires --file)
 # and ``helpers.files`` (which opens the ROM). That is intentional: the enum
 # member *values* are live instances read from that ROM.
+# Only structures whose *member name* is derived from an instance attribute are
+# imported here. Index-named structures (Event, Shop, BattleFormation) are still
+# generated, but their producers emit a literal expression string instead of
+# reading an attribute, so the generator never references the class itself — the
+# generated modules import it via each spec's ``imports`` list.
 from structures.capsule import CapsuleMonster
-from structures.chest import AddressChest
-from structures.formation import BattleFormation
+from structures.character import PlayableCharacter
+from structures.chest import AddressChest, PointerChest
+from structures.events import MapEvent
+from structures.ip_attack import IPAttack
 from structures.item import Item
 from structures.maiden import Clare, Lisa, Marie
 from structures.monster import Monster, MonsterSprite
-from structures.shop import Shop
 from structures.spell import Spell
+from structures.word import Word
 from structures.zone import Zone
 from tables import (
     AncientChest1Object,
     AncientChest2Object,
     BlueChestObject,
+    BossFormationObject,
     CapsuleObject,
+    CharacterObject,
+    ChestObject,
+    EventInstObject,
     FormationObject,
+    IPAttackObject,
     ItemObject,
+    MapEventObject,
+    MapFormationsObject,
     MonsterObject,
     ShopObject,
     SpellObject,
+    WordObject,
 )
 from tables.zones import ZoneObject
 
@@ -184,6 +199,47 @@ def ancient_chests2() -> Iterator[tuple[str | bytes | None, str]]:
     yield from _chests(AncientChest2Object, "AncientChest2Object")
 
 
+def pointer_chests() -> Iterator[tuple[str | bytes | None, str]]:
+    for i in range(len(ChestObject.pointers)):
+        chest = PointerChest.from_pointer(ChestObject.pointers[i])
+        yield chest.item.name_pointer.name, f"PointerChest.from_pointer(ChestObject.pointers[{i}])"
+
+
+def players() -> Iterator[tuple[str | bytes | None, str]]:
+    for i in range(CharacterObject.count):
+        yield PlayableCharacter.from_index(i).name, f"PlayableCharacter.from_index({i})"
+
+
+def words() -> Iterator[tuple[str | bytes | None, str]]:
+    for i in range(WordObject.count):
+        yield Word.from_index(i).word, f"Word.from_index({i})"
+
+
+def events() -> Iterator[tuple[str | bytes | None, str]]:
+    for i in range(EventInstObject.count):
+        yield None, f"Event.from_index({i})"
+
+
+def map_events() -> Iterator[tuple[str | bytes | None, str]]:
+    for i in range(MapEventObject.count):
+        yield MapEvent.from_index(i).clean_map_name, f"MapEvent.from_index({i})"
+
+
+def ip_attacks() -> Iterator[tuple[str | bytes | None, str]]:
+    for i in range(len(IPAttackObject.pointers)):
+        yield IPAttack.from_pointer(IPAttackObject.pointers[i]).name, f"IPAttack.from_pointer(IPAttackObject.pointers[{i}])"
+
+
+def boss_formations() -> Iterator[tuple[str | bytes | None, str]]:
+    for i in range(BossFormationObject.count):
+        yield None, f"BattleFormation.from_pointer(find_table_pointer(BossFormationObject.address, {i}))"
+
+
+def map_formations() -> Iterator[tuple[str | bytes | None, str]]:
+    for i in range(MapFormationsObject.count):
+        yield None, f"BattleFormation.from_pointer(find_table_pointer(MapFormationsObject.address, {i}))"
+
+
 # Structures that are not table-driven get literal, hand-mapped entries.
 MAIDENS = [
     (Lisa.maiden_name, "Lisa"),
@@ -221,6 +277,28 @@ SPECS = [
     ("ancient_chests2.py", "AncientChests2",
      ["from structures.chest import AddressChest", "from tables import AncientChest2Object"],
      "Named access to vanilla ancient-cave chests, table 2 (named by item).", "CHEST", ancient_chests2),
+    ("chests.py", "Chests",
+     ["from structures.chest import PointerChest", "from tables import ChestObject"],
+     "Named access to vanilla map treasure chests (named by contained item).", "CHEST", pointer_chests),
+    ("players.py", "Players", ["from structures.character import PlayableCharacter"],
+     "Named access to the playable characters.", "PLAYER", players),
+    ("words.py", "Words", ["from structures.word import Word"],
+     "Named access to vanilla dictionary words.", "WORD", words),
+    ("events.py", "Events", ["from structures.events import Event"],
+     "Named access to vanilla event instances (index-named).", "EVENT", events),
+    ("map_events.py", "MapEvents", ["from structures.events import MapEvent"],
+     "Named access to vanilla map event containers (named by map).", "MAP", map_events),
+    ("ip_attacks.py", "IPAttacks",
+     ["from structures.ip_attack import IPAttack", "from tables import IPAttackObject"],
+     "Named access to vanilla IP attacks.", "IP", ip_attacks),
+    ("boss_formations.py", "BossFormations",
+     ["from structures.formation import BattleFormation", "from tables import BossFormationObject",
+      "from helpers.bits import find_table_pointer"],
+     "Named access to vanilla boss battle formations (index-named).", "BOSS_FORMATION", boss_formations),
+    ("map_formations.py", "MapFormations",
+     ["from structures.formation import BattleFormation", "from tables import MapFormationsObject",
+      "from helpers.bits import find_table_pointer"],
+     "Named access to vanilla map battle formations (index-named).", "MAP_FORMATION", map_formations),
 ]
 
 
@@ -266,11 +344,10 @@ def write_init(exported: list[tuple[str, str]]) -> None:
         HEADER,
         '"""Named-access helper enums for vanilla game structures (auto-generated)."""\n',
         "\n",
-        "from characters import Players\n",
     ]
     for stem, enum_name in exported:
         lines.append(f"from .{stem} import {enum_name}\n")
-    names = ["Players", *(enum_name for _, enum_name in exported)]
+    names = [enum_name for _, enum_name in exported]
     lines.append("\n\n__all__ = [\n")
     lines.extend(f'    "{n}",\n' for n in sorted(names))
     lines.append("]\n")

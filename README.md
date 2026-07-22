@@ -61,11 +61,12 @@ cd src
 uv run --no-project --python 3.12 --with "bitstring>=4.2.3" python -m tools.generate_lookups --file "roms/Lufia II - Rise of the Sinistrals (USA).sfc" --vanilla
 ```
 
-This writes `src/lookups/` with one module per structure (`items.py`,
-`monsters.py`, `spells.py`, `zones.py`, `capsules.py`, `shops.py`,
-`formations.py`, the chest tables, `maidens.py`, …) plus an `__init__.py` that
-re-exports every namespace. Each member is the live structure instance read from
-the ROM, so you can write e.g.:
+This writes `src/lookups/` with one module per structure (`players.py`,
+`items.py`, `monsters.py`, `spells.py`, `zones.py`, `capsules.py`, `shops.py`,
+`words.py`, `events.py`, `map_events.py`, `ip_attacks.py`, the formation and chest
+tables, `maidens.py`, …) plus an `__init__.py` that re-exports every namespace.
+Each member is the live structure instance read from the ROM, so you can write
+e.g.:
 
 ```python
 from lookups import Items, Monsters, Spells
