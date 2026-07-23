@@ -26,6 +26,7 @@ from patches.HEROgold import (
     guy_the_mage,
     # maxim_starts_with_warp,
     party_toggle_in_elcid,
+    set_found_flags_on_story_joins,
     set_rom_name,
     swap_pierre_danielle_sprites,
     unlock_all_warp_destinations,
@@ -57,6 +58,7 @@ def main() -> None:
     set_rom_name(b"Lufia II (Iris patch)") # For identification purposes.
 
     party_toggle_in_elcid()  # event-script demo: Elcid townspeople toggle party join/leave
+    set_found_flags_on_story_joins()  # story joins also set each character's "found/unlocked" flag
 
     apply_patch(args.selected_patch) # TODO: test with others besides Vanilla.
     if args.fix_softlocks:

@@ -3,6 +3,7 @@ from typing import Self, overload
 
 from abc_.pointers import Pointer, TablePointer
 from abc_.stats import RpgStats
+from enums.flags import EventFlag
 from helpers.bits import read_little_int
 from helpers.files import read_file, write_file
 from logger import iris
@@ -239,6 +240,25 @@ class CharacterGrowth(Pointer):
 
 NAME_LENGTH = 6
 
+# Party-membership event flag per character *index* (Maxim=0 .. Lexis=6). This is NOT simply ``index + 1``:
+# the game assigns flag 5 to Dekar and flag 6 to Tia (proved by Elcid's party-select scripts, ``2B(04)``
+# -> ``1A(06)`` for Tia and ``2B(05)`` -> ``1A(05)`` for Dekar, and the TCRF flag notes). Only Tia (index 4)
+# and Dekar (index 5) deviate from ``index + 1``.
+_PARTY_FLAG_BY_INDEX = (
+    EventFlag.MAXIM_IN_PARTY,   # index 0 -> flag 1
+    EventFlag.SELAN_IN_PARTY,   # index 1 -> flag 2
+    EventFlag.GUY_IN_PARTY,     # index 2 -> flag 3
+    EventFlag.ARTEA_IN_PARTY,   # index 3 -> flag 4
+    EventFlag.TIA_IN_PARTY,     # index 4 -> flag 6
+    EventFlag.DEKAR_IN_PARTY,   # index 5 -> flag 5
+    EventFlag.LEXIS_IN_PARTY,   # index 6 -> flag 7
+)
+
+# The seven "found/unlocked" flags are index-ordered starting at FOUND_MAXIM (242), so found flag == 242 +
+# index. These are new flags (no game-side swap), unlike the membership flags above.
+_FOUND_FLAG_BASE = int(EventFlag.FOUND_MAXIM)
+
+
 class PlayableCharacter(TablePointer):
     def __init__(self, name: str) -> None:
         self.name = name
@@ -255,10 +275,20 @@ class PlayableCharacter(TablePointer):
     def party_flag(self) -> int:
         """The event flag that tracks this character's party membership (Maxim=1 .. Lexis=7).
 
-        Vanilla convention: ``flag == character index + 1`` (e.g. ``6A(07 ...)`` gates Lexis dialogue).
+        Mostly ``flag == index + 1``, but **Tia and Dekar are swapped**: flag 5 is Dekar, flag 6 is Tia
+        (proved by Elcid's party-select scripts and the TCRF flag notes -- see ``_PARTY_FLAG_BY_INDEX``).
         Set on join (``2B`` + ``1A(flag)``), cleared on leave (``2C`` + ``1B(flag)``).
         """
-        return self.index + 1
+        return int(_PARTY_FLAG_BY_INDEX[self.index])
+
+    @property
+    def found_flag(self) -> int:
+        """The event flag marking this character as "found/unlocked" (recruited in the story).
+
+        A new Iris flag (242 + index, i.e. ``EventFlag.FOUND_*``) used by the party-toggle patch to gate
+        joining. Unlike :attr:`party_flag`, these are index-ordered with no swap.
+        """
+        return _FOUND_FLAG_BASE + self.index
 
     @property
     def overworld_sprite(self) -> int:

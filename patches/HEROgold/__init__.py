@@ -36,6 +36,7 @@ from tables import (
 #KeyError: 163
 #?
 # FIXME
+from .found_flags import set_found_flags_on_story_joins  # pyright: ignore[reportUnusedImport] # noqa: F401
 from .party_toggle import party_toggle_in_elcid  # pyright: ignore[reportUnusedImport] # noqa: F401
 from .unlock_warps import unlock_all_warp_destinations  # pyright: ignore[reportUnusedImport] # noqa: F401
 
