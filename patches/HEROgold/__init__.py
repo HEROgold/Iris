@@ -14,6 +14,16 @@ from helpers.bits import bytes_overwrite
 from helpers.files import write_file
 from logger import iris
 from structures import CapsuleMonster, Item, Monster, Spell
+from structures.battle_builder import (
+    Target,
+    apply,
+    cast_spell_free,
+    end,
+    label,
+    on_chance,
+    physical_attack,
+    sequence,
+)
 from structures.character import InitialEquipment, PlayableCharacter
 from structures.chest import AddressChest, PointerChest
 from structures.ip_attack import IPAttack
@@ -287,36 +297,38 @@ def fix_boltfish() -> None:
     bolt_fish.attack_script.read()
 
 def foomy_s_firebird_valor() -> None:
-    """Give capsule Foomy S (index 0) a Firebird/Valor battle AI as a pure L2BASM data edit.
+    """Give capsule Foomy S (index 0) a Firebird/Valor battle AI, authored with the ``battle_builder`` DSL.
 
     Rewrites only Foomy S's *attack* (per-turn AI) script, in place, within its fixed 34/36-byte
     footprint (record.pointer 0xBDCFE, attack script at record+0x2B). Each turn it rolls:
-      - ~19%  -> cast Valor  (spell 0x1E) on all allies      (32 06 32 05, support/revive)
-      - ~69%  -> cast Firebird (spell 0x05) on one foe       (32 01, offense)
-      - else  -> physical attack one foe                     (32 01 28)
-    Both casts use the MP-free IP sequence `47 78 00 54 XX 01 4F` because capsules have no MP pool.
+      - ~19%  -> cast Valor  (spell 0x1E) on all allies      (support/revive)
+      - ~69%  -> cast Firebird (spell 0x05) on one foe       (offense)
+      - else  -> physical attack one foe
+    Both casts use the MP-free IP sequence (``cast_spell_free`` -> ``47 78 00 54 XX 01 4F``) because
+    capsules have no MP pool.
 
-    The *reaction* script (record+0x4F = `42 11 00`, passive status immunity) is left untouched: it is
-    a protection-subroutine slot, NOT an action handler. A previous attempt put a cast there, which
-    made arbitrary actors (enemies) run the Valor cast on their own side and froze the game. We also
-    deliberately avoid CapsuleMonster.write() (it does not persist script bytecode and would rewrite
-    the reaction offset via the stats.mana_points hack) and write the attack script directly instead.
+    ``on_chance`` + ``label`` let the assembler compute the record-relative jump offsets automatically;
+    the block order (Firebird then Valor) is chosen so this reproduces the original hand-assembled bytes
+    **byte-for-byte** (verified). ``apply`` writes the ``BattleScript`` directly and never calls
+    ``CapsuleMonster.write()`` (which doesn't persist script bytecode and reroutes the reaction offset
+    via the ``stats.mana_points`` hack). The *reaction* script (record+0x4F = ``42 11 00``, passive
+    status immunity) is left untouched: it is a protection-subroutine slot, NOT an action handler.
     """
+    iris.info("Giving Foomy S a Firebird/Valor AI via the battle_builder DSL.")
     foomy = CapsuleMonster.from_index(0)
     assert foomy.attack_script and foomy.attack_script.offset == 0x2B
-    bytecode = bytes([
-        0x05, 0x30, 0x41, 0x00,              # OnChance ~19%  -> jump Valor block (record offset 0x41)
-        0x05, 0xB0, 0x37, 0x00,              # OnChance ~69%  -> jump Firebird block (record offset 0x37)
-        0x32, 0x01, 0x28, 0x00,              # fallback: target one foe, PhysicalAttack, END
-        0x32, 0x01,                          # Firebird block: target one foe
-        0x47, 0x78, 0x00, 0x54, 0x05, 0x01, 0x4F,  # MP-free cast Firebird (0x05)
-        0x00,                                # END
-        0x32, 0x06, 0x32, 0x05,              # Valor block: target all allies
-        0x47, 0x78, 0x00, 0x54, 0x1E, 0x01, 0x4F,  # MP-free cast Valor (0x1E)
-        0x00,                                # END
-    ])
-    assert len(bytecode) <= 0x4F - 0x2B, "attack script overruns the reaction slot"  # <= 36
-    assert bytecode[-1] == 0x00, "attack script must end in END (0x00)"
-    foomy.attack_script.bytecode = bytecode
-    foomy.attack_script.write()   # raw overwrite at record.pointer + 0x2B; reaction untouched
-    foomy.attack_script.read()    # round-trip verify
+    # Spell.from_index avoids the eager `lookups` import (which trips a pre-existing spell-name decode
+    # bug); with `lookups` fixed these are simply ``Spells.VALOR`` / ``Spells.FIREBIRD``.
+    valor = Spell.from_index(30)
+    firebird = Spell.from_index(5)
+    apply(
+        foomy.attack_script,
+        sequence(
+            on_chance(0x30, "valor"),       # ~19% -> Valor block
+            on_chance(0xB0, "firebird"),    # ~69% -> Firebird block
+            physical_attack(target=Target.ONE_FOE), end(),               # default
+            label("firebird"), cast_spell_free(firebird, target=Target.ONE_FOE), end(),
+            label("valor"), cast_spell_free(valor, target=Target.ALL_ALLIES), end(),
+        ),
+        max_size=0x4F - 0x2B,
+    )
