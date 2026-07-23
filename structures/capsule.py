@@ -5,6 +5,7 @@ from abc_.stats import RpgStats
 from enums.flags import Alignment
 from helpers.bits import find_table_pointer, read_little_int
 from helpers.files import read_file, write_file
+from structures.battlescript import BattleScript, ScriptType
 from tables import CapAttackObject, CapsuleLevelObject, CapsuleObject
 
 
@@ -88,6 +89,10 @@ class CapsuleMonster(TablePointer):
         self.guts_factor = -1
         self.magic_resistance_factor = -1
         self.strength = -1
+        # L2BASM scripts (populated by from_table): capsules store an attack- and a
+        # reaction-script offset as two u16s at record+37/+39 (see battlescript.py / lufia2.hexpat).
+        self.attack_script: BattleScript | None = None
+        self.reaction_script: BattleScript | None = None
 
     @classmethod
     def from_index(cls, index: int) -> Self:
@@ -95,15 +100,17 @@ class CapsuleMonster(TablePointer):
 
     @classmethod
     def from_table(cls, address: int, index: int) -> Self:
+        # attack_script / reaction_script are built below (read side done).
+        # TODO: persist them in write() + stop routing the reaction offset through mana_points. See TODO.md.
         pointer = find_table_pointer(address, index)
         read_file.seek(pointer)
 
-        name = read_file.read(CapsuleObject.name_text).decode()  # type: ignore
+        name = read_file.read(CapsuleObject.name_text).decode()
         _zero = read_little_int(read_file, CapsuleObject.zero)
         class_ = read_little_int(read_file, CapsuleObject.capsule_class)
         alignment = Alignment(read_little_int(read_file, CapsuleObject.alignment))
-        start_skills = read_file.read(CapsuleObject.start_skills)  # type: ignore # list of 3, TODO figure out how these are stored. (Battle scripts?)
-        upgrade_skills = read_file.read(CapsuleObject.upgrade_skills)  # type: ignore # list of 3, TODO figure out how these are stored. (Battle scripts?)
+        start_skills = read_file.read(CapsuleObject.start_skills) # list of 3, TODO figure out how these are stored. (Battle scripts?)
+        upgrade_skills = read_file.read(CapsuleObject.upgrade_skills) # list of 3, TODO figure out how these are stored. (Battle scripts?)
         hp = read_little_int(read_file, CapsuleObject.hp)
         attack = read_little_int(read_file, CapsuleObject.attack)
         defense = read_little_int(read_file, CapsuleObject.defense)
@@ -119,18 +126,17 @@ class CapsuleMonster(TablePointer):
         guts_factor = read_little_int(read_file, CapsuleObject.guts_factor)
         magic_resistance_factor = read_little_int(read_file, CapsuleObject.magic_resistance_factor)
         # Here follow 2 bytes that are always 0x00 0x00.
-        # We may want to check if this is always the case.
-        # TODO: figure out the following bytes.
         _zero = read_little_int(read_file, 1)
         _zero = read_little_int(read_file, 1)
-        _1 = read_little_int(read_file, 1) # 1 Byte with data, Always 0x2B, (BattleScript offset?)
-        assert _1 == 0x2B
-        _zero = read_little_int(read_file, 1) # 1 Empty Byte,
-        _2 = read_little_int(read_file, 1) # 1 Byte with data. Mana?
-        _zero = read_little_int(read_file, 3) # 3 Empty Bytes,
+        attack_script_offset = read_little_int(read_file, 1)
+        assert attack_script_offset == 0x2B
+        _zero = read_little_int(read_file, 1) # 1 Empty Byte
+        reaction_script_offset = read_little_int(read_file, 1)
+        _zero = read_little_int(read_file, 3) # 3 Empty Bytes
         # The following sequences were found
         # 00 00 2B 00 > Used by not just capsule monsters, but these values are around
         # the same area in the ROM. It's clearly some indicator of something.
+        # Seems like an attack script offset pattern? (at least for cap monsters it is.)
         # 00 00 2B 00 > For every capsule monster. Followed by:
         # 49 00 00 00 > HardHat, ArmorDog
         # 4F 00 00 00 > FoomyS, Shaggy, Raddisher
@@ -161,6 +167,15 @@ class CapsuleMonster(TablePointer):
         )
         super().__init__(inst, address, index)
         inst.pointer = pointer
+        # L2BASM scripts (offsets are relative to the record start == inst.pointer).
+        # BattleScript.read follows branches, so the disassembly spans the attack script's
+        # handler blocks (Target/Attack, Defend, Flee) that sit between it and the reaction script.
+        inst.attack_script = BattleScript(inst, attack_script_offset, ScriptType.ATTACK)
+        inst.reaction_script = BattleScript(inst, reaction_script_offset, ScriptType.DEFENSE)
+        # TODO: Add a CapsuleStats class to hold hp, attack, defense, agility, intelligence, guts, magic_resistance
+        # They don't seem to contain any mana, level are stored on CapsuleLevel, xp and gold aren't present on capsule monsters.
+        # Would also simplify with self.stats.write(), rather than writing each stat individually.
+        # Should also include self.strength
         inst.stats = RpgStats(
             health_points=hp,
             attack=attack,
@@ -169,7 +184,7 @@ class CapsuleMonster(TablePointer):
             intelligence=intelligence,
             guts=guts,
             magic_resistance=magic_resistance,
-            mana_points=_2,
+            mana_points=reaction_script_offset, # TODO: do capsule monsters even have mana?
             level=level.level,
             xp=0, # TODO: are these stored somewhere?
             gold=0, # TODO: are these stored somewhere?
@@ -205,11 +220,17 @@ class CapsuleMonster(TablePointer):
         write_file.write(self.intelligence_factor.to_bytes())
         write_file.write(self.guts_factor.to_bytes())
         write_file.write(self.magic_resistance_factor.to_bytes())
+        # The following is for the 2 bytes that are always 0x00 0x00.
+        # Not sure what they're used for.
         write_file.write(b"\x00")
         write_file.write(b"\x00")
+        # The following is for the attack script offset, which is always 0x2B for capsule monsters.
         write_file.write(b"\x2B")
-
         write_file.write(b"\x00")
+
+        # The following is for the reaction script offset.
+        # should be the same as 0x2B + attack script (size) + branch target handler (size)
+        # branch target handler = target&attack + defend + flee.
         write_file.write(self.stats.mana_points.to_bytes())
         write_file.write(b"\x00")
 

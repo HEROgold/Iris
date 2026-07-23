@@ -437,8 +437,12 @@ Item items[467] @ 0xB4F69;
 //    * Capsule reaction scripts (L2BASM)          -- structures/capsule.py (location TODO)
 //
 //  Caveats (see the plan / skills for detail):
-//    A. Linear parse: a script is read up to its first top-level END (0x00). Blocks that
-//       are only reachable via a forward GoTo/branch past that END are not rendered.
+//    A. Script bodies: a battle script's decision logic branches (IfEq/OnChance/GoTo) FORWARD to
+//       small handler blocks (Target/Attack, Defend, Flee, ...) that sit past its first END -- those
+//       are reachable code, not padding. `BattleScript` stops at the first END so it shows only the
+//       decision logic; `BattleScriptRegion` (used for capsule attack scripts, whose end is known)
+//       renders the whole thing incl. handlers. Monster/IP scripts still use `BattleScript` (their
+//       exact end isn't cheaply known in ImHex), so their handler blocks aren't shown.
 //    B. Spell operands are shown numerically (SpellObject uses scattered pointers, so
 //       there is no contiguous table to link into). Items/maps/characters/shops link.
 //    C. Capsule scripts: RESOLVED. Each capsule record stores two u16 offsets (relative
@@ -497,6 +501,31 @@ enum StatusEffect : u8 {
     Mirror       = 0x07
 };
 
+// Stat register selector (battle opcodes 0x13/0x14/0x15/0x4E). From L2_Effects.txt stat_reg map.
+enum StatRegister : u8 {
+    CurHP   = 0x00,
+    CurMP   = 0x01,
+    MaxHP   = 0x02,
+    MaxMP   = 0x03,
+    ATP     = 0x04,
+    DFP     = 0x05,
+    STR     = 0x06,
+    AGL     = 0x07,
+    INT     = 0x08,
+    GUT     = 0x09,
+    MGR     = 0x0A,
+    IP      = 0x0B,
+    Level   = 0x0C,
+    TempATP = 0x0D,
+    TempDFP = 0x0E,
+    TempSTR = 0x0F,
+    TempAGL = 0x10,
+    TempINT = 0x11,
+    TempGUT = 0x12,
+    TempMGR = 0x13,
+    Status  = 0x14
+};
+
 // Elemental mask (battle opcodes 0x1F / 0x21 / 0x22). Combined masks render numerically.
 enum Element : u16 {
     Neutral     = 0x0000,
@@ -517,6 +546,8 @@ enum Element : u16 {
 };
 
 // Battle-script subroutine index (opcode 0x42 XX 00) -- elemental weakness/protection.
+// info/Reli + RealCitizen/L2_Subroutines$42XX.txt documents 0x00-0x28; indices not named here
+// (incl. the 0x25-0x27 used by capsule attack scripts) render numerically.
 enum Subroutine : u8 {
     WeakFire        = 0x00,
     WeakThunder     = 0x01,
@@ -720,11 +751,11 @@ enum EventOp : u8 {
 // Battle: operand byte count == op_codes[op].params. Undefined bytes -> 0.
 fn battle_param_count(u8 op) {
     match (op) {
-        (0x00 | 0x01 | 0x02 | 0x28 | 0x29 | 0x2A | 0x31 | 0x33 | 0x34 | 0x36 | 0x37 |
-         0x38 | 0x39 | 0x3A | 0x3B | 0x3C | 0x40 | 0x41 | 0x43 | 0x49 | 0x4D | 0x4F |
+        (0x00 | 0x01 | 0x02 | 0x28 | 0x29 | 0x2A | 0x2E | 0x31 | 0x33 | 0x34 | 0x37 |
+         0x38 | 0x39 | 0x3A | 0x3B | 0x3C | 0x41 | 0x43 | 0x49 | 0x4D | 0x4F |
          0x50 | 0x51 | 0x52 | 0x58 | 0x59 | 0x5B | 0x5C): { return 0; }
-        (0x19 | 0x1A | 0x1B | 0x1C | 0x1D | 0x2C | 0x2D | 0x2E | 0x2F | 0x30 | 0x32 |
-         0x35 | 0x3E | 0x53 | 0x54 | 0x5A): { return 1; }
+        (0x19 | 0x1A | 0x1B | 0x1C | 0x1D | 0x2C | 0x2D | 0x2F | 0x30 | 0x32 | 0x35 |
+         0x36 | 0x3E | 0x40 | 0x53 | 0x54 | 0x5A): { return 1; }  // 0x2E/0x36/0x40 per L2_Effects.txt
         (0x03 | 0x04 | 0x11 | 0x12 | 0x13 | 0x14 | 0x15 | 0x1E | 0x1F | 0x20 | 0x23 |
          0x25 | 0x26 | 0x27 | 0x2B | 0x42 | 0x44 | 0x47 | 0x4E | 0x56): { return 2; }
         (0x05 | 0x0C | 0x0D | 0x0E | 0x0F | 0x10 | 0x16 | 0x17 | 0x18 | 0x3F | 0x55 |
@@ -778,24 +809,45 @@ struct BattleInstruction {
     BattleOp opcode;
     u8 op = u8(opcode);
     match (op) {
-        (0x03 | 0x04): { u16 target; }
-        (0x05):        { u8 chance; s16 target; }
+        (0x03 | 0x04): { u16 jump_target; }
+        (0x05):        { u8 chance; s16 jump_target; }
+        // Compare-and-branch: if reg <cmp> value, jump to jump_target (record-relative). 5 bytes.
+        // NB: battlescript.py's reader over-reads these (slices 6 bytes); true layout is reg(1)+value(2)+off(2).
+        (0x06 | 0x07 | 0x08 | 0x09 | 0x0A | 0x0B): { u8 reg; u16 value; u16 jump_target; }
         (0x0C | 0x0D | 0x0E | 0x0F | 0x10 | 0x16 | 0x17 | 0x18): { u8 reg; u16 value; }
+        (0x13 | 0x14 | 0x15 | 0x4E): { u8 reg; StatRegister stat; }
         (0x1F):        { Element element; }
         (0x21 | 0x22): { Element element; u16 base_damage; u8 misc; }
-        (0x27):        { StatusEffect status; u8 probability; }
+        (0x24):        { u8 stat_type; u16 base_value; u8 fluctuation; }
+        (0x25):        { u8 stat_type; u8 intensity; }
+        (0x26 | 0x27): { StatusEffect status; u8 probability; }
         (0x2B):        { u16 item; if (item < 467) { ItemName item_ref @ (0xF47E8 + item * 12); } }
         (0x2C | 0x54): { u8 spell; }
+        (0x2D):        { u8 monster; }              // "call companions" -- Monster Compendium index
         (0x32):        { BattleTarget target; }
+        (0x35):        { u8 special_type; }
+        (0x3E):        { u8 attack_name; }          // CM attack-name number (see L2_CM_Attacks_L2BASM.txt)
+        (0x3F):        { u8 skill; u16 jump_target; }
         (0x42):        { Subroutine subroutine; u8 zero; }
+        (0x5A):        { u8 animation; }
         (_):           { u8 operands[battle_param_count(op)]; }
     }
 };
 
-// A script runs up to (but not including) its first top-level END (0x00) -- see Caveat A.
+// Renders instructions up to (not including) the first top-level END (0x00). NOTE: a script's
+// full reachable body extends PAST this first END into branch-target handler blocks (Target/Attack,
+// Defend, Flee, ...) that its IfEq/OnChance/GoTo jumps reach -- those aren't shown here (see Caveat A).
+// Use BattleScriptRegion when the exact end address is known (e.g. capsule attack scripts).
 struct BattleScript {
     BattleInstruction instructions[while(std::mem::read_unsigned($, 1) != 0x00)];
     BattleOp end;
+};
+
+// Region-bounded variant: renders EVERY instruction in [start, endAddr), including the branch-target
+// handler blocks past the first END. Used for capsule attack scripts, whose exact end (the reaction
+// entry) is known from the record header, so the whole decision-logic + handler set is shown.
+struct BattleScriptRegion<auto endAddr> {
+    BattleInstruction instructions[while($ < endAddr)];
 };
 
 
@@ -881,8 +933,11 @@ struct CapsuleRecord {
     u16 attack_offset;                // +37 (0x002B == 43)
     u16 reaction_offset;              // +39 (entry of the reaction/defense handler)
     u16 unknown1;                     // +41 (0x0000)
-    BattleScript attack_script   @ (recStart + attack_offset);
-    BattleScript reaction_script @ (recStart + reaction_offset);
+    // Attack script is region-bounded by the reaction entry, so ALL its branch-target handler
+    // blocks (Target/Attack, Defend, Flee, LearnableAttack) render -- the "gap" that a plain
+    // parse-to-first-END would hide. Verified: this region closes exactly at reaction_offset (35/35).
+    BattleScriptRegion<recStart + reaction_offset> attack_script @ (recStart + attack_offset);
+    BattleScript                                   reaction_script @ (recStart + reaction_offset);
 };
 struct CapsulePtr {
     u16 rel;
