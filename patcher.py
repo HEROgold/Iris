@@ -115,6 +115,7 @@ def patch_files(rom: Path, patch: Path):
             msg = "Invalid patch header."
             raise Exception(msg)
         # Read First Record
+        records = 0
         r = pf.read(3)
         while pf.tell() not in [patch_size, patch_size - 3]:
             # Unpack 3-byte pointers.
@@ -134,20 +135,23 @@ def patch_files(rom: Path, patch: Path):
 
             if offset >= 0:
                 # Write to file
+                iris.debug(f"IPS record {offset=:#08x} size={len(data)}")
                 rf.seek(offset)
                 rf.write(data)
+                records += 1
             # Read Next Record
             r = pf.read(3)
 
         if patch_size - 3 == pf.tell():
             trim_size = unpack_int(pf.read(3))
+            iris.debug(f"IPS truncate {trim_size=:#08x}")
             rf.truncate(trim_size)
 
     # Remove backup
     new = rom.with_stem(f"{rom.stem}-{args.seed}").with_suffix(suffix)
     shutil.copy(rom, new)
     rom.unlink()
-    iris.info("Patch applied.")
+    iris.info(f"Patch applied. {records} records written to {new.name} (final size {getsize(new)} bytes).")
     return new
 
 
