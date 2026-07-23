@@ -21,6 +21,7 @@ from patches.HEROgold import (
     arty_to_artea,
     ax_to_axe,
     fix_boltfish,
+    foomy_s_firebird_valor,
     gorem_to_golem,
     guy_the_mage,
     # maxim_starts_with_warp,
@@ -60,6 +61,8 @@ def main() -> None:
     apply_patch(args.selected_patch) # TODO: test with others besides Vanilla.
     if args.fix_softlocks:
         fix_boltfish()
+    if args.foomy_firebird:
+        foomy_s_firebird_valor()
 
     if args.debug:
         # apply_game_genie_codes(DEBUG_MODE)

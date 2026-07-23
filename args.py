@@ -83,6 +83,7 @@ class Args(argparse.Namespace):
     zero_capsule_command: bool
     zero_gold_command: bool
     fix_softlocks: bool
+    foomy_firebird: bool
 
 
 # TODO: rewrite using herogold.args
@@ -139,6 +140,7 @@ parser.add_argument("--spell_target_limit", action="store_true")
 parser.add_argument("--zero_capsule_command", action="store_true")
 parser.add_argument("--zero_gold_command", action="store_true")
 parser.add_argument("--fix-softlocks", action="store_true")
+parser.add_argument("--foomy-firebird", action="store_true", help="Give capsule Foomy S a Firebird (offense) / Valor (support) battle AI.")
 
 
 args: Args = parser.parse_args(namespace=Args())
