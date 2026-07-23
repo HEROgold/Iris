@@ -1,6 +1,6 @@
 from collections.abc import Generator
 from enum import Enum
-from typing import Any, Self
+from typing import TYPE_CHECKING, Any, Self
 
 from _types.objects import Cache
 from abc_.pointers import Pointer, TablePointer
@@ -13,6 +13,9 @@ from structures.item import Item
 from structures.spell import Spell
 from tables import ShopObject
 
+
+if TYPE_CHECKING:
+    from tables.vanilla import ShopObject  # noqa: TC004
 
 UNUSED_SHOPS = [0x1A, 0x27]
 
@@ -84,7 +87,7 @@ class ShopSection:
                 Sections.SHOP_START, # Rare case if a shop has only one section. # FIXME: (Index 37, expected to have a divider.)
                 },
             )
-            assert last_section, "Last section should be a divider."
+            assert last_section, "Last section should be a divider." # pyright: ignore[reportAssertAlwaysTrue]
             return
 
         yield from self._gen_items(next_section)
@@ -300,6 +303,8 @@ class Shop(TablePointer):
 
         iris.debug(f"Shop {self.index} written.")
 
+if TYPE_CHECKING:
+    from tables.kureji import ShopObject  # noqa: TC004
 
 # TODO: Implement ShopKureji. To match Shop.
 class ShopKureji(Pointer):
