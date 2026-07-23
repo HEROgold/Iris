@@ -215,30 +215,66 @@ struct Capsule {
 // attack/reaction scripts). So no direct `Capsule capsules[35] @ 0xBDCB8;` placement here.
 
 // Shop pointers and definitions
-struct ShopItem {
-    u16 item_index;
-    u16 price;
+//
+// The shops table lives at 0xBEE9F (== ShopObject.address in tables/vanilla.py). Each of the
+// 63 entries is a u16 offset FROM THAT TABLE ADDRESS to the shop's data (find_table_pointer in
+// helpers/bits.py: address + offset). A pointer of 0x0000 marks an empty/unused shop. There is
+// NO per-shop price -- item entries are bare indices; the price comes from the item's own data.
+//
+// Shop body (after the 3-byte header, variable length, bounded by the next shop's data start):
+//  - Item shop:  a list of u16 item indices; weapon/armor/etc. sections are separated by a
+//                u16 0x0000 divider (which shares the previous item's trailing 0x00 byte, so
+//                the raw bytes read as 00 00 00 but the stream stays u16-aligned).
+//  - Spell shop (shop_type & 0x20): a list of u8 spell indices terminated by 0xFF.
+
+// Exclusive end of a shop body = the smallest table pointer greater than this shop's pointer
+// (the next shop's data start), else the end of the shop-data region (start of capAttacks).
+fn shop_body_end(u16 cur) {
+    u32 best = 0xFFFFFFFF;
+    u32 j = 0;
+    while (j < 63) {
+        u16 p = std::mem::read_unsigned(0xBEE9F + j * 2, 2);
+        if (p > cur && p < best) { best = p; }
+        j = j + 1;
+    }
+    if (best == 0xFFFFFFFF) { return 0xBF63B; }   // last shop: cap at capAttacks table
+    return 0xBEE9F + best;
 };
 
-// Shop data header: read by `Shop.from_table` as `unknown1`, `shop_type`, `zero`.
-// The shop body (sections and items) follows this 3-byte header and is
-// variable-length; code in `structures/shop.py` discovers section boundaries
-// using the next table pointer for the following shop.
-struct ShopDef {
-    u8 identifier; // unknown1 in code, mapped to ShopIdentifier
-    u8 shop_type;  // mapped to ShopTypes
-    u8 zero;       // should be 0x00
-    // shop sections and items follow here (variable length)
+// One item-shop entry (u16): value 0x0000 is a section divider (weapon/armor/etc. break);
+// any other value is an item index. Entries stay u16-aligned -- the divider is a single
+// u16 zero, sharing the previous item's trailing 0x00 byte (see structures/shop.py).
+struct ShopEntry {
+    u16 value;
+    if (value != 0x0000 && value < 467) {
+        ItemName name @ (0xF47E8 + value * 12);      // annotate with item name
+    }
 };
 
-// Each entry in the shops table is a 2-byte reference to the shop data.
-// The reference values are likely offsets; if they need a bank/base addition,
-// adjust accordingly when viewing in ImHex.
+struct ShopItems<auto stop> {
+    ShopEntry entries[while($ < stop)];
+};
+
+struct ShopSpells<auto stop> {
+    u8 spells[while($ < stop && std::mem::read_unsigned($, 1) != 0xFF)];
+    if ($ < stop && std::mem::read_unsigned($, 1) == 0xFF) { u8 terminator; }
+};
+
+// Shop data header (read by `Shop.from_table` as unknown1/shop_type/zero) plus the body.
+struct ShopDef<auto stop> {
+    u8 identifier;   // ShopIdentifier: 0=generic 1=combat 2=unused 3=spell
+    u8 shop_type;    // ShopTypes bitmask; & 0x20 => SPELL shop
+    u8 zero;         // should be 0x00
+    if (shop_type & 0x20) { ShopSpells<stop> body; }
+    else                  { ShopItems<stop>  body; }
+};
+
+// Each table entry is a u16 offset from the table base (0xBEE9F) to the shop data.
 struct ShopPointer {
     u16 reference_pointer;
-    // Shop data is stored at base + reference_pointer. Base address taken from
-    // vanilla layout: first shop start at 0x000BF09F.
-    ShopDef shop @ (0x000BF09F + reference_pointer);
+    if (reference_pointer != 0) {                    // skip empty/unused shops (indices 0,6,7,17)
+        ShopDef<shop_body_end(reference_pointer)> shop @ (0xBEE9F + reference_pointer);
+    }
 };
 
 ShopPointer shops[63] @ 0xBEE9F;
