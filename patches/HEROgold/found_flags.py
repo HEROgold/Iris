@@ -22,7 +22,7 @@ Growing a script therefore requires **relocation**, and the only tracked free sp
 ``0x286a10``+) is unreachable via the 16-bit event-list offset (a script must sit within 64 KB of its map's
 event-list block near ``0x3xxxx``; the event bank itself has ~156 free bytes total). Making this work needs
 a **per-map event-container relocator** (move the whole ``PH`` block + tables + scripts to the far pool and
-repoint the map record) -- see ``docs/event_scripts/05_compile_and_freespace.md``. That is deliberately a
+repoint the map record) -- see ``docs/event_script_write_path.md``. That is deliberately a
 separate future spike (it can only be validated in an emulator).
 
 Because the toggle checks membership *before* "found" and the LEAVE branch sets the found flag when you
@@ -124,6 +124,6 @@ def set_found_flags_on_story_joins() -> None:
     if skipped and not patched:
         iris.info(
             "Found-flag propagation is a no-op until the per-map event relocator lands "
-            "(see docs/event_scripts/05_compile_and_freespace.md). The toggle still self-marks 'found' "
+            "(see docs/event_script_write_path.md). The toggle still self-marks 'found' "
             "when you remove an in-party character."
         )
