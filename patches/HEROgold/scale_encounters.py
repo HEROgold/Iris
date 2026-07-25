@@ -21,9 +21,12 @@ Excluded from the pool:
     * formations whose slots are all empty
     * any formation containing a boss monster (index >= ``0xBC``), so bosses stay scripted-only
 
-Boss and event battles are untouched at runtime as well: the ASM only fires when the battle-type
-byte ``$7F:F8A3`` says ``#$FE`` (normal enemy battle), and scripted bosses come from the separate
-BossFormation table via event opcode ``0x53``.
+Boss and event battles are untouched at runtime as well. Only four instructions in the whole ROM
+store to ``$7F:F8A4``, and the ASM hooks just one of them -- ``$83:B9EC``, the roaming map monster
+you walk into. Scripted/boss battles (``$80:B919``, formation id read from the event stream) and
+the Ancient Cave (``$86:9CE6``/``$86:9D5D``, which the game already level-scales itself) reach the
+byte through a different store and never run our code. See ``scale_encounters.asm`` for the
+disassembly behind each of those four sites.
 """
 
 import random

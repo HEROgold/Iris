@@ -140,7 +140,8 @@ parser.add_argument(
         "Scale normal enemy encounters to the party's level. Every non-boss battle rolls an offset in "
         "[LOW, HIGH], adds it to the party's average level, and swaps in the formation whose average "
         "monster level best matches the result -- drawn from all 192 formations game-wide, so themes may "
-        "not match the map. Also applies inside the Ancient Cave. Example: --scale-encounters -5 10"
+        "not match the map. Boss/event battles and the Ancient Cave (which scales itself) are unaffected. "
+        "Example: --scale-encounters -5 10"
     ),
 )
 # Fix patches

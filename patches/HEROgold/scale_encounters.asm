@@ -9,33 +9,48 @@
 ; EMPTY_BYTES, so it uses an explicit `org` -- never `freecode`, which would let asar's freespace
 ; scanner hand these bytes to another patch.
 ;
-; What it does: when the game has queued a *normal* enemy battle it averages the live party's
-; levels, adds a random offset from the baked band, clamps to 1..99 and overwrites the pending
-; formation id at $7F:F8A4 with the table entry for that level.
-;
-; Known addresses (all confirmed):
-;   $7F:F8A3  battle type, #$FE = normal enemy battle (see archipelago basepatch_code.asm)
-;   $7F:F8A4  pending formation id, 1 byte
-;   $7E:0A7B..$7E:0A7E  the four active party slots, each a character index; $FF = empty slot
-;   character statblocks are $BE apart: the death-link code writes the status byte of Maxim..Lexis
-;   at $0BBC/$0C7A/$0D38/$0DF6/$0EB4/$0F72/$1030, i.e. status(i) = $0BBC + i*$BE
-;   $80:82C7  PRNG, returns the next random byte in 8-bit A
-;
 ; ---------------------------------------------------------------------------------------------
-; STILL TO CONFIRM IN AN EMULATOR (Mesen-S / bsnes-plus write-breakpoint on $7F:F8A4):
+; THE HOOK
 ;
-;   1. THE HOOK SITE. The ROM instruction that writes $7FF8A4 on the normal-encounter path is not
-;      documented anywhere in this repo, so the `org` that redirects into this routine is left
-;      commented out below and the patch currently assembles the routine without calling it.
-;      Touch a roaming map monster with the breakpoint armed, record the writer PC, the vanilla
-;      bytes there, and the M/X/DBR state, then confirm a scripted/boss fight does NOT hit the
-;      same writer. Fill in the `org` and replay the displaced instruction(s) at `.replay`.
-;   2. !level_offset below -- inferred, not observed. structures/character.py documents the ROM
-;      template record as level(1), status(1), unknown(2), spells...; if RAM keeps that order the
-;      level sits one byte *below* the known status byte, hence -1. Verify by memory-searching a
-;      known party level around $7E:0B00-$7E:1100.
-;   3. That $FF really is the empty-slot sentinel in $0A7B..$0A7E (compare a party of 1 vs 4) and
-;      that capsule monsters never occupy one of those four slots.
+; A store to the pending-formation byte $7F:F8A4 appears in exactly four places in the ROM
+; (found by scanning for 8F A4 F8 7F / 8D A4 F8 / 9D A4 F8 / 99 A4 F8 -- there are no others):
+;
+;   $80:B919  event-script battle. The interpreter does
+;               LDA $0BBB : STA.l $7FD4F7 : LDA #$FF : STA.l $7FF8A3 : JSR $C0B7 : STA.l $7FF8A4
+;             where $80:C0B7 is the script-byte fetcher (LDA $0000,y : INY), so the formation id
+;             comes straight out of the script stream. This is the scripted/boss path -- LEAVE IT.
+;   $86:9CE6  Ancient Cave, and already level-scaled by the game itself:
+;               LDA $0BBB : SEC : SBC #$1E : ... : LSR : CLC : ADC $00 : TAX : LDA $9DC7,X
+;             LEAVE IT -- the cave picks its own difficulty curve.
+;   $86:9D5D  Ancient Cave, table-driven from $97:C493. LEAVE IT.
+;   $83:B9EC  the roaming map monster you walk into:
+;               LDA $65 : TAX : LDA $05FA,X : SEC : SBC #$50 : STA.l $7FF8A4 : JSL $8383EB
+;             i.e. NPC index -> NPC type byte -> formation id, then "force battle". THIS is the
+;             normal-encounter path and the one we hook.
+;
+; Because we hook that one site rather than a shared routine, no battle-type test is needed --
+; bosses, event battles, the Ancient Cave and the Archipelago death-link battle all reach
+; $7FF8A4 through a different store and never run this code. (Note that a `$7FF8A3 == #$FE`
+; guard would have been actively wrong here: this path writes $7FF8A3 via TDC, i.e. 0.)
+;
+; The vanilla instruction at $83:B9EC is `STA.l $7FF8A4` -- 4 bytes, exactly the size of a JSL,
+; so the hook needs no NOP padding. On entry A is 8-bit and holds the vanilla formation id, and
+; X/Y are 16-bit (REP #$10 at $83:B9DC). We replay the displaced store first, then overwrite it.
+;
+; PARTY LEVELS
+;
+; Statblocks are $BE apart: the Archipelago basepatch kills Maxim..Lexis by writing their status
+; bytes at $0BBC/$0C7A/$0D38/$0DF6/$0EB4/$0F72/$1030, so status(i) = $0BBC + i*$BE. The level sits
+; one byte below that, at $0BBB + i*$BE: both $80:B909 and $86:9CCE read $0BBB, the latter to
+; derive the Ancient Cave's difficulty tier -- so that byte is the level the game itself uses to
+; scale encounters, which is exactly what we want. ($0BBB is only ever read, never written, by
+; those sites; structures/character.py documents the matching template order level(1),status(1).)
+;
+; $7E:0A7B..$7E:0A7E are the four active party slots, each holding a character index. They are
+; copied as a block at $81:807A (LDA $0A7A : STA $153C : LDX #3 : LDA $0A7B,X : STA $153D,X ...).
+; Rather than test for one particular empty-slot sentinel, a slot is treated as live only when it
+; holds a real character index (0..6) -- that is correct whatever the game fills unused slots with,
+; and it also rejects anything unexpected instead of dereferencing it.
 ; ---------------------------------------------------------------------------------------------
 
 lorom
@@ -44,12 +59,10 @@ lorom
 !low_byte       = $D0EA73
 !range_byte     = $D0EA74
 
-!empty_slot     = $FF
 !party_slots    = $7E0A7B       ; four bytes, one character index per active slot
+!party_size     = 7             ; Maxim, Selan, Guy, Arty, Tia, Dekar, Lexis -- indexes 0..6
 !stat_stride    = $BE           ; bytes between two characters' statblocks
-!status_0       = $0BBC         ; status byte of character index 0 (Maxim) -- confirmed
-!level_offset   = -1            ; level byte relative to the status byte -- INFERRED, see above
-!level_0        = !status_0+!level_offset
+!level_0        = $0BBB         ; level byte of character index 0 (Maxim)
 !min_level      = 1
 !max_level      = 99
 
@@ -58,8 +71,8 @@ lorom
 macro add_slot(slot)
     sep #$20
     lda.l !party_slots+<slot>
-    cmp.b #!empty_slot
-    beq ?empty
+    cmp.b #!party_size
+    bcs ?empty                  ; not a character index -> unused slot
     sta.l $004202               ; WRMPYA = character index
     lda.b #!stat_stride
     sta.l $004203               ; WRMPYB -- starts index * $BE
@@ -84,26 +97,19 @@ macro add_slot(slot)
     rep #$30
 endmacro
 
-; org <writer PC>            ; TODO(step 0): 4 bytes -> jsl scale_encounter, NOPs for the remainder
-;     jsl scale_encounter
+org $83B9EC                     ; was 8F A4 F8 7F (STA.l $7FF8A4) -- same length as a JSL
+    jsl scale_encounter
 
 org $D0EA75
 scale_encounter:
     php
-    rep #$30                    ; fix the index width before pushing, so the pulls match
+    sep #$20
+    sta.l $7FF8A4               ; displaced instruction: the vanilla formation for this monster
+    rep #$30
     phx
     phy
-.replay:
-    ; TODO(step 0): replay here whatever instruction(s) the hook overwrote at the writer PC.
-    sep #$20
-    lda.l $7FF8A3
-    cmp.b #$FE                  ; only normal enemy battles -- bosses, scripted fights and the
-    beq .normal_battle          ; Archipelago death-link battle keep their own formation
-    brl .done                   ; (brl, not bra: the routine body is longer than a byte reaches)
-.normal_battle:
 
-    rep #$30
-    ldy.w #$0000                ; live member count
+    ldy.w #$0000                ; Y = number of live party slots
     lda.w #$0000
     pha                         ; $01,s = running sum of party levels
     %add_slot(0)
@@ -179,7 +185,7 @@ scale_encounter:
     tax
     sep #$20
     lda.l !table,x
-    sta.l $7FF8A4               ; swap the pending formation for the level-appropriate one
+    sta.l $7FF8A4               ; swap in the level-appropriate formation
 
 .done:
     rep #$30
