@@ -84,6 +84,14 @@ class Args(argparse.Namespace):
     zero_gold_command: bool
     fix_softlocks: bool
     foomy_firebird: bool
+    # Sprite extract/import (uncompressed 4bpp <-> PNG). Take a registry name or a headerless hex offset.
+    extract_sprite: str | None
+    import_sprite: str | None
+    sprite_file: str | None
+    sprite_tiles: int | None
+    sprite_width: int
+    sprite_palette: str | None
+    sprite_palette_index: int
 
 
 # TODO: rewrite using herogold.args
@@ -141,6 +149,14 @@ parser.add_argument("--zero_capsule_command", action="store_true")
 parser.add_argument("--zero_gold_command", action="store_true")
 parser.add_argument("--fix-softlocks", action="store_true")
 parser.add_argument("--foomy-firebird", action="store_true", help="Give capsule Foomy S a Firebird (offense) / Valor (support) battle AI.")
+# Sprite extract/import (uncompressed 4bpp sprites <-> PNG for paint.net). Runs standalone, then exits.
+parser.add_argument("--extract-sprite", type=str, default=None, help="Extract a sprite to PNG. Value is a KNOWN_SPRITES name (e.g. bunny_girls) or a headerless hex offset (e.g. 0x123C00).")
+parser.add_argument("--import-sprite", type=str, default=None, help="Import a PNG back into the ROM. Value is a KNOWN_SPRITES name or a headerless hex offset.")
+parser.add_argument("--sprite-file", type=str, default=None, help="PNG path for --extract-sprite / --import-sprite (default: <name-or-offset>.png).")
+parser.add_argument("--sprite-tiles", type=int, default=None, help="Number of 8x8 tiles (required when addressing a sprite by raw offset).")
+parser.add_argument("--sprite-width", type=int, default=16, help="Sheet width in tiles for raw-offset sprites (default 16). Ignored for registry names.")
+parser.add_argument("--sprite-palette", type=str, default=None, help="Headerless hex offset of the 16-colour BGR555 palette for raw-offset sprites (default 0x133F00).")
+parser.add_argument("--sprite-palette-index", type=int, default=0, help="Which 16-colour slot within the palette region to use (default 0).")
 
 
 args: Args = parser.parse_args(namespace=Args())
