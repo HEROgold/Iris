@@ -25,6 +25,7 @@ from patches.HEROgold import (
     guy_the_mage,
     # maxim_starts_with_warp,
     party_toggle_in_elcid,
+    scale_encounters,
     set_rom_name,
     swap_pierre_danielle_sprites,
     unlock_all_warp_destinations,
@@ -138,6 +139,9 @@ def main() -> None:
     # Dev/debug patches (not intended for release):
     # maxim_starts_with_warp()  # dev fix: Maxim begins every game knowing Warp (field teleport)
     unlock_all_warp_destinations()  # dev fix: every Warp destination available from a fresh save
+    if args.scale_encounters:
+        # Runs with the other asm patches so asar assembles after every structure write.
+        scale_encounters(*args.scale_encounters)
 
     # Apply RealCritical patches
     fix_menu()

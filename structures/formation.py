@@ -11,8 +11,12 @@
 from typing import Self
 
 from abc_.pointers import Pointer
-from helpers.files import read_file, write_file
+from helpers.files import read_file, restore_pointer, write_file
 from structures.monster import Monster
+
+
+EMPTY_SLOT = 0xFF
+"""Monster index that marks an unused slot in a formation row."""
 
 
 class BattleFormation(Pointer):
@@ -54,6 +58,44 @@ class BattleFormation(Pointer):
         inst = cls(monsters)
         inst.pointer = pointer
         return inst
+
+    @classmethod
+    @restore_pointer
+    def monster_indexes(cls, address: int, index: int) -> list[int]:
+        """The eight raw monster-index bytes of one formation row.
+
+        :meth:`from_table` builds a :class:`Monster` per slot, which parses that monster's AI
+        scripts and therefore raises ``KeyError`` for any monster using an opcode the incomplete
+        ``battlescript.op_codes`` table does not know. Anything that only needs the slot contents
+        (or the levels behind them) should read the row directly through this.
+        """
+        read_file.seek(address + index * cls.max_monsters)
+        return list(read_file.read(cls.max_monsters))
+
+    @classmethod
+    def average_level_of(cls, address: int, index: int) -> float | None:
+        """:attr:`average_level` for a formation row, without instantiating its monsters."""
+        levels = [
+            Monster.level_from_index(i)
+            for i in cls.monster_indexes(address, index)
+            if i != EMPTY_SLOT
+        ]
+        if not levels:
+            return None
+        return sum(levels) / len(levels)
+
+    @property
+    def average_level(self) -> float | None:
+        """Mean level of the monsters actually present in this formation.
+
+        Slot index ``0xFF`` is the empty-slot sentinel (``Monster.from_index`` turns it into a
+        level-0 "Dummy"), so it is filtered out by index rather than by level -- a real monster may
+        legitimately have level 0. Returns ``None`` when every slot is empty.
+        """
+        levels = [m.stats.level for m in self.monsters if m.index != EMPTY_SLOT]
+        if not levels:
+            return None
+        return sum(levels) / len(levels)
 
     def write(self) -> None:
         write_file.seek(self.pointer)

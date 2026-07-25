@@ -37,6 +37,7 @@ from tables import (
 #?
 # FIXME
 from .party_toggle import party_toggle_in_elcid  # pyright: ignore[reportUnusedImport] # noqa: F401
+from .scale_encounters import scale_encounters  # pyright: ignore[reportUnusedImport] # noqa: F401
 from .unlock_warps import unlock_all_warp_destinations  # pyright: ignore[reportUnusedImport] # noqa: F401
 
 
