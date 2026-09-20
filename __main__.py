@@ -162,7 +162,7 @@ def main() -> None:
     # shuffle_chest_items()
     # randomize_chest_items()
 
-    # Chest randomizers -- two independent options (see docs/chest_system.md). Enable either:
+    # Chest randomizers -- two independent options (see docs/guides/chests.md). Enable either:
     # from patches.HEROgold.chest_randomizer import randomize_chest_contents, randomize_chest_locations
     # randomize_chest_contents()    # randomize WHAT each chest holds
     # randomize_chest_locations()   # shuffle WHERE chests sit, within each map

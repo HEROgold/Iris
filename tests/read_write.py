@@ -22,6 +22,7 @@ from structures.ip_attack import IPAttack
 from structures.item import Item
 from structures.monster import Monster
 from structures.npc import RoamingNPC
+from structures.map_meta import MapMeta
 from structures.shop import Shop, ShopKureji
 from structures.spell import Spell
 from structures.sprites import CapsulePallette, CapsuleSprite, OverPallette, OverSprite, SpriteMeta, TownSprite
@@ -183,11 +184,10 @@ def test_monsters() -> None:
 
 
 def test_map_meta() -> None:
-    # TODO: This needs to be created, and then tested.
-    # Uses ZoneData.
-    for _i in range(MapMetaObject.count):
-        msg = ""
-        raise NotImplementedError(msg)
+    for i in range(MapMetaObject.count):
+        meta = MapMeta.from_index(i)
+        meta.write()
+        assert_files_are_same(meta)
 
 def test_monster_moves() -> None:
     # TODO: This needs to be created, and then tested.

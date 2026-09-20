@@ -9,22 +9,37 @@ DESCRIPTION = "A Lufia II: Rise of the Sinistrals randomizer/patching toolkit."
 POINTER_SIZE = 2
 
 
-# --- Carved-out freespace: --scale-encounters (patches/HEROgold/scale_encounters) ---------------
-# One LoROM bank-half at headerless 0x286a10 (SNES $D0:EA10) is reserved for the level-scaled
-# encounter patch and therefore taken off the front of EMPTY_BYTES[0]. It holds Python-baked data
-# (the level -> formation table and the roll constants) plus the asar hook body, which uses an
-# explicit `org` rather than `freecode` so asar's freespace scanner can never hand the same bytes
-# to another patch. Nothing else may allocate inside this range.
-SCALE_ENCOUNTERS_REGION = range(0x286a10, 0x286e10)
-SCALE_ENCOUNTERS_TABLE = 0x286a10
+# --- Reserved ROM-expansion space (see helpers.rom_expansion) -----------------------------------
+# The base cart is a full 3MB (0x300000) with only ~1.2KB of blank space in the entire file
+# (verified: a full-file scan for runs of 0x00/0xFF >= 1KB finds exactly one, 0x0f8d3e-0x0f9220 --
+# see docs/encounter_scaling.md). `EMPTY_BYTES` below does NOT describe this ROM (its first range
+# starts at 0x286a10, which holds real game data) and must never be used as an allocation source.
+#
+# The only bytes provably safe to write into are ones that don't exist yet: LoROM can address up to
+# 4MB, so expanding the ROM file to that ceiling yields a clean, genuinely blank megabyte at
+# 0x300000-0x3FFFFF. Every dedicated-space reservation below lives in that expansion area, is
+# appended to RESERVED_REGIONS so `helpers.rom_expansion.assert_no_overlaps` can catch a colliding
+# reservation, and is written only via an explicit seek+write (or `org` in asm) -- never `freecode`,
+# whose freespace scanner has never heard of these reservations.
+EXPANDED_ROM_SIZE = 0x400000
+"""The full 4MB a LoROM map can address; every region below is carved out of the megabyte this
+gains over the unexpanded 3MB cart."""
+
+# --- Reserved space: --scale-encounters (patches/HEROgold/scale_encounters) ---------------------
+# 1KB at headerless 0x310000 (SNES $E2:8000) holds the level -> formation table, the roll constants
+# and the asar hook body.
+SCALE_ENCOUNTERS_REGION = range(0x310000, 0x310400)
+SCALE_ENCOUNTERS_ROM_SIZE = EXPANDED_ROM_SIZE
+"""Kept as its own name since scale_encounters.py already imports it; same value as EXPANDED_ROM_SIZE."""
+SCALE_ENCOUNTERS_TABLE = 0x310000
 """99 bytes: for each party level 1..99, the formation id that best matches it."""
 SCALE_ENCOUNTERS_TABLE_SIZE = 99
-SCALE_ENCOUNTERS_LOW = 0x286a73
+SCALE_ENCOUNTERS_LOW = 0x310063
 """1 byte, two's complement: the low end of the offset band added to the party average level."""
-SCALE_ENCOUNTERS_RANGE = 0x286a74
+SCALE_ENCOUNTERS_RANGE = 0x310064
 """1 byte: how many distinct offsets the band spans (high - low + 1)."""
-SCALE_ENCOUNTERS_CODE = 0x286a75
-"""Start of the asar-assembled hook body (SNES $D0:EA75)."""
+SCALE_ENCOUNTERS_CODE = 0x310065
+"""Start of the asar-assembled hook body (SNES $E2:8065)."""
 SCALE_ENCOUNTERS_MAX_OFFSET = 98
 """Widest usable end of the offset band. The resulting target level is clamped to 1..99 anyway, so
 a larger offset could never change the outcome -- rejecting it stops a typo doing nothing quietly."""
@@ -32,8 +47,23 @@ SCALE_ENCOUNTERS_MAX_BAND = 0xFF
 """The band size is baked as one byte, so it cannot span more than 255 distinct offsets."""
 
 
+# --- Reserved space: ZoneData / event-script relocation freespace -------------------------------
+# Dedicated arenas for the shared FreeSpaceAllocator instances (helpers.freespace) that back
+# ZoneData.write_relocated and the event-script container relocator. 128KB each, bank-aligned, well
+# clear of SCALE_ENCOUNTERS_REGION.
+ZONE_DATA_FREESPACE = range(0x320000, 0x340000)
+EVENT_SCRIPT_FREESPACE = range(0x340000, 0x360000)
+
+RESERVED_REGIONS = [SCALE_ENCOUNTERS_REGION, ZONE_DATA_FREESPACE, EVENT_SCRIPT_FREESPACE]
+"""Every fixed ROM-expansion reservation, checked for overlaps by helpers.rom_expansion.assert_no_overlaps."""
+
+
+# NOTE: does NOT describe this ROM -- see the reserved-space block above. EMPTY_BYTES[0] starts at
+# 0x286a10, which holds real game data (structures.zone/ZoneData.write_relocated and
+# structures.event_script.allocator.FreeSpaceAllocator still draw from this and are corrupting
+# consumers pending migration to helpers.freespace; see docs/encounter_scaling.md).
 EMPTY_BYTES = [
-    range(0x286e10, 0x30d80e),
+    range(0x286a10, 0x30d80e),
     range(0x30d87b, 0x3e4038),
     range(0x3e700d, 0x3e7ffc),
     range(0x3ec8d6, 0x3ee0ff),

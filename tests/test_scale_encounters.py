@@ -1,19 +1,19 @@
 """Tests for --scale-encounters: the baked level->formation table and the asar half of the patch.
 
-The runtime behaviour (does a fight actually get swapped?) cannot be tested here -- see the
-"STILL TO CONFIRM IN AN EMULATOR" block at the top of scale_encounters.asm. What is testable is
-that the Python side bakes a well-formed, reproducible table into the reserved region and that the
-region survives assembly.
+The runtime behaviour (does a fight actually get swapped?) needs an emulator. What is testable here
+is that the Python side bakes a well-formed, reproducible table into the reserved region, that the
+region is real expansion space, that asar's output leaves the baked data intact, and that the hook
+lands on the instruction we expect -- so the site cannot silently drift onto the wrong bytes.
 """
 
 import random
 
 from constants import (
-    EMPTY_BYTES,
     SCALE_ENCOUNTERS_CODE,
     SCALE_ENCOUNTERS_LOW,
     SCALE_ENCOUNTERS_RANGE,
     SCALE_ENCOUNTERS_REGION,
+    SCALE_ENCOUNTERS_ROM_SIZE,
     SCALE_ENCOUNTERS_TABLE,
     SCALE_ENCOUNTERS_TABLE_SIZE,
 )
@@ -31,18 +31,32 @@ from patches.HEROgold.scale_encounters import (
 from structures.formation import EMPTY_SLOT, BattleFormation
 from structures.monster import Monster
 from tables import FormationObject
-from tests.reset_file import reset_file
 
 
 _SEED = 1234
 _LOW, _HIGH = -5, 10
 _LOW_BYTE = 0xFB          # -5 in two's complement
 _RANGE_BYTE = _HIGH - _LOW + 1
-_THREE_MB = 3 * 1024 * 1024
+_BASE_ROM_SIZE = 3 * 1024 * 1024   # the unexpanded cart
 # The roaming-monster formation store the patch hooks: STA.l $7FF8A4 at SNES $83:B9EC.
 _HOOK_SITE = 0x01B9EC
 _HOOK_VANILLA = b"\x8f\xa4\xf8\x7f"
 _JSL = 0x22
+
+
+def _reset_rom() -> None:
+    """Restore the per-seed ROM, shrinking it back to the unexpanded cart.
+
+    ``tests.reset_file.reset_file`` only rewrites the original bytes -- it does not truncate. This
+    patch grows the ROM to 4MB, so without dropping the tail the next test would still see the
+    reserved region occupied and the patch's own freespace guard would (correctly) refuse to bake.
+    """
+    read_file.seek(0)
+    data = read_file.read()
+    write_file.seek(0)
+    write_file.write(data)
+    write_file.truncate(len(data))
+    write_file.flush()
 
 
 def test_average_level_ignores_empty_slots() -> None:
@@ -95,7 +109,7 @@ def test_bake_writes_the_reserved_region() -> None:
         assert rom[SCALE_ENCOUNTERS_LOW] == _LOW_BYTE
         assert rom[SCALE_ENCOUNTERS_RANGE] == _RANGE_BYTE
     finally:
-        reset_file()
+        _reset_rom()
 
 
 def test_full_patch_assembles_over_the_baked_data() -> None:
@@ -104,7 +118,7 @@ def test_full_patch_assembles_over_the_baked_data() -> None:
         write_file.flush()
         rom = new_file.read_bytes()
 
-        assert len(rom) >= _THREE_MB, "the patch should pad the ROM out to 3MB"
+        assert len(rom) == SCALE_ENCOUNTERS_ROM_SIZE, "the patch should expand the ROM to 4MB"
         # asar must not have disturbed the data written before it ran...
         assert rom[SCALE_ENCOUNTERS_LOW] == _LOW_BYTE
         assert rom[SCALE_ENCOUNTERS_RANGE] == _RANGE_BYTE
@@ -115,9 +129,16 @@ def test_full_patch_assembles_over_the_baked_data() -> None:
         assert rom[_HOOK_SITE:_HOOK_SITE + 4] != _HOOK_VANILLA
         assert rom[_HOOK_SITE] == _JSL, "the hook site should now start with a JSL"
     finally:
-        reset_file()
+        _reset_rom()
 
 
-def test_reserved_region_is_carved_out_of_the_freespace_pool() -> None:
-    assert EMPTY_BYTES[0].start == SCALE_ENCOUNTERS_REGION.stop
-    assert all(SCALE_ENCOUNTERS_REGION.start not in region for region in EMPTY_BYTES)
+def test_reserved_region_is_blank_in_the_base_rom() -> None:
+    """The region must be expansion space, not something the cart already uses.
+
+    The base ROM is a full 3MB with almost no free space (notably EMPTY_BYTES[0] starts at 0x286a10,
+    which holds real game data), so the reservation lives past the original end of the ROM.
+    """
+    assert SCALE_ENCOUNTERS_REGION.start >= _BASE_ROM_SIZE
+    assert SCALE_ENCOUNTERS_REGION.stop <= SCALE_ENCOUNTERS_ROM_SIZE
+    read_file.seek(0, 2)
+    assert read_file.tell() <= _BASE_ROM_SIZE, "base ROM is larger than expected; re-check the reservation"

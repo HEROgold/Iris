@@ -1,13 +1,17 @@
 ; Iris: scale normal enemy encounters to the party's average level.
 ;
 ; Companion to scale_encounters.py, which bakes the data this routine reads:
-;   $D0:EA10  99 bytes  level 1..99 -> best-matching formation id
-;   $D0:EA73  1 byte    LOW  end of the offset band, two's complement
-;   $D0:EA74  1 byte    RANGE, i.e. HIGH - LOW + 1
-;   $D0:EA75  this code
-; The whole block is reserved in constants.py (SCALE_ENCOUNTERS_*) and taken off the front of
-; EMPTY_BYTES, so it uses an explicit `org` -- never `freecode`, which would let asar's freespace
-; scanner hand these bytes to another patch.
+;   $E2:8000  99 bytes  level 1..99 -> best-matching formation id
+;   $E2:8063  1 byte    LOW  end of the offset band, two's complement
+;   $E2:8064  1 byte    RANGE, i.e. HIGH - LOW + 1
+;   $E2:8065  this code
+; The block is reserved in constants.py (SCALE_ENCOUNTERS_*) and claimed with an explicit `org` --
+; never `freecode`, which would let asar's freespace scanner hand these bytes to another patch.
+;
+; It sits at headerless 0x310000, past the end of the original ROM. The base cart is a full 3MB
+; with only ~1.2KB of blank space anywhere in it (constants.EMPTY_BYTES is NOT usable freespace --
+; its first range starts inside real game data), so this patch expands the ROM to the 4MB a LoROM
+; map can address and lives in the space that creates.
 ;
 ; ---------------------------------------------------------------------------------------------
 ; THE HOOK
@@ -55,9 +59,9 @@
 
 lorom
 
-!table          = $D0EA10
-!low_byte       = $D0EA73
-!range_byte     = $D0EA74
+!table          = $E28000
+!low_byte       = $E28063
+!range_byte     = $E28064
 
 !party_slots    = $7E0A7B       ; four bytes, one character index per active slot
 !party_size     = 7             ; Maxim, Selan, Guy, Arty, Tia, Dekar, Lexis -- indexes 0..6
@@ -100,7 +104,10 @@ endmacro
 org $83B9EC                     ; was 8F A4 F8 7F (STA.l $7FF8A4) -- same length as a JSL
     jsl scale_encounter
 
-org $D0EA75
+org $FFFFFF                     ; grow the ROM to the full 4MB, so $E2:8000 exists at all
+    db $00
+
+org $E28065
 scale_encounter:
     php
     sep #$20
@@ -194,7 +201,4 @@ scale_encounter:
     plp
     rtl
 
-assert pc() <= $D0EE10          ; do not spill past the region reserved in constants.py
-
-org $DFFFFF                     ; pad the ROM out to 3MB so the region above always exists
-    db $00
+assert pc() <= $E28400          ; do not spill past the region reserved in constants.py

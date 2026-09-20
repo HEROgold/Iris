@@ -12,11 +12,11 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, ClassVar, Self, SupportsIndex
 
 from _types.objects import Cache
-from constants import EMPTY_BYTES
 from enums.event_scripts import EventClass
 from helpers.addresses import address_to_lorom
 from helpers.bits import read_little_int
 from helpers.files import read_file, restore_pointer, write_file
+from helpers.freespace import relocate_pointer_table_entry, zone_data_allocator
 from helpers.name import read_as_decompressed_name, write_compressed_name
 from logger import iris
 from structures.event_script import EventScript, MapEvent, ZoneEventManager
@@ -27,9 +27,10 @@ from tables import MapMetaObject, ZoneObject
 # The ROM table that locates each map's ZoneData: one 3-byte little-endian LoROM address per map index
 # (see the lufia2-object-layout skill). Used to repoint a ZoneData blob after it is relocated.
 ZONE_DATA_POINTER_TABLE = MapMetaObject.address
+EXIT_SECTION = 2
+NPC_SECTION = 7
 CHEST_SECTION = 18
 SECTION_COUNT = 21
-_free_cursor = EMPTY_BYTES[0].start  # simple bump allocator into the first freespace region
 
 
 if TYPE_CHECKING:
@@ -59,7 +60,7 @@ class NPC:
     misc: int
 
     def __bytes__(self) -> bytes:
-        return bytes([self.x, self.y, *bytes(self.boundary), self.misc])
+        return bytes([self.index, self.x, self.y, *bytes(self.boundary), self.misc])
 
 
 @dataclass
@@ -137,6 +138,11 @@ class ZoneData:
         self.size = read_little_int(read_file, 2)
         self.data = read_file.read(self.size)
         self.parsed_data: dict[int, bytes] = {}
+        self.dirty = False
+        # True once write_relocated has moved this blob into the shared freespace pool -- only then
+        # does its *previous* slot belong to that pool and need deallocating on the next relocation.
+        self._relocated = False
+        self._blob_length = self.size + 2  # the 2-byte size prefix + payload, as currently on ROM
 
         self._parse_offsets()
         self._parse_npc_positions()
@@ -174,7 +180,7 @@ class ZoneData:
         self.waypoint_shared_data = waypoint_data[1:] # Store the remaining data.
 
     def _parse_chests(self) -> None:
-        """Parse section 18: the per-map chest-placement table (see docs/chest_system.md).
+        """Parse section 18: the per-map chest-placement table (see docs/guides/chests.md).
 
         Records are 4 bytes ``[slot_id, x, y, type]`` terminated by ``0xFF``. Parsed tolerantly: not
         every map has a clean chest table (section 18 matched chest counts on ~39/40 sampled maps), and
@@ -228,7 +234,7 @@ class ZoneData:
                 exit_data[i+5],
                 exit_data[i+6],
                 exit_data[i+7],
-                exit_data[i+9],
+                exit_data[i+8],
             )
             for i in range(0, target, data_size)
         ]
@@ -274,7 +280,20 @@ class ZoneData:
     def set_chests(self, chests: "list[Chest]") -> None:
         """Replace section 18 (the chest-placement table) with ``chests`` (0xFF-terminated)."""
         self.chests = list(chests)
+        self.dirty = True
         self.parsed_data[CHEST_SECTION] = b"".join(bytes(chest) for chest in chests) + b"\xff"
+
+    def set_exits(self, exits: "list[Exit]") -> None:
+        """Replace section 2 (the exit table) with ``exits`` (0xFF-terminated)."""
+        self.exits = list(exits)
+        self.dirty = True
+        self.parsed_data[EXIT_SECTION] = b"".join(bytes(exit_) for exit_ in exits) + b"\xff"
+
+    def set_npcs(self, npcs: "list[NPC]") -> None:
+        """Replace section 7 (the NPC-position table) with ``npcs`` (0xFF-terminated)."""
+        self.npc_positions = list(npcs)
+        self.dirty = True
+        self.parsed_data[NPC_SECTION] = b"".join(bytes(npc) for npc in npcs) + b"\xff"
 
     def rebuild(self) -> bytes:
         """Reassemble the whole ZoneData blob from ``parsed_data`` (canonical layout).
@@ -301,22 +320,39 @@ class ZoneData:
         return len(data).to_bytes(2, "little") + data
 
     def write_relocated(self, map_index: int) -> None:
-        """Rebuild this ZoneData, write it into free space, and repoint the map's pointer-table entry."""
-        global _free_cursor  # noqa: PLW0603
+        """Rebuild this ZoneData, write it into the shared freespace pool, and repoint the map's
+        pointer-table entry.
+
+        Deallocates this blob's *previous* slot first when it was itself an earlier relocation into
+        this same pool -- the vanilla-original location is never part of the pool and is never
+        deallocated.
+        """
         blob = self.rebuild()
-        pointer = _free_cursor
-        write_file.seek(pointer)
-        write_file.write(blob)
-        _free_cursor += len(blob)
-        write_file.seek(ZONE_DATA_POINTER_TABLE + map_index * 3)
-        write_file.write(address_to_lorom(pointer).to_bytes(3, "little"))
+        if self._relocated:
+            zone_data_allocator.deallocate(self.start, self._blob_length)
+        pointer = zone_data_allocator.allocate(len(blob))
+        zone_data_allocator.write(pointer, blob)
+        relocate_pointer_table_entry(ZONE_DATA_POINTER_TABLE, map_index, 3, pointer, encode=address_to_lorom)
         self.start = pointer
+        self.data = blob[2:]
+        self.size = len(blob) - 2
+        self._blob_length = len(blob)
+        self._relocated = True
+        self.dirty = False
+        # Re-register under the new pointer: from_pointer's cache is keyed by construction-time
+        # pointer only, so without this a later ZoneData.from_pointer(pointer) (e.g. a second
+        # MapMeta.write() on an already-relocated zone) would miss the cache and try to build a
+        # fresh instance by reading this address from `read_file` -- always the pristine original
+        # ROM, which has no bytes at a freespace address -- producing garbage instead of reusing
+        # this already-correct, in-memory object.
+        self._cache.to_cache(pointer, self)
 
     def write_section18_inplace(self) -> None:
         """Write section 18 back at its current location (only valid when its length is unchanged)."""
         offset18 = int.from_bytes(self.data[CHEST_SECTION * 2 : CHEST_SECTION * 2 + 2], "little")
         write_file.seek(self.start + offset18)
         write_file.write(self.parsed_data[CHEST_SECTION])
+        self.dirty = False
 
 
 

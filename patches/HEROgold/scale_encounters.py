@@ -38,10 +38,13 @@ from constants import (
     SCALE_ENCOUNTERS_MAX_BAND,
     SCALE_ENCOUNTERS_MAX_OFFSET,
     SCALE_ENCOUNTERS_RANGE,
+    SCALE_ENCOUNTERS_REGION,
+    SCALE_ENCOUNTERS_ROM_SIZE,
     SCALE_ENCOUNTERS_TABLE,
     SCALE_ENCOUNTERS_TABLE_SIZE,
 )
 from helpers.files import write_file
+from helpers.rom_expansion import assert_region_blank, ensure_rom_expanded
 from logger import iris
 from patcher import apply_asm_patch
 from structures.formation import EMPTY_SLOT, BattleFormation
@@ -105,7 +108,14 @@ def _build_level_table(rng: random.Random) -> bytes:
 
 
 def _write_scale_data(table: bytes, low: int, high: int) -> None:
-    """Bake the lookup table and the roll constants into the reserved region."""
+    """Bake the lookup table and the roll constants into the reserved region.
+
+    The ``.asm`` grows the ROM too, but asar only runs *after* this data is baked, so the file has
+    to be the right size first -- otherwise the seek below would leave a ragged, undersized ROM for
+    asar to read.
+    """
+    ensure_rom_expanded(SCALE_ENCOUNTERS_ROM_SIZE)
+    assert_region_blank(SCALE_ENCOUNTERS_REGION, owner="scale_encounters")
     write_file.seek(SCALE_ENCOUNTERS_TABLE)
     write_file.write(table)
     write_file.seek(SCALE_ENCOUNTERS_LOW)
