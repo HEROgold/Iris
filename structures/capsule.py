@@ -1,3 +1,4 @@
+from functools import cache
 from typing import Self
 
 from abc_.pointers import TablePointer
@@ -5,9 +6,12 @@ from abc_.stats import RpgStats
 from enums.flags import Alignment
 from helpers.bits import find_table_pointer, read_little_int
 from helpers.files import read_file, write_file
-from helpers.relocate import write_relocatable
-from structures.battle_builder import Node, assemble_at
-from structures.battlescript import BattleScript, ScriptType, rebase_jumps
+from rom_space.table import Table
+from scripting.core import Item, Script, assemble
+from scripting.l2basm import parse_record
+from scripting.l2basm.edit import replace_entry
+from scripting.l2basm.helpers import block
+from scripting.l2basm.records import capsule_records, read_record, table_address
 from structures.capsule_attack_names import capsule_attack_names
 from tables import CapAttackObject, CapsuleLevelObject, CapsuleObject
 
@@ -17,8 +21,6 @@ from tables import CapAttackObject, CapsuleLevelObject, CapsuleObject
 # and reaction at +39. The record table stores u16 offsets relative to its own base, and script jumps
 # are record-relative, so a record and everything it reaches must stay inside LoROM bank $97.
 CAPSULE_HEADER_SIZE = 0x2B
-CAPSULE_REACTION_FIELD = 39
-CAPSULE_BANK_END = 0xC0000
 # The shop pointer table follows the last capsule record. Its trailing zero space is the only free
 # space in the bank; Spekkio/Kureji put extra shop data there, so relocation skips every shop target.
 SHOP_TABLE = 0xBEE9F
@@ -105,53 +107,51 @@ class CapsuleMonster(TablePointer):
         self.guts_factor = -1
         self.magic_resistance_factor = -1
         self.strength = -1
-        # L2BASM scripts (populated by from_table): capsules store an attack- and a
-        # reaction-script offset as two u16s at record+37/+39 (see battlescript.py / lufia2.hexpat).
-        self.attack_script: BattleScript | None = None
-        self.reaction_script: BattleScript | None = None
-        # Pending script replacements from set_scripts(); write() assembles them.
-        self._attack_node: Node | None = None
-        self._reaction_node: Node | None = None
+        # Both L2BASM scripts as one body with ``attack``/``reaction`` entry labels (populated by from_table).
+        # The record header stores their offsets as two u16s at record+37/+39.
+        self.code: Script | None = None
+
+    _cache: "dict[int, CapsuleMonster]" = {}  # noqa: RUF012 (per-class cache shared by capsule_table)
 
     @classmethod
     def from_index(cls, index: int) -> Self:
-        return cls.from_table(CapsuleObject.address, index)
+        if index in cls._cache:
+            return cls._cache[index]  # type: ignore[return-value]
+        return cls.from_table(table_address(write_file, "capsule"), index)
 
     @classmethod
     def from_table(cls, address: int, index: int) -> Self:
-        # attack_script / reaction_script are built below (read side done).
-        # TODO: persist them in write() + stop routing the reaction offset through mana_points. See TODO.md.
-        pointer = find_table_pointer(address, index)
-        read_file.seek(pointer)
+        source = write_file  # the output ROM, so base-patch edits are what we read
+        source.seek(address + 2 * index)
+        pointer = address + int.from_bytes(source.read(2), "little")
+        source.seek(pointer)
 
-        name = read_file.read(CapsuleObject.name_text).decode()
-        _zero = read_little_int(read_file, CapsuleObject.zero)
-        class_ = read_little_int(read_file, CapsuleObject.capsule_class)
-        alignment = Alignment(read_little_int(read_file, CapsuleObject.alignment))
-        start_skills = read_file.read(CapsuleObject.start_skills) # list of 3, TODO figure out how these are stored. (Battle scripts?)
-        upgrade_skills = read_file.read(CapsuleObject.upgrade_skills) # list of 3, TODO figure out how these are stored. (Battle scripts?)
-        hp = read_little_int(read_file, CapsuleObject.hp)
-        attack = read_little_int(read_file, CapsuleObject.attack)
-        defense = read_little_int(read_file, CapsuleObject.defense)
-        strength = read_little_int(read_file, CapsuleObject.strength)
-        agility = read_little_int(read_file, CapsuleObject.agility)
-        intelligence = read_little_int(read_file, CapsuleObject.intelligence)
-        guts = read_little_int(read_file, CapsuleObject.guts)
-        magic_resistance = read_little_int(read_file, CapsuleObject.magic_resistance)
-        hp_factor = read_little_int(read_file, CapsuleObject.hp_factor)
-        strength_factor = read_little_int(read_file, CapsuleObject.strength_factor)
-        agility_factor = read_little_int(read_file, CapsuleObject.agility_factor)
-        intelligence_factor = read_little_int(read_file, CapsuleObject.intelligence_factor)
-        guts_factor = read_little_int(read_file, CapsuleObject.guts_factor)
-        magic_resistance_factor = read_little_int(read_file, CapsuleObject.magic_resistance_factor)
+        name = source.read(CapsuleObject.name_text).decode()
+        _zero = read_little_int(source, CapsuleObject.zero)
+        class_ = read_little_int(source, CapsuleObject.capsule_class)
+        alignment = Alignment(read_little_int(source, CapsuleObject.alignment))
+        start_skills = source.read(CapsuleObject.start_skills) # list of 3, TODO figure out how these are stored. (Battle scripts?)
+        upgrade_skills = source.read(CapsuleObject.upgrade_skills) # list of 3, TODO figure out how these are stored. (Battle scripts?)
+        hp = read_little_int(source, CapsuleObject.hp)
+        attack = read_little_int(source, CapsuleObject.attack)
+        defense = read_little_int(source, CapsuleObject.defense)
+        strength = read_little_int(source, CapsuleObject.strength)
+        agility = read_little_int(source, CapsuleObject.agility)
+        intelligence = read_little_int(source, CapsuleObject.intelligence)
+        guts = read_little_int(source, CapsuleObject.guts)
+        magic_resistance = read_little_int(source, CapsuleObject.magic_resistance)
+        hp_factor = read_little_int(source, CapsuleObject.hp_factor)
+        strength_factor = read_little_int(source, CapsuleObject.strength_factor)
+        agility_factor = read_little_int(source, CapsuleObject.agility_factor)
+        intelligence_factor = read_little_int(source, CapsuleObject.intelligence_factor)
+        guts_factor = read_little_int(source, CapsuleObject.guts_factor)
+        magic_resistance_factor = read_little_int(source, CapsuleObject.magic_resistance_factor)
         # Here follow 2 bytes that are always 0x00 0x00.
-        _zero = read_little_int(read_file, 1)
-        _zero = read_little_int(read_file, 1)
-        attack_script_offset = read_little_int(read_file, 1)
-        assert attack_script_offset == 0x2B
-        _zero = read_little_int(read_file, 1) # 1 Empty Byte
-        reaction_script_offset = read_little_int(read_file, 1)
-        _zero = read_little_int(read_file, 3) # 3 Empty Bytes
+        _zero = read_little_int(source, 1)
+        _zero = read_little_int(source, 1)
+        _attack_script_offset = read_little_int(source, 2)  # the entry offsets come from capsule_records below
+        _reaction_script_offset = read_little_int(source, 2)
+        _zero = read_little_int(source, 2) # 2 Empty Bytes
         # The following sequences were found
         # 00 00 2B 00 > Used by not just capsule monsters, but these values are around
         # the same area in the ROM. It's clearly some indicator of something.
@@ -186,11 +186,11 @@ class CapsuleMonster(TablePointer):
         )
         super().__init__(inst, address, index)
         inst.pointer = pointer
-        # L2BASM scripts (offsets are relative to the record start == inst.pointer).
-        # BattleScript.read follows branches, so the disassembly spans the attack script's
-        # handler blocks (Target/Attack, Defend, Flee) that sit between it and the reaction script.
-        inst.attack_script = BattleScript(inst, attack_script_offset, ScriptType.ATTACK)
-        inst.reaction_script = BattleScript(inst, reaction_script_offset, ScriptType.DEFENSE)
+        # Both scripts parse into one body: the attack script's handler blocks (Target/Attack, Defend, Flee,
+        # learnable attacks) sit between it and the reaction script and are reached only through jumps.
+        rec = capsule_records(source)[index]
+        parsed = parse_record(read_record(source, rec), rec.entries, start=CAPSULE_HEADER_SIZE)
+        inst.code = parsed.script
         # TODO: Add a CapsuleStats class to hold hp, attack, defense, agility, intelligence, guts, magic_resistance
         # They don't seem to contain any mana, level are stored on CapsuleLevel, xp and gold aren't present on capsule monsters.
         # Would also simplify with self.stats.write(), rather than writing each stat individually.
@@ -203,7 +203,7 @@ class CapsuleMonster(TablePointer):
             intelligence=intelligence,
             guts=guts,
             magic_resistance=magic_resistance,
-            mana_points=reaction_script_offset, # TODO: do capsule monsters even have mana?
+            mana_points=0,  # capsules have no MP
             level=level.level,
             xp=0, # TODO: are these stored somewhere?
             gold=0, # TODO: are these stored somewhere?
@@ -215,71 +215,36 @@ class CapsuleMonster(TablePointer):
         inst.intelligence_factor = intelligence_factor
         inst.guts_factor = guts_factor
         inst.magic_resistance_factor = magic_resistance_factor
+        cls._cache[index] = inst
         return inst
 
-    def set_scripts(self, attack: Node | None = None, reaction: Node | None = None) -> None:
-        """Replace the attack and/or reaction script with builder nodes; ``write()`` assembles and saves them.
+    def set_scripts(self, attack: list[Item] | None = None, reaction: list[Item] | None = None) -> None:
+        """Replace the attack and/or reaction script; ``write()`` saves them. ``None`` keeps a script.
 
-        A script left as ``None`` keeps its current bytecode.
+        Blocks the other script still reaches stay.
         """
+        assert self.code is not None
         if attack is not None:
-            self._attack_node = attack
+            replace_entry(self.code, "attack", block(attack))
         if reaction is not None:
-            self._reaction_node = reaction
+            replace_entry(self.code, "reaction", block(reaction))
+
+    def build(self) -> bytes:
+        """The whole record: header, then both scripts (jumps are record-relative)."""
+        assert self.code is not None
+        out = assemble(self.code, CAPSULE_HEADER_SIZE)
+        attack = CAPSULE_HEADER_SIZE + out.labels["attack"]
+        reaction = CAPSULE_HEADER_SIZE + out.labels["reaction"]
+        return self._header(attack, reaction) + out.data
 
     def write(self) -> None:
-        """Write the whole capsule record: header fields, attack script and reaction script.
-
-        The attack script starts at +0x2B and the reaction follows it directly; the header's reaction
-        offset is recomputed, and a kept reaction's jumps move with it (``rebase_jumps``). The record is
-        rewritten in place when it fits its current footprint in the output (leftover bytes zeroed);
-        otherwise it moves to free space in bank $97, its table entry is repointed and the old record is
-        zeroed (``helpers.relocate.write_relocatable``). Also writes ``capsule_attack_names`` if and only if
-        it changed.
-        """
-        attack = self._attack_bytes()
-        reaction_offset = CAPSULE_HEADER_SIZE + len(attack)
-        reaction = self._reaction_bytes(reaction_offset)
-        record = self._header(reaction_offset) + attack + reaction
-
-        write_file.flush()
-        table_entry = self.address + 2 * self.index
-        old = self.address + self._read_output_u16(table_entry)
-
-        def repoint(new: int) -> None:
-            write_file.seek(table_entry)
-            write_file.write((new - self.address).to_bytes(2, "little"))
-
-        self.pointer = write_relocatable(
-            record,
-            old,
-            self._output_footprint(old),
-            repoint=repoint,
-            search=(self.address, CAPSULE_BANK_END),
-            avoid=self._shop_targets(),
-        )
-        self.stats.mana_points = reaction_offset
-        self._attack_node = None
-        self._reaction_node = None
-        self.attack_script = BattleScript(self, CAPSULE_HEADER_SIZE, ScriptType.ATTACK)
-        self.attack_script.read(source=write_file)
-        self.reaction_script = BattleScript(self, reaction_offset, ScriptType.DEFENSE)
-        self.reaction_script.read(source=write_file)
+        """Write every capsule record that changed (in place, or moved inside bank $97), then the attack names."""
+        table = capsule_table()
+        table.write()
+        self.pointer = table.starts()[self.index]
         capsule_attack_names.write()
 
-    def _attack_bytes(self) -> bytes:
-        if self._attack_node is not None:
-            return assemble_at(CAPSULE_HEADER_SIZE, self._attack_node)
-        assert self.attack_script
-        return self.attack_script.bytecode
-
-    def _reaction_bytes(self, offset: int) -> bytes:
-        if self._reaction_node is not None:
-            return assemble_at(offset, self._reaction_node)
-        assert self.reaction_script
-        return rebase_jumps(self.reaction_script.bytecode, self.reaction_script.offset, offset)
-
-    def _header(self, reaction_offset: int) -> bytes:
+    def _header(self, attack_offset: int, reaction_offset: int) -> bytes:
         """The 0x2B-byte record header built from this instance's fields."""
         fields = [
             self.class_, self.alignment, *self.start_skills, *self.upgrade_skills,
@@ -293,7 +258,7 @@ class CapsuleMonster(TablePointer):
             + b"\x00"
             + bytes(int(field) for field in fields)
             + b"\x00\x00"  # always zero; purpose unknown
-            + CAPSULE_HEADER_SIZE.to_bytes(2, "little")  # attack script offset
+            + attack_offset.to_bytes(2, "little")
             + reaction_offset.to_bytes(2, "little")
             + b"\x00\x00"
         )
@@ -302,30 +267,28 @@ class CapsuleMonster(TablePointer):
             raise ValueError(msg)
         return header
 
-    def _read_output_u16(self, address: int) -> int:
-        write_file.seek(address)
-        return int.from_bytes(write_file.read(2), "little")
-
-    def _output_footprint(self, record: int) -> int:
-        """Size of the record in the output: one past the last reachable byte of either script."""
-        saved = self.pointer
-        self.pointer = record
-        try:
-            ends = [CAPSULE_HEADER_SIZE]
-            for offset, kind in (
-                (CAPSULE_HEADER_SIZE, ScriptType.ATTACK),
-                (self._read_output_u16(record + CAPSULE_REACTION_FIELD), ScriptType.DEFENSE),
-            ):
-                script = BattleScript(self, offset, kind)
-                script.read(source=write_file)
-                ends.append(script.reach_end)
-            return max(ends)
-        finally:
-            self.pointer = saved
-
-    def _shop_targets(self) -> list[int]:
-        return [SHOP_TABLE + self._read_output_u16(SHOP_TABLE + 2 * i) for i in range(SHOP_TABLE_MAX_ENTRIES)]
-
     def fix_animation(self) -> None:
         if self.animation in self.animation_fixes:
             self.animation = self.animation_fixes[self.animation]
+
+
+def _shop_targets() -> set[int]:
+    """Addresses the shop table points at. Spekkio and Kureji put shop data in bank $97's free gap."""
+    targets = set()
+    for i in range(SHOP_TABLE_MAX_ENTRIES):
+        write_file.seek(SHOP_TABLE + 2 * i)
+        targets.add(SHOP_TABLE + int.from_bytes(write_file.read(2), "little"))
+    return targets
+
+
+@cache
+def capsule_table() -> Table:
+    """Every capsule record on ``rom_space.Table``. Records move only within bank $97 (HER-200 moves the table)."""
+    address = table_address(write_file, "capsule")
+    records = [CapsuleMonster.from_index(i) for i in range(CapsuleObject.count)]
+    return Table("capsules", address, records, SHOP_TABLE, pinned=_shop_targets())  # type: ignore[arg-type]
+
+
+def reset_capsule_table() -> None:
+    capsule_table.cache_clear()
+    CapsuleMonster._cache.clear()  # noqa: SLF001

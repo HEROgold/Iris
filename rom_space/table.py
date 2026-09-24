@@ -154,6 +154,7 @@ class Table:
                 None if self._in_region(starts[i]) else range(starts[i], starts[i] + rooms[i]),
                 [PointerSite(self.entry_at(i), U16Rel(self.address))],
                 bank=bank_of(self.address),
+                near=self.address,  # entries are unsigned offsets from the table: records sit after it
                 force_move=True,
             )
             for i in todo

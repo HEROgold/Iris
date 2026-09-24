@@ -18,7 +18,7 @@ from scripting.core import Instruction as ScriptInstruction
 from scripting.core import Label as ScriptLabel
 from scripting.l2basm import L2BASM
 from structures import CapsuleMonster, Item, Monster, Spell
-from structures.battle_builder import (
+from scripting.l2basm.helpers import (
     Target,
     cast_spell_free,
     end,
@@ -328,7 +328,7 @@ def _label_at(body: list, start: int, offset: int, name: str) -> None:
 
 
 def foomy_s_firebird_valor() -> None:
-    """Give capsule Foomy S (index 0) a Firebird/Valor battle AI, authored with the ``battle_builder`` DSL.
+    """Give capsule Foomy S (index 0) a Firebird/Valor battle AI, authored with ``scripting.l2basm.helpers``.
 
     The attack (per-turn AI) script keeps vanilla Foomy S's flee check: ``42 25 00`` puts the % of HP lost
     in reg $80 and ``GUT * 25 / reg $82`` (reg $82 = 0x11 for Foomy S) in reg $81; if reg $80 >= reg $81
@@ -345,7 +345,7 @@ def foomy_s_firebird_valor() -> None:
     the reaction slot runs passive-protection code in the attacker's damage calculation, so it cannot
     hold a spell cast.
     """
-    iris.info("Giving Foomy S a Firebird/Valor AI via the battle_builder DSL.")
+    iris.info("Giving Foomy S a Firebird/Valor AI via scripting.l2basm.helpers.")
     foomy = CapsuleMonster.from_index(0)
     # Spell.from_index avoids the eager `lookups` import (which trips a pre-existing spell-name decode
     # bug); with `lookups` fixed these are simply ``Spells.VALOR`` / ``Spells.FIREBIRD``.

@@ -122,3 +122,9 @@ def test_every_offered_range_is_blank_and_unreserved(base: Patch | None) -> None
         chunk = write_file.read(stop - start)
         assert chunk.strip(b"\x00") == b"" or chunk.strip(b"\xff") == b"", hex(start)
         assert not any(start < r.stop and r.start < stop for r in RESERVED_REGIONS), hex(start)
+
+
+def test_near_uses_the_part_of_a_run_after_the_anchor() -> None:
+    rom = _rom(1, {0x100: bytes(0x400)})
+    space = FreeSpace(rom, expansion=None)
+    assert space.alloc(0x40, bank=0, near=0x300) == 0x300

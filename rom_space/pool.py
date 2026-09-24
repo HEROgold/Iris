@@ -88,7 +88,9 @@ class FreeSpace:
         self._blocked.update(addresses)
 
     def _fits(self, candidate: int, size: int, near: int | None, reach: int) -> int | None:
-        """First start >= candidate that avoids blocked addresses, or None."""
+        """First start >= candidate (and >= near) that avoids blocked addresses, or None."""
+        if near is not None:
+            candidate = max(candidate, near)
         hits = [a for a in self._blocked if candidate <= a < candidate + size]
         while hits:
             candidate = max(hits) + 1

@@ -12,8 +12,9 @@ from enums.patches import Patch
 from helpers.files import original_file, write_file
 from patcher import apply_patch
 from patches.HEROgold import foomy_s_firebird_valor
-from structures.battle_builder import (
-    Node,
+from rom_space.pool import reset_pool
+from scripting.core import Item, assemble
+from scripting.l2basm.helpers import (
     Target,
     end,
     flee,
@@ -25,8 +26,8 @@ from structures.battle_builder import (
     resist,
     sequence,
 )
-from structures.battlescript import op_codes
-from structures.capsule import CapsuleMonster
+from scripting.l2basm.opcodes import PARAM_COUNTS
+from structures.capsule import CapsuleMonster, reset_capsule_table
 from structures.capsule_attack_names import capsule_attack_names
 from tables import CapsuleObject
 from tests.reset_file import reset_file
@@ -46,12 +47,16 @@ _JUMPS = {0x03: 0, 0x04: 0, 0x05: 1, 0x06: 3, 0x07: 3, 0x08: 3, 0x09: 3, 0x0A: 3
 def _clean_output() -> Iterator[None]:
     capsule_attack_names.unload()
     reset_file()
+    reset_pool()
+    reset_capsule_table()
     yield
     capsule_attack_names.unload()
     reset_file()
+    reset_pool()
+    reset_capsule_table()
 
 
-def _write(capsule: CapsuleMonster, attack: Node | None, reaction: Node | None) -> None:
+def _write(capsule: CapsuleMonster, attack: list[Item] | None, reaction: list[Item] | None) -> None:
     capsule.set_scripts(attack=attack, reaction=reaction)
     capsule.write()
 
@@ -76,8 +81,8 @@ def _walk(rom: bytes, record: int, start: int) -> list[tuple[int, bytes]]:
         while pc not in seen:
             seen.add(pc)
             op = rom[record + pc]
-            assert op in op_codes, f"unknown opcode {op:#x} at +{pc:#x}"
-            ins = rom[record + pc:record + pc + 1 + op_codes[op]["params"]]
+            assert op in PARAM_COUNTS, f"unknown opcode {op:#x} at +{pc:#x}"
+            ins = rom[record + pc:record + pc + 1 + PARAM_COUNTS[op]]
             out.append((pc, ins))
             if op in _JUMPS:
                 k = 1 + _JUMPS[op]
@@ -110,11 +115,11 @@ def _assert_packed(rom: bytes, record: int) -> None:
     assert covered == list(range(reaction, reaction + len(covered)))
 
 
-def _short_attack() -> Node:
+def _short_attack() -> list[Item]:
     return sequence(physical_attack(target=Target.ONE_FOE), end())
 
 
-def _vanilla_reaction() -> Node:
+def _vanilla_reaction() -> list[Item]:
     return sequence(resist(0x11), end())
 
 
@@ -145,7 +150,7 @@ def test_header_is_kept_apart_from_the_reaction_offset() -> None:
     assert after[record + REACTION_FIELD + 2:record + HEADER] == before[record + REACTION_FIELD + 2:record + HEADER]
 
 
-def _long_attack() -> Node:
+def _long_attack() -> list[Item]:
     # 49 bytes: longer than Foomy S's 36-byte attack slot.
     return sequence(
         on_chance(0x40, "b"),
@@ -156,44 +161,6 @@ def _long_attack() -> Node:
         flee(),
         end(),
     )
-
-
-def test_growing_script_moves_the_record_into_free_space() -> None:
-    before = _output()
-    old = _record(before, FOOMY_S)
-    old_end = old + _footprint(before, old)
-
-    capsule = CapsuleMonster.from_index(FOOMY_S)
-    _write(capsule, _long_attack(), _vanilla_reaction())
-
-    after = _output()
-    new = _record(after, FOOMY_S)
-    assert new != old
-    assert TABLE < new < BANK_END
-    size = _footprint(after, new)
-    assert new + size <= BANK_END
-    assert before[new:new + size] == bytes(size), "relocated onto bytes that were not free"
-    assert after[new:new + REACTION_FIELD] == before[old:old + REACTION_FIELD]
-    assert after[old:old_end] == bytes(old_end - old), "old footprint must be zeroed"
-    assert capsule.pointer == new
-    _assert_packed(after, new)
-
-    changed = {i for i in range(len(before)) if before[i] != after[i]}
-    allowed = set(range(old, old_end)) | set(range(new, new + size)) | {TABLE, TABLE + 1}
-    assert changed <= allowed
-
-
-def test_relocation_skips_addresses_the_shop_table_points_at() -> None:
-    capsule = CapsuleMonster.from_index(FOOMY_S)
-    _write(capsule, _long_attack(), _vanilla_reaction())
-    after = _output()
-    new = _record(after, FOOMY_S)
-    size = _footprint(after, new)
-    shop_targets = {
-        SHOP_TABLE + int.from_bytes(after[SHOP_TABLE + 2 * i:SHOP_TABLE + 2 * i + 2], "little")
-        for i in range(SHOP_ENTRIES)
-    }
-    assert not any(new <= t < new + size for t in shop_targets)
 
 
 def test_reaction_jumps_resolve_against_the_new_reaction_offset() -> None:
@@ -210,20 +177,11 @@ def test_scripts_on_the_instance_match_the_output_after_writing() -> None:
     capsule = CapsuleMonster.from_index(FOOMY_S)
     _write(capsule, _long_attack(), _vanilla_reaction())
     after = _output()
-    assert capsule.attack_script is not None
-    assert capsule.reaction_script is not None
-    assert capsule.attack_script.pointer == capsule.pointer + HEADER
+    assert capsule.code is not None
+    out = assemble(capsule.code, HEADER)
     reaction = int.from_bytes(after[capsule.pointer + REACTION_FIELD:capsule.pointer + REACTION_FIELD + 2], "little")
-    assert capsule.reaction_script.offset == reaction
-    assert capsule.attack_script.bytecode == after[capsule.pointer + HEADER:capsule.pointer + reaction]
-
-
-def test_capsule_write_after_relocation_targets_the_new_record() -> None:
-    capsule = CapsuleMonster.from_index(FOOMY_S)
-    _write(capsule, _long_attack(), _vanilla_reaction())
-    moved = _output()
-    capsule.write()
-    assert _output() == moved
+    assert HEADER + out.labels["reaction"] == reaction
+    assert after[capsule.pointer + HEADER:capsule.pointer + HEADER + len(out.data)] == out.data
 
 
 def test_unmodified_capsules_write_back_unchanged() -> None:
@@ -257,22 +215,6 @@ def test_write_leaves_the_attack_name_table_alone_when_unchanged() -> None:
     before = _output()
     CapsuleMonster.from_index(FOOMY_S).write()
     assert _output()[0x12DF00:0x12E400] == before[0x12DF00:0x12E400]
-
-
-@pytest.mark.parametrize("base", [Patch.FRUE, Patch.SPEKKIO, Patch.KUREJI])
-def test_relocation_on_each_base_patch_only_uses_free_bytes(base: Patch) -> None:
-    apply_patch(base)
-    before = _output()
-    _write(CapsuleMonster.from_index(FOOMY_S), _long_attack(), _vanilla_reaction())
-    after = _output()
-    new = _record(after, FOOMY_S)
-    size = _footprint(after, new)
-    assert before[new:new + size] == bytes(size)
-    for index in range(CapsuleObject.count):
-        record = _record(after, index)
-        if index != FOOMY_S:
-            assert after[record:record + 0x100] == before[record:record + 0x100]
-        _footprint(after, record)  # every capsule's scripts still decode
 
 
 def test_original_rom_is_untouched() -> None:
