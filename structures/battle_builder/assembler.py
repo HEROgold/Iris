@@ -8,6 +8,7 @@ exactly the jump encoding L2BASM uses (``monster.pointer + offset``) and the sam
 
 from typing import TYPE_CHECKING
 
+from helpers.files import write_file
 from structures.battle_builder.nodes import Label, Node, Ref, Token
 
 
@@ -47,6 +48,11 @@ def _label_positions(tokens: list[Token]) -> dict[str, int]:
 
 def assemble(script: "BattleScript", root: Node, *, max_size: int | None = None) -> bytes:
     """Emit ``root``'s bytecode for ``script``, resolving every label to a record-relative offset."""
+    return assemble_at(script.offset, root, max_size=max_size)
+
+
+def assemble_at(offset: int, root: Node, *, max_size: int | None = None) -> bytes:
+    """Emit ``root``'s bytecode for a script that will start at record-relative ``offset``."""
     tokens = root.emit()
     if not _ends_in_end(tokens):
         tokens.append(0x00)  # guarantee a terminating END
@@ -60,7 +66,7 @@ def assemble(script: "BattleScript", root: Node, *, max_size: int | None = None)
             if token.name not in positions:
                 msg = f"Undefined label: {token.name!r}"
                 raise ValueError(msg)
-            value = script.offset + positions[token.name]
+            value = offset + positions[token.name]
             if not 0 <= value <= 0xFFFF:
                 msg = f"Resolved jump out of range: {value:#x}"
                 raise ValueError(msg)
@@ -76,11 +82,18 @@ def assemble(script: "BattleScript", root: Node, *, max_size: int | None = None)
 
 
 def apply(script: "BattleScript", root: Node, *, max_size: int | None = None) -> None:
-    """Assemble ``root`` and write it into ``script`` in place, then re-read to round-trip verify.
+    """Assemble ``root`` and write it into ``script`` in place, then re-read it from the output ROM.
+
+    The re-read walks ``write_file``, so ``script.bytecode`` afterwards is what the output holds.
 
     Writes the :class:`BattleScript` directly (never ``CapsuleMonster.write()``, which does not persist
     script bytecode and reroutes the reaction offset through the ``stats.mana_points`` hack).
     """
-    script.bytecode = assemble(script, root, max_size=max_size)
+    assembled = assemble(script, root, max_size=max_size)
+    script.bytecode = assembled
     script.write()
-    script.read()
+    write_file.seek(script.pointer)
+    if write_file.read(len(assembled)) != assembled:
+        msg = f"Output at {script.pointer:#x} does not hold the assembled script."
+        raise ValueError(msg)
+    script.read(source=write_file)

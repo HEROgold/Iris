@@ -1,6 +1,6 @@
 import logging
 from enum import Enum
-from typing import TYPE_CHECKING, TypedDict
+from typing import IO, TYPE_CHECKING, TypedDict
 
 from helpers.files import read_file, restore_pointer, write_file
 from logger import iris
@@ -640,6 +640,35 @@ subroutines = {
 }
 
 
+# Byte index (within the operands) of the 2-byte record-relative jump target, per branching opcode.
+JUMP_OPERAND: dict[int, int] = {
+    0x03: 0, 0x04: 0, 0x05: 1,
+    0x06: 3, 0x07: 3, 0x08: 3, 0x09: 3, 0x0A: 3, 0x0B: 3,
+    0x3F: 1,
+}
+
+
+def rebase_jumps(code: bytes, old_offset: int, new_offset: int) -> bytes:
+    """Move a contiguous script from record offset ``old_offset`` to ``new_offset``.
+
+    Jump targets are record-relative, so every target that points inside the script (including one past
+    its last byte, the "out" idiom) shifts by the same distance. Targets outside it stay as they are.
+    """
+    out = bytearray(code)
+    delta = new_offset - old_offset
+    pos = 0
+    while pos < len(code):
+        opcode = code[pos]
+        size = 1 + op_codes[opcode]["params"]
+        if opcode in JUMP_OPERAND:
+            at = pos + 1 + JUMP_OPERAND[opcode]
+            target = int.from_bytes(code[at:at + 2], "little")
+            if old_offset <= target <= old_offset + len(code):
+                out[at:at + 2] = (target + delta).to_bytes(2, "little")
+        pos += size
+    return bytes(out)
+
+
 class ScriptType(Enum):
     ATTACK = 0x07.to_bytes()
     DEFENSE = 0x08.to_bytes()
@@ -663,6 +692,8 @@ class BattleScript:
     """
 
     bytecode: bytes
+    reach_end: int
+    """Record-relative offset one past the last reachable instruction (set by ``read``)."""
     _pretty: list[tuple[str, str]]
     _visited: list[int]
     crash_codes = [0x02, 0x31, 0x33, 0x34, 0x38, 0x39, 0x3A, 0x3B]
@@ -722,34 +753,47 @@ class BattleScript:
         self.bytecode = read_file.read(end - start)
 
     @restore_pointer
-    def read(self, offset: int=0) -> None:
+    def read(self, offset: int=0, source: "IO[bytes] | None" = None) -> None:
+        """Disassemble the script from ``source`` (default: the original ROM, ``read_file``).
+
+        Pass ``write_file`` to read the per-seed output instead, e.g. to check what was just written.
+        """
+        file = read_file if source is None else source
+        restore = file.tell()
+        try:
+            self._read(file, offset)
+        finally:
+            file.seek(restore)
+
+    def _read(self, file: "IO[bytes]", offset: int) -> None:
+        self.reach_end = self.offset
         stack: list[int] = [self.pointer]
-        read_file.seek(self.pointer + offset)
+        file.seek(self.pointer + offset)
 
         code: list[tuple[int, bytes, bytes]] = []
         self._pretty = []
         visited = []
         while True:
-            tell = read_file.tell()
+            tell = file.tell()
 
             if tell in visited:
                 if len(stack) == 0:
                     break
                 self.logger.debug(f"{tell} already visited. (continue...)")
-                read_file.seek(stack.pop())
+                file.seek(stack.pop())
                 continue
 
             visited.append(tell)
 
             if tell == self.monster.pointer:
                 self.logger.debug(f"{tell} reached monster pointer. (continue...)")
-                read_file.seek(stack.pop())
+                file.seek(stack.pop())
                 continue
 
-            byte = read_file.read(1)
+            byte = file.read(1)
             if not byte:  # EOF -- end this path
                 if stack:
-                    read_file.seek(stack.pop())
+                    file.seek(stack.pop())
                     continue
                 break
             op_code = byte[0]
@@ -758,7 +802,7 @@ class BattleScript:
                 # into data (not script). End the path instead of KeyError-ing the whole run.
                 self.logger.warning(f"Unknown AI opcode {op_code:#04x} at {tell:#x}; ending path.")
                 if stack:
-                    read_file.seek(stack.pop())
+                    file.seek(stack.pop())
                     continue
                 break
             nr_args = self.get_arguments(op_code)
@@ -767,15 +811,16 @@ class BattleScript:
             offset += 1
             if nr_args > 0:
                 offset += nr_args
-                args = read_file.read(nr_args)
+                args = file.read(nr_args)
             else:
                 args = b""
 
             code.append((tell, byte, args))
+            self.reach_end = max(self.reach_end, tell + 1 + nr_args - self.monster.pointer)
             self._pretty.append((hex(op_code), f"Code -->> {comment}"))
 
             if op_code == 0x0:
-                read_file.seek(stack.pop())
+                file.seek(stack.pop())
                 continue
             if op_code == 0x1:
                 # Execute effect code
@@ -790,7 +835,7 @@ class BattleScript:
                 assert args
                 jump_offset = int.from_bytes(args[0:2], "little")
                 self._pretty.append((hex(jump_offset), "0 -> Jump Offset"))
-                read_file.seek(self.monster.pointer + jump_offset)
+                file.seek(self.monster.pointer + jump_offset)
                 continue
             elif op_code == 0x4: # On Failure GoTo > If previous command failed
                 assert nr_args == 2
@@ -866,6 +911,15 @@ class BattleScript:
                 self._pretty.append((hex(compare_value), "1 -> Compare <= (Reg)"))
                 self._pretty.append((hex(compare_against), "2 -> Comparison (Value)"))
                 self._pretty.append((hex(jump_offset), "3 -> Jump Offset"))
+                stack.append(self.monster.pointer + jump_offset)
+            elif op_code == 0x3F:
+                # Learnable-attack branch: ``3F slot jumpOffset(2, LE)``. The learned-attack block is
+                # reachable only through this jump, so follow it like the other conditional branches.
+                assert nr_args == 3
+                assert args
+                jump_offset = int.from_bytes(args[1:3], "little")
+                self._pretty.append((hex(args[0]), "0 -> Learnable attack slot"))
+                self._pretty.append((hex(jump_offset), "1 -> Jump Offset"))
                 stack.append(self.monster.pointer + jump_offset)
             elif op_code in [0xC, 0xD, 0xE, 0xF, 0x10, 0x16, 0x17, 0x18]:
                 assert nr_args == 3

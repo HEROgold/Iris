@@ -1,3 +1,4 @@
+import re
 import shutil
 import struct
 import subprocess
@@ -7,7 +8,6 @@ from typing import cast
 
 from bitstring import BitArray
 
-from args import args
 from enums.patches import Patch
 from helpers.addresses import address_from_lorom
 from helpers.files import BackupFile, new_file, write_file
@@ -24,20 +24,28 @@ ASAR_EXE = Path(__file__).parent/"patches"/"asar191"/"asar.exe"
 
 parser = PatchParser()  # Script parser for patches.
 
-def apply_asm_patch(asm_path: Path, include_dirs: list[Path] | None = None, *, fix_checksum: bool = True) -> None:
+def apply_asm_patch(
+    asm_path: Path,
+    include_dirs: list[Path] | None = None,
+    *,
+    fix_checksum: bool = True,
+    defines: dict[str, str] | None = None,
+) -> None:
     """Assemble a 65816 asar patch onto the current per-seed ROM using the bundled asar.exe.
 
     asar keys header detection off the file *extension*: a ``.smc`` is treated as headered, so every
     write lands 512 bytes too high and the output gains a copier header. We therefore assemble on a
     headerless ``.sfc`` copy of ``new_file`` and copy the result back, keeping the ``write_file`` handle
     in sync so later structure writes see asar's output (e.g. the ROM expanded to 3MB).
+
+    ``defines`` become asar ``-Dname=value`` arguments, readable in the patch as ``!name``.
     """
     if include_dirs is None:
         include_dirs = []
     write_file.flush()  # push buffered structure writes to disk before asar reads new_file
     sfc = new_file.with_suffix(".sfc")
     shutil.copyfile(new_file, sfc)
-    cmd = [str(ASAR_EXE), *(f"-I{d}" for d in include_dirs),
+    cmd = [str(ASAR_EXE), *(f"-I{d}" for d in include_dirs), *(f"-D{k}={v}" for k, v in (defines or {}).items()),
            f"--fix-checksum={'on' if fix_checksum else 'off'}", "--no-title-check", str(asm_path), str(sfc)]
     iris.debug(f"Running asar: {cmd}")
     result = subprocess.run(cmd, capture_output=True, text=True, check=False)  # noqa: S603
@@ -92,67 +100,47 @@ def apply_patch(patch: Patch) -> Path:
     else:
         msg = f"Patch {patch.name} not implemented."
         raise NotImplementedError(msg)
-    return patch_files(Path(args.file), patch_file)
+    return patch_files(patch_file)
 
 
-def patch_files(rom: Path, patch: Path):
-    # Backup original ROM
-    original = rom
-    suffix = rom.suffix
-    header = False # We remove the header immediately after converting the rom.
-    rom = original.with_suffix(".tmp")
-    shutil.copy(original, rom)
+def patch_files(patch: Path) -> Path:
+    """Apply an IPS ``patch`` to the per-seed output in place, through ``write_file``.
 
-    iris.debug(f"Applying patch {patch=} to {rom=}.")
-    iris.debug(f"{original=}")
-    iris.debug(f"{patch=}")
-    iris.debug(f"{rom=}")
-
-
-    with patch.open("rb") as pf, rom.open("r+b") as rf:
+    The records go straight into the open handle, so writes made before this call (ROM name, event
+    patches) survive unless the IPS itself overwrites those bytes. The IPS files target a headered ROM
+    while ``write_file`` is headerless, so every record offset drops by 512.
+    """
+    header_size = 512
+    iris.debug(f"Applying patch {patch=} to {new_file=}.")
+    records = 0
+    with patch.open("rb") as pf:
         patch_size = getsize(patch)
         if pf.read(5) != b"PATCH":
             msg = "Invalid patch header."
-            raise Exception(msg)
-        # Read First Record
-        records = 0
+            raise ValueError(msg)
         r = pf.read(3)
         while pf.tell() not in [patch_size, patch_size - 3]:
-            # Unpack 3-byte pointers.
-            offset = unpack_int(r)
-            if not header:
-                offset -= 512
-            # Read size of data chunk
-            r = pf.read(2)
-            size = unpack_int(r)
-
-            if size == 0:  # RLE Record
-                r = pf.read(2)
-                rle_size = unpack_int(r)
+            offset = unpack_int(r) - header_size
+            size = unpack_int(pf.read(2))
+            if size == 0:  # RLE record
+                rle_size = unpack_int(pf.read(2))
                 data = pf.read(1) * rle_size
             else:
                 data = pf.read(size)
-
             if offset >= 0:
-                # Write to file
-                iris.debug(f"IPS record {offset=:#08x} size={len(data)}")
-                rf.seek(offset)
-                rf.write(data)
+                write_file.seek(offset)
+                write_file.write(data)
                 records += 1
-            # Read Next Record
             r = pf.read(3)
 
         if patch_size - 3 == pf.tell():
             trim_size = unpack_int(pf.read(3))
             iris.debug(f"IPS truncate {trim_size=:#08x}")
-            rf.truncate(trim_size)
+            write_file.truncate(trim_size)
 
-    # Remove backup
-    new = rom.with_stem(f"{rom.stem}-{args.seed}").with_suffix(suffix)
-    shutil.copy(rom, new)
-    rom.unlink()
-    iris.info(f"Patch applied. {records} records written to {new.name} (final size {getsize(new)} bytes).")
-    return new
+    write_file.flush()
+    iris.info(f"Patch applied. {records} records written to {new_file.name} (final size {getsize(new_file)} bytes).")
+    return new_file
 
 
 def unpack_int(string: bytes):
@@ -223,8 +211,14 @@ def apply_game_genie_codes(*codes: str) -> None:
     """
     if codes == ("",):
         return
-    for code in codes:
-        code = code.replace("-", "").upper()
+    for raw_code in codes:
+        if re.fullmatch(r"7[EF][0-9A-F]{6}", raw_code.upper()):
+            msg = (
+                f"{raw_code} is a Pro Action Replay RAM code ($7E/$7F); it only works in a running game "
+                "and cannot be written into the ROM as a Game Genie code."
+            )
+            raise ValueError(msg)
+        code = raw_code.replace("-", "").upper()
         address, data = translate_game_genie_code_snes(code)
         address = address_from_lorom(address)
 

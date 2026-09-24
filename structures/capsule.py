@@ -5,8 +5,24 @@ from abc_.stats import RpgStats
 from enums.flags import Alignment
 from helpers.bits import find_table_pointer, read_little_int
 from helpers.files import read_file, write_file
-from structures.battlescript import BattleScript, ScriptType
+from helpers.relocate import write_relocatable
+from structures.battle_builder import Node, assemble_at
+from structures.battlescript import BattleScript, ScriptType, rebase_jumps
+from structures.capsule_attack_names import capsule_attack_names
 from tables import CapAttackObject, CapsuleLevelObject, CapsuleObject
+
+
+# Capsule record layout: a 0x2B-byte header, then the attack script, then the reaction script. The
+# header ends with two u16 script offsets (relative to the record start): attack at +37 (always 0x2B)
+# and reaction at +39. The record table stores u16 offsets relative to its own base, and script jumps
+# are record-relative, so a record and everything it reaches must stay inside LoROM bank $97.
+CAPSULE_HEADER_SIZE = 0x2B
+CAPSULE_REACTION_FIELD = 39
+CAPSULE_BANK_END = 0xC0000
+# The shop pointer table follows the last capsule record. Its trailing zero space is the only free
+# space in the bank; Spekkio/Kureji put extra shop data there, so relocation skips every shop target.
+SHOP_TABLE = 0xBEE9F
+SHOP_TABLE_MAX_ENTRIES = 80
 
 
 # from .sprites import CapsulePallette
@@ -93,6 +109,9 @@ class CapsuleMonster(TablePointer):
         # reaction-script offset as two u16s at record+37/+39 (see battlescript.py / lufia2.hexpat).
         self.attack_script: BattleScript | None = None
         self.reaction_script: BattleScript | None = None
+        # Pending script replacements from set_scripts(); write() assembles them.
+        self._attack_node: Node | None = None
+        self._reaction_node: Node | None = None
 
     @classmethod
     def from_index(cls, index: int) -> Self:
@@ -198,42 +217,114 @@ class CapsuleMonster(TablePointer):
         inst.magic_resistance_factor = magic_resistance_factor
         return inst
 
+    def set_scripts(self, attack: Node | None = None, reaction: Node | None = None) -> None:
+        """Replace the attack and/or reaction script with builder nodes; ``write()`` assembles and saves them.
+
+        A script left as ``None`` keeps its current bytecode.
+        """
+        if attack is not None:
+            self._attack_node = attack
+        if reaction is not None:
+            self._reaction_node = reaction
+
     def write(self) -> None:
-        write_file.seek(self.pointer)
-        write_file.write(self.name.encode())
-        write_file.write(b"\x00")
-        write_file.write(self.class_.to_bytes())
-        write_file.write(self.alignment.to_bytes())
-        write_file.write(self.start_skills)
-        write_file.write(self.upgrade_skills)
-        write_file.write(self.stats.health_points.to_bytes())
-        write_file.write(self.stats.attack.to_bytes())
-        write_file.write(self.stats.defense.to_bytes())
-        write_file.write(self.strength.to_bytes())
-        write_file.write(self.stats.agility.to_bytes())
-        write_file.write(self.stats.intelligence.to_bytes())
-        write_file.write(self.stats.guts.to_bytes())
-        write_file.write(self.stats.magic_resistance.to_bytes())
-        write_file.write(self.hp_factor.to_bytes())
-        write_file.write(self.strength_factor.to_bytes())
-        write_file.write(self.agility_factor.to_bytes())
-        write_file.write(self.intelligence_factor.to_bytes())
-        write_file.write(self.guts_factor.to_bytes())
-        write_file.write(self.magic_resistance_factor.to_bytes())
-        # The following is for the 2 bytes that are always 0x00 0x00.
-        # Not sure what they're used for.
-        write_file.write(b"\x00")
-        write_file.write(b"\x00")
-        # The following is for the attack script offset, which is always 0x2B for capsule monsters.
-        write_file.write(b"\x2B")
-        write_file.write(b"\x00")
+        """Write the whole capsule record: header fields, attack script and reaction script.
 
-        # The following is for the reaction script offset.
-        # should be the same as 0x2B + attack script (size) + branch target handler (size)
-        # branch target handler = target&attack + defend + flee.
-        write_file.write(self.stats.mana_points.to_bytes())
-        write_file.write(b"\x00")
+        The attack script starts at +0x2B and the reaction follows it directly; the header's reaction
+        offset is recomputed, and a kept reaction's jumps move with it (``rebase_jumps``). The record is
+        rewritten in place when it fits its current footprint in the output (leftover bytes zeroed);
+        otherwise it moves to free space in bank $97, its table entry is repointed and the old record is
+        zeroed (``helpers.relocate.write_relocatable``). Also writes ``capsule_attack_names`` if and only if
+        it changed.
+        """
+        attack = self._attack_bytes()
+        reaction_offset = CAPSULE_HEADER_SIZE + len(attack)
+        reaction = self._reaction_bytes(reaction_offset)
+        record = self._header(reaction_offset) + attack + reaction
 
+        write_file.flush()
+        table_entry = self.address + 2 * self.index
+        old = self.address + self._read_output_u16(table_entry)
+
+        def repoint(new: int) -> None:
+            write_file.seek(table_entry)
+            write_file.write((new - self.address).to_bytes(2, "little"))
+
+        self.pointer = write_relocatable(
+            record,
+            old,
+            self._output_footprint(old),
+            repoint=repoint,
+            search=(self.address, CAPSULE_BANK_END),
+            avoid=self._shop_targets(),
+        )
+        self.stats.mana_points = reaction_offset
+        self._attack_node = None
+        self._reaction_node = None
+        self.attack_script = BattleScript(self, CAPSULE_HEADER_SIZE, ScriptType.ATTACK)
+        self.attack_script.read(source=write_file)
+        self.reaction_script = BattleScript(self, reaction_offset, ScriptType.DEFENSE)
+        self.reaction_script.read(source=write_file)
+        capsule_attack_names.write()
+
+    def _attack_bytes(self) -> bytes:
+        if self._attack_node is not None:
+            return assemble_at(CAPSULE_HEADER_SIZE, self._attack_node)
+        assert self.attack_script
+        return self.attack_script.bytecode
+
+    def _reaction_bytes(self, offset: int) -> bytes:
+        if self._reaction_node is not None:
+            return assemble_at(offset, self._reaction_node)
+        assert self.reaction_script
+        return rebase_jumps(self.reaction_script.bytecode, self.reaction_script.offset, offset)
+
+    def _header(self, reaction_offset: int) -> bytes:
+        """The 0x2B-byte record header built from this instance's fields."""
+        fields = [
+            self.class_, self.alignment, *self.start_skills, *self.upgrade_skills,
+            self.stats.health_points, self.stats.attack, self.stats.defense, self.strength,
+            self.stats.agility, self.stats.intelligence, self.stats.guts, self.stats.magic_resistance,
+            self.hp_factor, self.strength_factor, self.agility_factor,
+            self.intelligence_factor, self.guts_factor, self.magic_resistance_factor,
+        ]
+        header = (
+            self.name.encode()
+            + b"\x00"
+            + bytes(int(field) for field in fields)
+            + b"\x00\x00"  # always zero; purpose unknown
+            + CAPSULE_HEADER_SIZE.to_bytes(2, "little")  # attack script offset
+            + reaction_offset.to_bytes(2, "little")
+            + b"\x00\x00"
+        )
+        if len(header) != CAPSULE_HEADER_SIZE:
+            msg = f"Capsule {self.index} header is {len(header)} bytes, expected {CAPSULE_HEADER_SIZE}."
+            raise ValueError(msg)
+        return header
+
+    def _read_output_u16(self, address: int) -> int:
+        write_file.seek(address)
+        return int.from_bytes(write_file.read(2), "little")
+
+    def _output_footprint(self, record: int) -> int:
+        """Size of the record in the output: one past the last reachable byte of either script."""
+        saved = self.pointer
+        self.pointer = record
+        try:
+            ends = [CAPSULE_HEADER_SIZE]
+            for offset, kind in (
+                (CAPSULE_HEADER_SIZE, ScriptType.ATTACK),
+                (self._read_output_u16(record + CAPSULE_REACTION_FIELD), ScriptType.DEFENSE),
+            ):
+                script = BattleScript(self, offset, kind)
+                script.read(source=write_file)
+                ends.append(script.reach_end)
+            return max(ends)
+        finally:
+            self.pointer = saved
+
+    def _shop_targets(self) -> list[int]:
+        return [SHOP_TABLE + self._read_output_u16(SHOP_TABLE + 2 * i) for i in range(SHOP_TABLE_MAX_ENTRIES)]
 
     def fix_animation(self) -> None:
         if self.animation in self.animation_fixes:

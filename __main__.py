@@ -15,7 +15,6 @@ from patches.genie_codes import (
     ELCID_REPORT,
     MASTER_ONE_SHOT,
     NO_SCENARIO_ITEMS,
-    UNLOCK_WARP,
 )
 from patches.HEROgold import (
     arty_to_artea,
@@ -31,6 +30,7 @@ from patches.HEROgold import (
     swap_pierre_danielle_sprites,
     unlock_all_warp_destinations,
 )
+from patches.HEROgold.start_capsule import start_capsule
 from patches.RealCritical import (
     ac_more_enemies,
     fix_cave_chest_table,
@@ -74,12 +74,9 @@ def main() -> None:
         apply_game_genie_codes(ALWAYS_DROP_33)
         apply_game_genie_codes(CAPSULE_ALWAYS_LOVE_FOOD)
         apply_game_genie_codes(ELCID_REPORT)
-        # Unlock all warp locations.
-        # Doesn't apply to ROM. Why? Because some are applied to running memory.
-        # These also don't contain a `-` between the 2 parts of the code
-        # Like flags for warp unlocks
-        apply_game_genie_codes(*UNLOCK_WARP)
-        apply_game_genie_codes("7E0C4324") # Maxim starts with warp. (slot 1)
+        # UNLOCK_WARP and "7E0C4324" (Maxim knows Warp) are Pro Action Replay RAM codes. They can't be baked
+        # into the ROM; decoding them as Game Genie codes wrote 0x3F into random ROM bytes, so
+        # apply_game_genie_codes now rejects them. Warps are unlocked by unlock_all_warp_destinations() below.
 
     apply_game_genie_codes(*args.game_genie_codes)
 
@@ -143,6 +140,8 @@ def main() -> None:
     # Dev/debug patches (not intended for release):
     # maxim_starts_with_warp()  # dev fix: Maxim begins every game knowing Warp (field teleport)
     unlock_all_warp_destinations()  # dev fix: every Warp destination available from a fresh save
+    if args.start_capsule is not None:
+        start_capsule(args.start_capsule, args.start_capsule_name)
 
     # Apply RealCritical patches
     fix_menu()

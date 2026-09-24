@@ -19,7 +19,7 @@ Two layers:
     ), max_size=0x4F - 0x2B)
 """
 
-from structures.battle_builder.assembler import apply, assemble
+from structures.battle_builder.assembler import apply, assemble, assemble_at
 from structures.battle_builder.nodes import (
     Label,
     Node,
@@ -69,6 +69,7 @@ __all__ = [
     "apply",
     "apply_status",
     "assemble",
+    "assemble_at",
     "battle_anim",
     "cast_spell",
     "cast_spell_free",

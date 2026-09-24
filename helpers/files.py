@@ -53,6 +53,11 @@ class LoggingFile:
         self._offset += written
         return written
 
+    def read(self, size: int = -1, /) -> bytes:
+        data = self._file.read(size)
+        self._offset += len(data)
+        return data
+
     def truncate(self, size: int | None = None) -> int:
         iris.debug(f"write_file: truncate {size=}")
         return self._file.truncate(size)
