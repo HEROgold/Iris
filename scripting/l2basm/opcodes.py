@@ -100,6 +100,7 @@ _OLD_PARAMS: dict[int, int] = {
 CORRECTIONS: dict[int, int] = {
     0x11: 1,  # RAND reg: one register byte (info/L2_Subroutines$42XX.txt, "11 81 / RAND reg($81)")
     0x2C: 1,  # cast spell: spell index (missing from older op_codes tables)
+    0x46: 1,  # not in L2_Effects.txt; item armor scripts 252-322 read `46 xx` then a clean stream to END
 }
 
 PARAM_COUNTS: dict[int, int] = {**_OLD_PARAMS, **CORRECTIONS}
