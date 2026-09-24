@@ -187,8 +187,8 @@ def ip_effect_records(source: IO[bytes]) -> list[RecordSource]:
     return [RecordSource("ip_effect", i, start, bounds[start], {"effect": 1}, 0) for i, start in enumerate(starts)]
 
 
-def subroutine_records(source: IO[bytes]) -> list[RecordSource]:
-    address = table_address(source, "subroutine")
+def subroutine_records(source: IO[bytes], table: int | None = None) -> list[RecordSource]:
+    address = table_address(source, "subroutine") if table is None else table
     starts = table_starts(source, address, SUBROUTINE_COUNT)
     bounds = _bounds(starts, _last_bound(source, address))
     return [RecordSource("subroutine", i, start, bounds[start], {"body": 0}) for i, start in enumerate(starts)]
