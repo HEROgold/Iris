@@ -47,6 +47,7 @@ from tables import (
 # from .maxim_warp import maxim_starts_with_warp  # pyright: ignore[reportUnusedImport] # noqa: F401
 from .found_flags import set_found_flags_on_story_joins  # pyright: ignore[reportUnusedImport] # noqa: F401
 from .party_toggle import party_toggle_in_elcid  # pyright: ignore[reportUnusedImport] # noqa: F401
+from .scale_encounters import scale_encounters  # pyright: ignore[reportUnusedImport] # noqa: F401
 from .unlock_warps import unlock_all_warp_destinations  # pyright: ignore[reportUnusedImport] # noqa: F401
 
 

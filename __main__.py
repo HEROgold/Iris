@@ -25,6 +25,7 @@ from patches.HEROgold import (
     # maxim_starts_with_warp,
     party_toggle_in_elcid,
     set_found_flags_on_story_joins,
+    scale_encounters,
     set_rom_name,
     swap_pierre_danielle_sprites,
     unlock_all_warp_destinations,
@@ -142,6 +143,9 @@ def main() -> None:
     unlock_all_warp_destinations()  # dev fix: every Warp destination available from a fresh save
     if args.start_capsule is not None:
         start_capsule(args.start_capsule, args.start_capsule_name)
+    if args.scale_encounters:
+        # Runs with the other asm patches so asar assembles after every structure write.
+        scale_encounters(*args.scale_encounters)
 
     # Apply RealCritical patches
     fix_menu()
@@ -162,7 +166,7 @@ def main() -> None:
     # shuffle_chest_items()
     # randomize_chest_items()
 
-    # Chest randomizers -- two independent options (see docs/chest_system.md). Enable either:
+    # Chest randomizers -- two independent options (see docs/guides/chests.md). Enable either:
     # from patches.HEROgold.chest_randomizer import randomize_chest_contents, randomize_chest_locations
     # randomize_chest_contents()    # randomize WHAT each chest holds
     # randomize_chest_locations()   # shuffle WHERE chests sit, within each map

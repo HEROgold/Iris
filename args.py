@@ -2,7 +2,13 @@ import argparse
 from textwrap import dedent
 from time import time
 
-from constants import PROJECT_NAME, SUGGESTED_PATCH, VERSION
+from constants import (
+    PROJECT_NAME,
+    SCALE_ENCOUNTERS_MAX_BAND,
+    SCALE_ENCOUNTERS_MAX_OFFSET,
+    SUGGESTED_PATCH,
+    VERSION,
+)
 from enums.patches import Patch
 from logger import iris
 
@@ -71,6 +77,7 @@ class Args(argparse.Namespace):
     spawn_location: str = "Portravia"  # start in Portravia
     unlock_gift_mode: bool
     start_engine: bool
+    scale_encounters: list[int] | None
     # Fixing patches
     ancient_cave_music: bool
     capsule_master_select: bool
@@ -138,6 +145,16 @@ parser.add_argument("--no_boat_encounters", action="store_true")
 parser.add_argument("--secondary_tool", action="store_true")
 parser.add_argument("--unlock_gift_mode", action="store_true")
 parser.add_argument("--start_engine", action="store_true")
+parser.add_argument(
+    "--scale-encounters", nargs=2, type=int, default=None, metavar=("LOW", "HIGH"),
+    help=(
+        "Scale normal enemy encounters to the party's level. Every non-boss battle rolls an offset in "
+        "[LOW, HIGH], adds it to the party's average level, and swaps in the formation whose average "
+        "monster level best matches the result -- drawn from all 192 formations game-wide, so themes may "
+        "not match the map. Boss/event battles and the Ancient Cave (which scales itself) are unaffected. "
+        "Example: --scale-encounters -5 10"
+    ),
+)
 # Fix patches
 parser.add_argument("--ancient_cave_music", action="store_true") # TODO: seems to not work?. (Maybe don't apply the patch?)
 parser.add_argument("--capsule_master_select", action="store_true")
@@ -195,6 +212,20 @@ else:
     args.selected_patch = SUGGESTED_PATCH
 
 iris.info(f"Selected patch is {args.selected_patch.name}")
+
+if args.scale_encounters is not None:
+    # The band is baked into the ROM as a signed low byte plus an unsigned count, and the target level
+    # it produces is clamped to the game's 1..99 range, so a wider offset could never bite.
+    # Validated here as well as in the patch so a bad band fails before any ROM work starts.
+    _low, _high = args.scale_encounters
+    _limit = SCALE_ENCOUNTERS_MAX_OFFSET
+    if not (-_limit <= _low <= _high <= _limit):
+        msg = f"--scale-encounters needs {-_limit} <= LOW <= HIGH <= {_limit}, got {_low} {_high}."
+        raise ValueError(msg)
+    if _high - _low + 1 > SCALE_ENCOUNTERS_MAX_BAND:
+        msg = (f"--scale-encounters band spans {_high - _low + 1} levels, "
+               f"more than the {SCALE_ENCOUNTERS_MAX_BAND} the ROM can store.")
+        raise ValueError(msg)
 
 if args.aggressive_movement and args.passive_movement:
     msg = "You cannot set both aggressive and passive movement at the same time."

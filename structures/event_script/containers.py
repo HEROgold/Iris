@@ -235,17 +235,148 @@ class MapEvent:
                 script.dirty = True
 
     def write(self) -> None:
-        """Persist the map's event scripts. Only modified scripts (and dirty tables) are written.
+        """Persist the map's event scripts.
 
-        The map record and the event-list header are only re-emitted when this container is ``dirty``
-        (see :meth:`mark_dirty`); otherwise they are left as-is in the working ROM, which keeps the write
-        confined to the scripts that actually changed and avoids clobbering other patches.
+        The common case (no dirty script overflows its original slot) writes exactly as before:
+        only modified scripts/tables move, the map record and event-list header stay untouched.
+        When a dirty script *would* overflow, the in-place path cannot serve it (EventScript.write
+        would raise), so the whole container relocates as one unit instead -- see write_relocated.
+        The map record and the event-list header are otherwise only re-emitted when this container is
+        ``dirty`` (see :meth:`mark_dirty`).
         """
+        if self._needs_relocation():
+            self.write_relocated()
+            return
         if self.dirty:
             self._write_record()
             self._write_header()
         for event_list in self.event_lists:
             event_list.write()
+
+    def _needs_relocation(self) -> bool:
+        """True if any dirty script's recompiled bytes would overflow its original slot."""
+        from structures.event_script.compiler import compile_script  # noqa: PLC0415
+
+        for event_list in self.event_lists:
+            for event in event_list.events:
+                if not event.dirty:
+                    continue
+                if len(compile_script(event, ignore_pointers=True)) > len(event.raw):
+                    return True
+        return False
+
+    def write_relocated(self) -> None:
+        """Rebuild and relocate this map's ENTIRE event container as one unit, then repoint it.
+
+        Moves the event-list header, all six event lists' script tables, every one of their
+        scripts, and the NPC-load script together -- not just the dirty ones. Once the container
+        moves, a "frozen" script's old bytes no longer exist anywhere its table (now elsewhere)
+        still points to, so everything must be re-emitted at its new address, exactly as
+        ``structures.zone.ZoneData.write_relocated`` rebuilds the whole ZoneData blob rather than
+        patching one section in place.
+
+        Layout: the whole container (14-byte header + six tables + every script's compiled bytes +
+        the NPC script) is allocated as **one** contiguous, bank-local block via
+        ``helpers.freespace.event_script_allocator``. Staying within a single 32KB bank keeps every
+        event-list table offset (checked against ``0..0xFFFF`` by ``EventList.write``) comfortably
+        in range for free, since a bank is half that span.
+
+        Every ``Address`` operand a successfully-parsed script can contain is local (script-relative,
+        ``instructions.Address`` raises at parse time on anything else -- see its docstring), so
+        recompiling at a new address is purely mechanical: byte length never depends on where a
+        script ends up (``compiler.compile_script``'s ``ignore_pointers`` pass proves this), so
+        layout can be decided before any address is known, then everything recompiled for real once
+        it is.
+        """
+        from helpers.freespace import event_script_allocator  # noqa: PLC0415
+        from structures.event_script.compiler import compile_script  # noqa: PLC0415
+
+        class_lists = self.event_lists[1:]  # index 0 is NPC_SCRIPT; these are EventClass(0..5)
+        npc_script = self.npc_script
+
+        # Pass 1: compiled length only -- address-independent, so this can run before layout exists.
+        # Keyed by id(): EventScript.__eq__/__hash__ are defined over base_pointer/offset, which
+        # pass 2 below mutates, so the objects themselves are not stable dict keys past this point.
+        lengths: dict[int, int] = {}
+        for event_list in class_lists:
+            for event in event_list.events:
+                lengths[id(event)] = len(compile_script(event, ignore_pointers=True))
+        lengths[id(npc_script)] = len(compile_script(npc_script, ignore_pointers=True))
+
+        table_sizes = [len(event_list.events) * 3 + 1 for event_list in class_lists]
+        total_size = EVENT_HEADER_SIZE + sum(table_sizes) + sum(lengths.values())
+        header_base = event_script_allocator.allocate(total_size)
+
+        # Pass 2: assign every final address now that the full layout size is known.
+        cursor = header_base + EVENT_HEADER_SIZE
+        table_addresses: list[int] = []
+        for size in table_sizes:
+            table_addresses.append(cursor)
+            cursor += size
+        for event_list, table_address in zip(class_lists, table_addresses, strict=True):
+            event_list.base_pointer = header_base
+            for event in event_list.events:
+                event.base_pointer = header_base
+                event.pointer = cursor
+                event.offset = cursor - header_base
+                cursor += lengths[id(event)]
+            event_list.pointer = table_address
+            event_list.offset = table_address - header_base
+        # The NPC script's OWN base_pointer must stay header_base, like every other script here:
+        # compile_script resolves its local Address operands as a plain 16-bit value relative to
+        # base_pointer, unrelated to the MapEventObject record's separate bank-extended encoding
+        # (Pass 6 below) -- using the fixed, far-away 0x38000 base here (matching how the *record*
+        # locates the script) blows that 16-bit encoding once the script sits ~header_base away
+        # from 0x38000, i.e. exactly the case relocation into freespace always creates.
+        npc_script.base_pointer = header_base
+        npc_script.pointer = cursor
+        npc_script.offset = cursor - header_base
+        self.event_lists[0].base_pointer = header_base
+        self.event_lists[0].pointer = npc_script.pointer
+        self.event_lists[0].offset = npc_script.offset
+
+        # Pass 3: write every event-list table now that addresses are final.
+        for event_list, table_address in zip(class_lists, table_addresses, strict=True):
+            write_file.seek(table_address)
+            for event in event_list.events:
+                offset = event.pointer - event_list.base_pointer
+                if not 0 <= offset <= 0xFFFF:
+                    msg = f"Event-list offset out of range: {offset:#x}"
+                    raise ValueError(msg)
+                write_file.write(bytes([event.index]))
+                write_file.write(offset.to_bytes(2, "little"))
+            write_file.write(b"\xff")
+            event_list.dirty = False
+
+        # Pass 4: recompile (now that base_pointer/pointer are final, so local Address operands
+        # resolve correctly) and write every script, dirty or not.
+        for script in [event for event_list in class_lists for event in event_list.events] + [npc_script]:
+            data = compile_script(script, script_pointer=script.pointer)
+            script.raw = data
+            script.dirty = False
+            # Scripts are packed with zero slack in the new layout (see docstring); a later
+            # in-place edit's overflow check (EventScript.write's `_slot_size`) must reflect that,
+            # not whatever slack the script happened to have at its old, pre-relocation address.
+            script._slot_size = len(data)  # noqa: SLF001 -- this method IS EventScript's relocator
+            write_file.seek(script.pointer)
+            write_file.write(data)
+
+        # Pass 5: write the event-list header (magic + six offsets from header_base).
+        write_file.seek(header_base)
+        write_file.write(EVENT_MAGIC)
+        for event_list in class_lists:
+            write_file.write((event_list.pointer - header_base).to_bytes(2, "little"))
+        self._header_raw = EVENT_MAGIC + b"".join(
+            (event_list.pointer - header_base).to_bytes(2, "little") for event_list in class_lists
+        )
+
+        # Pass 6: repoint this map's MapEventObject record to the new header/NPC locations.
+        eventlist_offset = header_base - self.base_pointer
+        npc_offset = npc_script.pointer - self.base_pointer
+        self._eventlist_lowbytes, self._eventlist_highbyte = _encode_bank_extended_offset(eventlist_offset)
+        self._npc_lowbytes, self._npc_highbyte = _encode_bank_extended_offset(npc_offset)
+        self._write_record()
+        self.dirty = False
 
     def _write_record(self) -> None:
         write_file.seek(self.pointer)
@@ -260,6 +391,22 @@ class MapEvent:
         write_file.write(self._magic)
         for event_list in self.event_lists[1:]:  # [0] is the NPC-load script, referenced by the record
             write_file.write(event_list.offset.to_bytes(2, "little"))
+
+
+def _encode_bank_extended_offset(offset: int) -> tuple[bytes, bytes]:
+    """Encode an offset for a ``MapEventObject`` low/high pointer pair (inverse of the decode in
+    ``MapEvent.event_list_pointer``/``npc_offset``: ``lowbytes | highbyte << 15``).
+
+    The low field holds bits 0-14 and the high byte extends from bit 15, so the two must not
+    overlap: bit 15 of the 2-byte low field is always written as 0, giving a clean OR on decode
+    (equivalent to plain addition) up to an ~8MB range -- ample for a 4MB ROM.
+    """
+    if offset >> 23:
+        msg = f"Offset {offset:#x} too large to encode in a MapEventObject low/high pointer pair."
+        raise ValueError(msg)
+    low = offset & 0x7FFF
+    high = (offset >> 15) & 0xFF
+    return low.to_bytes(2, "little"), bytes([high])
 
 
 def _next_pointer(all_pointers: list[int], pointer: int) -> int:

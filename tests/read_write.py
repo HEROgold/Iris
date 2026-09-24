@@ -26,6 +26,7 @@ from structures.map_meta import MapMeta
 from structures.monster import Monster
 from structures.monster_move import MonsterMove
 from structures.npc import RoamingNPC
+from structures.map_meta import MapMeta
 from structures.shop import Shop, ShopKureji
 from structures.spell import Spell
 from structures.sprites import CapsulePallette, CapsuleSprite, OverPallette, OverSprite, SpriteMeta, TownSprite

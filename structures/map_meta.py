@@ -24,8 +24,9 @@ class MapMeta(ReferencePointer):
     def zone_data(self) -> ZoneData:
         """This entry's ZoneData blob (the map's object data: exits, NPCs, chests, ...).
 
-        Cached by ``ZoneData.from_pointer``, so mutating it through this property is what
-        :meth:`write` picks up.
+        Loaded lazily (parsing a ZoneData blob isn't free) and cached by ``ZoneData.from_pointer``,
+        so repeated access is cheap and mutating it through this property (``.set_chests``,
+        ``.set_exits``, ...) is what :meth:`write` picks up.
         """
         return ZoneData.from_pointer(self.zone_data_pointer)
 
@@ -41,7 +42,15 @@ class MapMeta(ReferencePointer):
         return inst
 
     def write(self) -> None:
-        """Write the ZoneData (in place when every section keeps its length, else relocated), then the pointer."""
+        """Persist this entry: write its ZoneData (in place when every section keeps its length, else
+        relocated), then the pointer.
+
+        Always re-reads ``zone_data.start`` right before writing (rather than trusting
+        ``self.zone_data_pointer`` as captured at construction) -- if something else already
+        relocated/repointed this map's ZoneData (e.g. ``chest_location.Chest.move_to``, which calls
+        ``write_relocated``/``write_section18_inplace`` directly, bypassing ``MapMeta`` entirely),
+        this stays a harmless idempotent rewrite of the same value instead of reverting that change.
+        """
         zone_data = self.zone_data
         if zone_data.fits_in_place():
             zone_data.write()

@@ -5,7 +5,7 @@ from abc_.pointers import TablePointer
 from abc_.stats import ScalableRpgStats
 from args import args
 from helpers.bits import find_table_pointer, read_little_int, update_pointer_table
-from helpers.files import read_file, write_file
+from helpers.files import read_file, restore_pointer, write_file
 from logger import iris
 from structures.battlescript import BattleScript, ScriptType
 from tables import MonsterObject
@@ -81,6 +81,21 @@ class Monster(TablePointer):
         if index == 0xFF:
             return cls("Dummy", 0xFF, 0x0)
         return cls.from_table(MonsterObject.address, index)
+
+    @classmethod
+    @restore_pointer
+    def level_from_index(cls, index: int) -> int:
+        """Read just a monster's level byte, without parsing the rest of the record.
+
+        :meth:`from_table` eagerly builds the monster's AI scripts, and ``battlescript.op_codes``
+        only knows opcodes ``0x00``-``0x24``, so a full parse raises ``KeyError`` on several
+        monsters. Callers that only need the level (encounter scaling, formation ranking) can use
+        this instead of paying for -- and tripping over -- the script parser.
+        """
+        if index == 0xFF:  # empty-slot sentinel; from_index reports it as a level-0 "Dummy"
+            return 0
+        read_file.seek(find_table_pointer(MonsterObject.address, index) + MonsterObject.name_text)
+        return read_little_int(read_file, MonsterObject.level)
 
     @classmethod
     def from_table(cls, address: int, index: int) -> Self:
