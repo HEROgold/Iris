@@ -4,7 +4,9 @@ from collections.abc import Iterator
 
 import pytest
 
+from enums.patches import Patch
 from helpers.files import original_file, write_file
+from patcher import apply_patch
 from rom_space.pool import reset_pool
 from scripting.core import Label, assemble
 from scripting.l2basm.helpers import cast_spell, end, label, on_chance, physical_attack, sequence
@@ -86,3 +88,11 @@ def test_fix_boltfish_writes_the_same_bytes_as_before() -> None:
     vanilla[0x28 + 0x1A] = 0x45
     fix_boltfish()
     assert _output()[fish_start : fish_start + 0x51] == bytes(vanilla)
+
+
+@pytest.mark.parametrize("base", [Patch.FRUE, Patch.SPEKKIO, Patch.KUREJI])
+def test_unchanged_monsters_write_nothing_on_each_base_patch(base: Patch) -> None:
+    apply_patch(base)
+    before = _output()
+    assert monster_table().write() == "unchanged"
+    assert _output() == before

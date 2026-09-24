@@ -178,14 +178,18 @@ class Monster(TablePointer):
         rec = _record_sources().get(index)
         if rec is not None:
             inst.external_entries = dict(rec.external)
+            record = read_record(source, rec)
+            in_region = address <= rec.start < table_bound(source, address)
             if rec.entries:
-                record = read_record(source, rec)
                 parsed = parse_record(record, rec.entries, start=rec.script_start)
                 inst.code = parsed.script
                 inst.code_start = parsed.start
-                in_region = address <= rec.start < table_bound(source, address)
                 if in_region and parsed.end < len(record):  # unreached bytes up to the next record stay as they are
                     inst.code.body.append(Data(record[parsed.end :]))
+            elif in_region and rec.script_start is not None and rec.script_start < len(record):
+                # Every entry points elsewhere (Spekkio/Kureji share code between records): keep the bytes as they are.
+                inst.code = Script(L2BASM, [Data(record[rec.script_start :])])
+                inst.code_start = rec.script_start
 
         cls._cache.to_cache(index, inst)
         return inst
