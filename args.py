@@ -102,7 +102,7 @@ parser.add_argument("-v", "--version", action="version", version=f"{PROJECT_NAME
 parser.add_argument("-d", "--debug", action="store_true", help="Enable debug mode.")
 parser.add_argument("-s", "--seed", type=int, default=int(time()), help="Seed for the randomizer.")
 parser.add_argument("-f", "--file", type=str, help="File to randomize.", required=True)
-parser.add_argument("-gg", "--game_genie_codes", action="append", nargs="+", default=[""], help="Game Genie code to activate (on the ROM), Multiple uses supported.")
+parser.add_argument("-gg", "--game_genie_codes", action="extend", nargs="+", default=[], help="Game Genie codes to write into the ROM. Can be given more than once.")
 # Randomization flags
 parser.add_argument("--character", action="store_true", help="Randomize characters.", default=False)
 parser.add_argument("--item", action="store_true", help="Randomize items and item.", default=False)

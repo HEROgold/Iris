@@ -10,7 +10,6 @@ from patcher import (
 )
 from patches.genie_codes import (
     AIRSHIP_ANYWHERE,
-    ALWAYS_DROP_33,
     CAPSULE_ALWAYS_LOVE_FOOD,
     ELCID_REPORT,
     MASTER_ONE_SHOT,
@@ -71,7 +70,8 @@ def main() -> None:
         apply_game_genie_codes(*MASTER_ONE_SHOT)
         apply_game_genie_codes(NO_SCENARIO_ITEMS)
         apply_game_genie_codes(*AIRSHIP_ANYWHERE)
-        apply_game_genie_codes(ALWAYS_DROP_33)
+        # ALWAYS_DROP_33 is left out: it turns `CMP $09FB` at $81:FB55 into `BRA $FB52`, which loops forever
+        # inside the item-drop roll, so the game freezes when a defeated enemy rolls for its drop.
         apply_game_genie_codes(CAPSULE_ALWAYS_LOVE_FOOD)
         apply_game_genie_codes(ELCID_REPORT)
         # UNLOCK_WARP and "7E0C4324" (Maxim knows Warp) are Pro Action Replay RAM codes. They can't be baked

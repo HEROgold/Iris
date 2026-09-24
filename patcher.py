@@ -209,8 +209,6 @@ def apply_game_genie_codes(*codes: str) -> None:
     https://gamefaqs.gamespot.com/boards/588451-lufia-ii-rise-of-the-sinistrals/80223211
     Contains a lot of codes to use. (Needs a LOT of testing, and confirmation)
     """
-    if codes == ("",):
-        return
     for raw_code in codes:
         if re.fullmatch(r"7[EF][0-9A-F]{6}", raw_code.upper()):
             msg = (
