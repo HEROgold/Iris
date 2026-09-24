@@ -301,11 +301,18 @@ class Shop(TablePointer):
         iris.debug(f"Shop {self.index} written.")
 
 
-# TODO: Implement ShopKureji. To match Shop.
 class ShopKureji(Pointer):
     """
     Jp and Kureji versions of the shop object.
+
+    Layout (terrorwave's ``ShopObject``): ``unknown1(1), shop_type(1), unknown2(1)``, then one 2-byte
+    item list per set ``COIN``/``ITEM``/``WEAPON``/``ARMOR`` flag (in that order, each terminated by
+    ``0x0000``), or for a ``SPELL`` shop a 1-byte spell list terminated by ``0xFF``.
     """
+    ware_menus = (ShopTypes.COIN, ShopTypes.ITEM, ShopTypes.WEAPON, ShopTypes.ARMOR)
+    ware_end = b"\x00\x00"
+    spell_end = b"\xff"
+
     unknown1: bytes
     unknown2: bytes
 
@@ -313,11 +320,20 @@ class ShopKureji(Pointer):
         self,
         shop_type: ShopTypes,
         shop_index: int,
-        item_indices: list[int] | None = None,
+        wares: dict[ShopTypes, list[int]] | None = None,
+        spell_indices: list[int] | None = None,
     ) -> None:
         self.shop_type = shop_type
         self.index = shop_index
-        self.item_indices = item_indices or []
+        self.wares = wares or {}
+        self.spell_indices = spell_indices or []
+
+    def __repr__(self) -> str:
+        return f"<ShopKureji: {self.index}, {self.shop_type!r}, {self.pointer=:#08x}>"
+
+    @property
+    def item_indices(self) -> list[int]:
+        return [index for menu in self.ware_menus for index in self.wares.get(menu, [])]
 
     @classmethod
     def from_pointer(cls, pointer: int, i: int) -> Self: # type: ignore[reportIncompatibleMethodOverride]
@@ -328,13 +344,41 @@ class ShopKureji(Pointer):
         shop_type = ShopTypes.from_byte(read_file.read(1)) # ShopObject.shop_type is bytes, which is only one long. and contains bit values.
         _unknown2 = read_file.read(ShopObject.unknown2)
 
+        wares: dict[ShopTypes, list[int]] = {}
+        for menu in cls.ware_menus:
+            if menu not in shop_type:
+                continue
+            wares[menu] = []
+            while (value := read_little_int(read_file, 2)) != 0:
+                wares[menu].append(value)
+
+        spell_indices: list[int] = []
+        if ShopTypes.SPELL in shop_type:
+            while (value := read_little_int(read_file, 1)) != cls.spell_end[0]:
+                spell_indices.append(value)
+
         inst = cls(
             shop_type,
             shop_index=i,
+            wares=wares,
+            spell_indices=spell_indices,
         )
         inst.unknown1 = _unknown1
         inst.unknown2 = _unknown2
         super().__init__(inst, pointer)
         return inst
 
-    write = Shop.write
+    def write(self) -> None:
+        write_file.seek(self.pointer)
+        write_file.write(self.unknown1)
+        write_file.write(self.shop_type.to_bytes())
+        write_file.write(self.unknown2)
+        for menu in self.ware_menus:
+            if menu not in self.shop_type:
+                continue
+            for index in self.wares[menu]:
+                write_file.write(index.to_bytes(2, "little"))
+            write_file.write(self.ware_end)
+        if ShopTypes.SPELL in self.shop_type:
+            write_file.write(bytes(self.spell_indices))
+            write_file.write(self.spell_end)

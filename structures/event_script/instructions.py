@@ -47,10 +47,13 @@ class TextChunk:
     ``tag`` is either a control-code ``int`` (a byte in the ``CHARACTER_MAP``), one of the string
     tags ``"NPC"`` / ``"POSITION"`` (leading text-opcode operands), or ``None`` for a literal run.
     ``data`` holds the literal bytes of a run, or the raw parameter bytes of a tagged chunk.
+    ``repeat`` is set on a literal run that was decoded from a ``0x0A`` ``<REPEAT>`` back-reference:
+    its 2 parameter bytes, so the compiler can re-emit the back-reference when it still resolves.
     """
 
     tag: int | str | None
     data: bytes = b""
+    repeat: bytes | None = None
 
 
 type Operand = int | Address | list[TextChunk]

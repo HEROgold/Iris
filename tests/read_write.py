@@ -4,8 +4,10 @@
 
 import logging
 
+from args import args
+from enums.patches import Patch
 from helpers.bits import find_table_pointer
-from helpers.files import new_file, original_file
+from helpers.files import new_file, original_file, write_file
 from logger import iris
 from structures.capsule import CapsuleAttack, CapsuleLevel, CapsuleMonster
 from structures.character import (
@@ -19,16 +21,17 @@ from structures.chest import AddressChest, PointerChest
 from structures.events import Event, MapEvent
 from structures.formation import BattleFormation
 from structures.ip_attack import IPAttack
-from structures.item import Item
+from structures.item import Item, ItemName
+from structures.map_meta import MapMeta
 from structures.monster import Monster
+from structures.monster_move import MonsterMove
 from structures.npc import RoamingNPC
 from structures.shop import Shop, ShopKureji
 from structures.spell import Spell
 from structures.sprites import CapsulePallette, CapsuleSprite, OverPallette, OverSprite, SpriteMeta, TownSprite
 from structures.word import Word
 from structures.zone import Zone
-from tables.kureji import ShopObject as ShopObjectKureji
-from tables.vanilla import (
+from tables import (
     AncientChest1Object,
     AncientChest2Object,
     BlueChestObject,
@@ -83,11 +86,6 @@ def read_write_all() -> None:
         When a object/table is not implemented in the randomizer.
     """
     for i in [
-        test_map_events,
-        test_map_meta,
-        test_events,
-        test_monster_moves,
-        # /\ Debugs. \/ Finished.
         test_ancient_chests,
         test_ancient_chests2,
         test_blue_chests,
@@ -113,12 +111,15 @@ def read_write_all() -> None:
         test_item_names,
         test_items,
         test_roaming_npc,
-        test_zones,
         test_monsters,
+        test_monster_moves,
         test_shops,
         test_spells,
         test_words,
         test_zones,
+        test_map_meta,
+        test_events,
+        test_map_events,
     ]:
         try:
             i()
@@ -129,6 +130,7 @@ def read_write_all() -> None:
 
 
 def verify_files(msg: str) -> None:
+    write_file.flush()
     with original_file.open("rb") as o, new_file.open("rb") as n:
         if o.read() != n.read():
             log.critical(msg)
@@ -143,6 +145,7 @@ def assert_files_are_same(location: object = None) -> None:
     :class:`AssertionError`
         When the files are not the same.
     """
+    write_file.flush()  # The comparison reads new_file from disk, so buffered writes must land first.
     with original_file.open("rb") as o, new_file.open("rb") as n:
         if o.read() != n.read():
             msg = f"Files are not the same.\nLocation: {location!r}"
@@ -163,14 +166,14 @@ def test_spells() -> None:
 
 
 def test_shops() -> None:
+    if args.selected_patch is Patch.KUREJI:
+        for i, pointer in enumerate(ShopObject.pointers):
+            shop = ShopKureji.from_pointer(pointer, i)
+            shop.write()
+            assert_files_are_same(shop)
+        return
     for i in range(ShopObject.count):
         shop = Shop.from_index(i)
-        shop.write()
-        assert_files_are_same(shop)
-    for i, pointer in enumerate(ShopObjectKureji.pointers):
-        msg = "Kureji Shop Object not implemented."
-        raise NotImplementedError(msg)
-        shop = ShopKureji.from_pointer(pointer, i)
         shop.write()
         assert_files_are_same(shop)
 
@@ -183,30 +186,28 @@ def test_monsters() -> None:
 
 
 def test_map_meta() -> None:
-    # TODO: This needs to be created, and then tested.
-    # Uses ZoneData.
-    for _i in range(MapMetaObject.count):
-        msg = ""
-        raise NotImplementedError(msg)
+    for i in range(MapMetaObject.count):
+        meta = MapMeta.from_index(i)
+        meta.write()
+        assert_files_are_same(meta)
 
 def test_monster_moves() -> None:
-    # TODO: This needs to be created, and then tested.
-    for _i in range(MonsterMoveObject.count):
-        msg = ""
-        raise NotImplementedError(msg)
+    for i in range(MonsterMoveObject.count):
+        move = MonsterMove.from_index(i)
+        move.write()
+        assert_files_are_same(move)
 
 def test_roaming_npc() -> None:
     for i in range(RoamingNPCObject.count):
         npc = RoamingNPC.from_index(i)
         npc.write()
-        assert_files_are_same()
+        assert_files_are_same(npc)
 
 def test_events() -> None:
-    # Do we need to use structures/event_script/script.py?
     for i in range(EventInstObject.count):
         event = Event.from_index(i)
         event.write()
-        assert_files_are_same()
+        assert_files_are_same(event)
 
 def test_zones() -> None:
     for i in range(ZoneObject.count):
@@ -230,7 +231,7 @@ def test_items() -> None:
 
 def test_item_names() -> None:
     for i in range(ItemNameObject.count):
-        name = Item.from_index(i)
+        name = ItemName.from_index(i)
         name.write()
         assert_files_are_same(name)
 
@@ -373,7 +374,10 @@ def test_ancient_chests() -> None:
 
 
 def test_map_events() -> None:
+    # Unmodified scripts are no-ops on write, so force the whole container (record, header, every
+    # event-list table and script) to be re-emitted -- this round-trips the script compiler.
     for i in range(MapEventObject.count):
         event = MapEvent.from_index(i)
+        event.mark_dirty()
         event.write()
         assert_files_are_same(event)

@@ -27,6 +27,10 @@ from tables import MapMetaObject, ZoneObject
 # The ROM table that locates each map's ZoneData: one 3-byte little-endian LoROM address per map index
 # (see the lufia2-object-layout skill). Used to repoint a ZoneData blob after it is relocated.
 ZONE_DATA_POINTER_TABLE = MapMetaObject.address
+EXIT_SECTION = 2
+TILE_SECTION = 5
+NPC_SECTION = 7
+WAYPOINT_SECTION = 8
 CHEST_SECTION = 18
 SECTION_COUNT = 21
 _free_cursor = EMPTY_BYTES[0].start  # simple bump allocator into the first freespace region
@@ -59,7 +63,7 @@ class NPC:
     misc: int
 
     def __bytes__(self) -> bytes:
-        return bytes([self.x, self.y, *bytes(self.boundary), self.misc])
+        return bytes([self.index, self.x, self.y, *bytes(self.boundary), self.misc])
 
 
 @dataclass
@@ -153,14 +157,17 @@ class ZoneData:
         return cls(pointer)
 
     def _parse_waypoints(self) -> None:
-        self.waypoints = []
-        waypoint_data = self.parsed_data[8]
+        self.waypoints: list[Waypoint] = []
+        self.waypoint_shared_data = b""
+        self._waypoints_terminated = True
+        waypoint_data = self.parsed_data[WAYPOINT_SECTION]
         if waypoint_data == b"\xff":
             return
 
-        self.waypoints: list[Waypoint] = []
+        self._waypoints_terminated = False
         while waypoint_data:
             if waypoint_data[0] == 0xff:
+                self._waypoints_terminated = True
                 break
             waypoint = Waypoint(
                 waypoint_data[0],
@@ -181,11 +188,14 @@ class ZoneData:
         ZoneData is built for *every* zone, so anything unexpected yields an empty list rather than an error.
         """
         data_size = 4
-        chest_data = self.parsed_data[18]
+        chest_data = self.parsed_data[CHEST_SECTION]
         self.chests: list[Chest] = []
+        # Only a cleanly parsed table is re-serialized from ``chests``; anything else is kept raw.
+        self._chests_parsed = False
         if not chest_data or chest_data[-1] != 0xff or (len(chest_data) - 1) % data_size != 0:
             return
 
+        self._chests_parsed = True
         for i in range(0, len(chest_data) - 1, data_size):
             self.chests.append(
                 Chest(
@@ -228,7 +238,7 @@ class ZoneData:
                 exit_data[i+5],
                 exit_data[i+6],
                 exit_data[i+7],
-                exit_data[i+9],
+                exit_data[i+8],
             )
             for i in range(0, target, data_size)
         ]
@@ -258,6 +268,7 @@ class ZoneData:
             int.from_bytes(self.data[(i*2):(i*2)+2], "little")
             for i in range(21)
         ]
+        self._offsets = offsets
         clean_offsets = sorted(set(offsets))
 
         for i in range(21):
@@ -274,7 +285,60 @@ class ZoneData:
     def set_chests(self, chests: "list[Chest]") -> None:
         """Replace section 18 (the chest-placement table) with ``chests`` (0xFF-terminated)."""
         self.chests = list(chests)
+        self._chests_parsed = True
         self.parsed_data[CHEST_SECTION] = b"".join(bytes(chest) for chest in chests) + b"\xff"
+
+    def _sync_sections(self) -> None:
+        """Re-serialize the decoded sections (exits, tiles, NPCs, waypoints, chests) into ``parsed_data``."""
+        end = b"\xff"
+        self.parsed_data[EXIT_SECTION] = b"".join(bytes(exit_) for exit_ in self.exits) + end
+        self.parsed_data[TILE_SECTION] = b"".join(bytes(tile) for tile in self.tiles) + end
+        self.parsed_data[NPC_SECTION] = b"".join(bytes(npc) for npc in self.npc_positions) + end
+        waypoints = b"".join(bytes(waypoint) for waypoint in self.waypoints)
+        if self._waypoints_terminated:
+            waypoints += end + self.waypoint_shared_data
+        self.parsed_data[WAYPOINT_SECTION] = waypoints
+        if self._chests_parsed:
+            self.parsed_data[CHEST_SECTION] = b"".join(bytes(chest) for chest in self.chests) + end
+
+    def _layout_in_place(self) -> bytes | None:
+        """The blob's payload with every section written back at its original offset.
+
+        Returns ``None`` when a section changed length (or two sections sharing one offset diverged),
+        i.e. when the blob can't be written back in place and needs :meth:`write_relocated`.
+        """
+        self._sync_sections()
+        data = bytearray(self.data)
+        written: dict[int, bytes] = {}
+        for i, offset in enumerate(self._offsets):
+            section = self.parsed_data[i]
+            if offset in written:
+                if written[offset] != section:
+                    return None
+                continue
+            start = offset - 2
+            original_end = min((other for other in self._offsets if other > offset), default=self.size) - 2
+            if start + len(section) != original_end:
+                return None
+            data[start:original_end] = section
+            written[offset] = section
+        return bytes(data)
+
+    def fits_in_place(self) -> bool:
+        return self._layout_in_place() is not None
+
+    def write(self) -> None:
+        """Write this ZoneData back at ``self.start``, keeping the original offset table and layout.
+
+        Only valid while every section keeps its original length; otherwise use :meth:`write_relocated`.
+        """
+        data = self._layout_in_place()
+        if data is None:
+            msg = f"ZoneData {self.start:#08x} no longer fits in place; use write_relocated."
+            raise ValueError(msg)
+        write_file.seek(self.start)
+        write_file.write(self.size.to_bytes(2, "little"))
+        write_file.write(data)
 
     def rebuild(self) -> bytes:
         """Reassemble the whole ZoneData blob from ``parsed_data`` (canonical layout).
@@ -284,6 +348,7 @@ class ZoneData:
         section for the parser's ``size-2`` end convention. The result parses back identically and is
         read by the game via the offset table (byte-for-byte identity with the original is NOT a goal).
         """
+        self._sync_sections()
         empty = b"\xff"
         offsets = [0x2C] * SECTION_COUNT           # default: empty -> 0x2C (data index 42)
         body = bytearray(empty)                    # the shared empty marker at data index 42

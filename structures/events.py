@@ -42,5 +42,7 @@ class Event(ReferencePointer):
         return inst
 
     def write(self) -> None:
+        write_file.seek(self.pointer)
+        write_file.write(self._reference.to_bytes(self.size, "little"))
         write_file.seek(self._reference)
         write_file.write(bytes([self.zone_index, self.event_index]))
