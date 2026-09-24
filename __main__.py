@@ -13,7 +13,7 @@ from patches.genie_codes import (
     CAPSULE_ALWAYS_LOVE_FOOD,
     ELCID_REPORT,
     MASTER_ONE_SHOT,
-    NO_SCENARIO_ITEMS,
+    NO_SCENARIO_ITEMS, DEBUG_MODE,
 )
 from patches.HEROgold import (
     arty_to_artea,
@@ -70,7 +70,7 @@ def main() -> None:
         foomy_s_firebird_valor()
 
     if args.debug:
-        # apply_game_genie_codes(DEBUG_MODE)
+        apply_game_genie_codes(DEBUG_MODE)
         apply_game_genie_codes(*MASTER_ONE_SHOT)
         apply_game_genie_codes(NO_SCENARIO_ITEMS)
         apply_game_genie_codes(*AIRSHIP_ANYWHERE)
