@@ -23,6 +23,7 @@ from patches.HEROgold import (
     gorem_to_golem,
     guy_the_mage,
     # maxim_starts_with_warp,
+    max_out_party,
     party_toggle_in_elcid,
     set_found_flags_on_story_joins,
     scale_encounters,
@@ -57,7 +58,7 @@ def main() -> None:
 
     set_rom_name(b"Lufia II (Iris patch)") # For identification purposes.
 
-    party_toggle_in_elcid()  # event-script demo: Elcid townspeople toggle party join/leave
+    party_toggle_in_elcid(require_found=not args.debug_party)  # event-script demo: Elcid townspeople toggle party join/leave
     set_found_flags_on_story_joins()  # story joins also set each character's "found/unlocked" flag
 
     apply_patch(args.selected_patch) # TODO: test with others besides Vanilla.
@@ -141,6 +142,8 @@ def main() -> None:
     # Dev/debug patches (not intended for release):
     # maxim_starts_with_warp()  # dev fix: Maxim begins every game knowing Warp (field teleport)
     unlock_all_warp_destinations()  # dev fix: every Warp destination available from a fresh save
+    if args.debug_party:
+        max_out_party()
     if args.start_capsule is not None:
         start_capsule(args.start_capsule, args.start_capsule_name)
     if args.scale_encounters:

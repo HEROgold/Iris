@@ -93,6 +93,7 @@ class Args(argparse.Namespace):
     foomy_firebird: bool
     start_capsule: int | None
     start_capsule_name: str | None
+    debug_party: bool
     # Sprite extract/import (uncompressed 4bpp <-> PNG). Take a registry name or a headerless hex offset.
     extract_sprite: str | None
     import_sprite: str | None
@@ -171,6 +172,9 @@ parser.add_argument("--foomy-firebird", action="store_true", help="Give capsule 
 parser.add_argument("--start-capsule", type=int, choices=range(7), default=None, metavar="SPECIES",
                     help="Start new games with a capsule: 0 Foomy, 1 Shaggy, 2 Hard Hat, 3 Red Fish, 4 Myconido, "
                          "5 Raddisher, 6 Armor Dog. Works with any start location.")
+parser.add_argument("--debug-party", action="store_true",
+                    help="Dev: every character starts at level 99 with 999 base stats, and Elcid's party toggles let "
+                         "anyone join without being found first.")
 parser.add_argument("--start-capsule-name", type=str, default=None, help="Name for --start-capsule (1-5 ASCII).")
 # Sprite extract/import (uncompressed 4bpp sprites <-> PNG for paint.net). Runs standalone, then exits.
 parser.add_argument("--extract-sprite", type=str, default=None, help="Extract a sprite to PNG. Value is a KNOWN_SPRITES name (e.g. bunny_girls) or a headerless hex offset (e.g. 0x123C00).")

@@ -74,7 +74,7 @@ def _speech(line: int, message: str) -> Instruction:
     return Instruction(line, 0x08, [chunks])
 
 
-def _toggle(character: PlayableCharacter) -> list[Instruction]:
+def _toggle(character: PlayableCharacter, *, require_found: bool = True) -> list[Instruction]:
     """A three-way join/leave/"not found" toggle with dialogue that refuses to remove the last member.
 
     Membership is checked first, so anyone currently in the party (including whoever the randomizer starts
@@ -92,6 +92,8 @@ def _toggle(character: PlayableCharacter) -> list[Instruction]:
     ``NOT_IN_PARTY: 6A(found -> NOT_FOUND)``       not yet discovered -> "not found" message
     ``2B; 1A(party_flag); 08``                    JOIN: join, set membership, "X joins the party!"
     ``NOT_FOUND: 08``                             "You haven't found X yet."
+
+    With ``require_found=False`` (``--debug-party``) the NOT_IN_PARTY check becomes ``1A(found)``, so anyone joins.
     """
     flag = character.party_flag
     found = character.found_flag
@@ -115,7 +117,9 @@ def _toggle(character: PlayableCharacter) -> list[Instruction]:
         Instruction(5, 0x1A, [found]),                         # mark found (randomized-starter safe)
         _speech(6, f"{name} leaves the party.<END EVENT>"),
         # NOT_IN_PARTY:
-        Instruction(_NOT_IN_PARTY, 0x6A, [found, Address(_NOT_FOUND)]),  # found? no -> NOT_FOUND
+        Instruction(_NOT_IN_PARTY, 0x6A, [found, Address(_NOT_FOUND)])  # found? no -> NOT_FOUND
+        if require_found
+        else Instruction(_NOT_IN_PARTY, 0x1A, [found]),  # debug: mark found and fall through to JOIN
         Instruction(8, 0x2B, [character.index]),               # JOIN: join party
         Instruction(9, 0x1A, [flag]),                          # set membership flag
         _speech(10, f"{name} joins the party!<END EVENT>"),
@@ -124,7 +128,7 @@ def _toggle(character: PlayableCharacter) -> list[Instruction]:
     ]
 
 
-def party_toggle_in_elcid() -> None:
+def party_toggle_in_elcid(*, require_found: bool = True) -> None:
     """Turn Elcid's townspeople into join/leave toggles for the seven playable characters.
 
     Callsite order no longer matters: the write path only persists the scripts this patch marks dirty
@@ -138,7 +142,7 @@ def party_toggle_in_elcid() -> None:
         character = PlayableCharacter.from_index(index)
         zone.set_npc_sprite(slot, character.overworld_sprite)  # swap overworld sprite (0x68 load)
         script = zone.referenced_script(slot)                  # talk script index == NPC slot
-        script.instructions = _toggle(character)
+        script.instructions = _toggle(character, require_found=require_found)
         script.dirty = True
         iris.info(f"  slot {slot:#04x} {character.name} -> join/leave toggle.")
 
