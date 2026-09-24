@@ -27,3 +27,7 @@ class ScriptAssemblyError(ValueError):
 
 class ScriptDecodeError(ValueError):
     """Bytes can't be decoded as an operand (for example, the data ends mid-operand)."""
+
+
+class NoFreeSpace(Exception):  # noqa: N818 (name fixed by the spec)
+    """No free run is large enough for a placement."""
