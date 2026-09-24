@@ -51,7 +51,6 @@ def test_every_base_patch_record_round_trips(base: Patch, table: str) -> None:
         _round_trip(write_file, rec)
 
 
-@pytest.mark.skip(reason="needs scripting.l2basm.edit.reachable (Task 7)")
 def test_ten_monsters_share_blocks_between_attack_and_defense() -> None:
     shared = 0
     for rec in ALL_READERS["monster"](read_file):
