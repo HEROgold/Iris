@@ -65,9 +65,8 @@ class BattleFormation(Pointer):
         """The eight raw monster-index bytes of one formation row.
 
         :meth:`from_table` builds a :class:`Monster` per slot, which parses that monster's AI
-        scripts and therefore raises ``KeyError`` for any monster using an opcode the incomplete
-        ``battlescript.op_codes`` table does not know. Anything that only needs the slot contents
-        (or the levels behind them) should read the row directly through this.
+        scripts. Anything that only needs the slot contents (or the levels behind them) should read
+        the row directly through this, which is much cheaper.
         """
         read_file.seek(address + index * cls.max_monsters)
         return list(read_file.read(cls.max_monsters))

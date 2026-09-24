@@ -77,7 +77,7 @@ def _candidate_formations() -> list[tuple[int, float]]:
             continue
         # Read the row's raw slots rather than BattleFormation.from_table: that would build a
         # Monster per slot and parse its AI script, which still raises KeyError for opcodes the
-        # incomplete battlescript.op_codes table does not cover.
+        # incomplete opcode table did not cover.
         slots = BattleFormation.monster_indexes(FormationObject.address, index)
         if any(slot != EMPTY_SLOT and slot >= FIRST_BOSS_MONSTER for slot in slots):
             continue

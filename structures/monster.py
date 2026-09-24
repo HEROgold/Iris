@@ -109,10 +109,8 @@ class Monster(TablePointer):
     def level_from_index(cls, index: int) -> int:
         """Read just a monster's level byte, without parsing the rest of the record.
 
-        :meth:`from_table` eagerly builds the monster's AI scripts, and ``battlescript.op_codes``
-        only knows opcodes ``0x00``-``0x24``, so a full parse raises ``KeyError`` on several
-        monsters. Callers that only need the level (encounter scaling, formation ranking) can use
-        this instead of paying for -- and tripping over -- the script parser.
+        :meth:`from_table` parses the monster's AI scripts. Callers that only need the level
+        (encounter scaling, formation ranking) can use this instead of paying for the parser.
         """
         if index == 0xFF:  # empty-slot sentinel; from_index reports it as a level-0 "Dummy"
             return 0
