@@ -54,7 +54,11 @@ SCALE_ENCOUNTERS_MAX_BAND = 0xFF
 ZONE_DATA_FREESPACE = range(0x320000, 0x340000)
 EVENT_SCRIPT_FREESPACE = range(0x340000, 0x360000)
 
-RESERVED_REGIONS = [SCALE_ENCOUNTERS_REGION, ZONE_DATA_FREESPACE, EVENT_SCRIPT_FREESPACE]
+# --- Reserved space: RealCritical fix_cave_chest_table --------------------------------------------
+# 71-byte hook body at headerless 0x30D820 (SNES $E1:D820); the patched code at 0x19176 jumps to $E1:D84A.
+CAVE_CHEST_FIX_REGION = range(0x30D820, 0x30D867)
+
+RESERVED_REGIONS = [SCALE_ENCOUNTERS_REGION, ZONE_DATA_FREESPACE, EVENT_SCRIPT_FREESPACE, CAVE_CHEST_FIX_REGION]
 """Every fixed ROM-expansion reservation, checked for overlaps by helpers.rom_expansion.assert_no_overlaps."""
 
 

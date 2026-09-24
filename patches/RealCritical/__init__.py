@@ -2,8 +2,10 @@
 
 These values must be applied to the .sfc version of the game. They will not work with the .smc version.
 """
+from constants import CAVE_CHEST_FIX_REGION, EXPANDED_ROM_SIZE
 from helpers.files import write_file
 from helpers.headers import remove_header_offset
+from helpers.rom_expansion import ensure_rom_expanded
 from logger import iris
 
 
@@ -101,7 +103,8 @@ def fix_cave_chest_table() -> None:
     write_file.seek(remove_header_offset(0xB7BEF))
     write_file.write(bytes.fromhex("20"))
 
-    write_file.seek(remove_header_offset(0x30DA20))
+    ensure_rom_expanded(EXPANDED_ROM_SIZE)  # the hook body lives in the expansion area (CAVE_CHEST_FIX_REGION)
+    write_file.seek(CAVE_CHEST_FIX_REGION.start)
     write_file.write(bytes.fromhex("E2 20 89 01 08 4A 8F 1C 21 00 22 C7 82 80 48 8F 1B 21 00 7B 8F 1B 21 00 68 28 D0 02 A9 00 C2 20 18 6F 34 21 00 6F 34 21 00 60 A2 00 10 86 54 C2 20 A5 60 29 FF 01 4A 20 20 D8 EB 29 FF 00 0A 18 65 54 AA 5C 88 91 83"))
 
 def fix_menu() -> None:
