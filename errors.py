@@ -31,3 +31,7 @@ class ScriptDecodeError(ValueError):
 
 class NoFreeSpace(Exception):  # noqa: N818 (name fixed by the spec)
     """No free run is large enough for a placement."""
+
+
+class PlacementVerifyError(Exception):
+    """Bytes read back after a placement differ from what was written."""
