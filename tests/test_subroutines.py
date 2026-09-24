@@ -67,8 +67,13 @@ def test_moving_the_table_frees_room_in_bank_96(monkeypatch: pytest.MonkeyPatch)
     assert len(moved.records) == SUBROUTINE_COUNT
 
 
-def test_make_room_refuses_until_verified() -> None:
+def test_make_room_refuses_while_not_movable(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(subroutine, "SUBROUTINES_MOVABLE", False)
     assert subroutine.make_room_in_bank_96(bank_of(SUBROUTINE_TABLE)) is False
+
+
+def test_the_table_is_marked_movable() -> None:
+    assert subroutine.SUBROUTINES_MOVABLE is True
 
 
 def test_make_room_ignores_other_banks(monkeypatch: pytest.MonkeyPatch) -> None:

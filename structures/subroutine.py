@@ -22,8 +22,8 @@ SUBROUTINE_CODE_REFS: list[PointerSite] = [
     PointerSite(0x2BDA8, CodeAbs16()),  # ADC #$FADD
     PointerSite(0x2BD9A, CodeBank()),  # LDA #$96 ; STA $BD
 ]
-SUBROUTINES_MOVABLE = False
-"""Set to True once HER-188's emulator check of a moved table passes."""
+SUBROUTINES_MOVABLE = True
+"""The code refs are verified: a moved table played correctly in an emulator (HER-188, 2026-09-25)."""
 BANK_96 = bank_of(SUBROUTINE_TABLE)
 
 
