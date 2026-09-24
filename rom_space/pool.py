@@ -41,9 +41,11 @@ class FreeSpace:
         self._blocked: set[int] = set()
         self._runs: dict[int, list[list[int]]] = {}
         self._journal: list[tuple[int, int]] | None = None
+        self._expansion_banks: set[int] = set()
         if expansion is not None:
-            for bank in range(bank_of(expansion.start), bank_of(expansion.stop - 1) + 1):
-                self._scan(bank, _BLANK, min_run=MIN_RUN)
+            self._expansion_banks = set(range(bank_of(expansion.start), bank_of(expansion.stop - 1) + 1))
+            for bank in self._expansion_banks:
+                self._rescan(bank)
 
     # -- building the free lists -------------------------------------------------------------------------------
 
@@ -74,10 +76,22 @@ class FreeSpace:
             pieces = nxt
         return [p for p in pieces if p[1] > p[0]]
 
+    def _rescan(self, bank: int) -> None:
+        if bank in self._expansion_banks:
+            self._scan(bank, _BLANK, min_run=MIN_RUN)
+        else:
+            self._scan(bank, _ZEROS, min_run=2 * MARGIN + 1)
+
     def _bank_runs(self, bank: int) -> list[list[int]]:
         if bank not in self._runs:
-            self._scan(bank, _ZEROS, min_run=2 * MARGIN + 1)
+            self._rescan(bank)
         return self._runs[bank]
+
+    def _still_blank(self, start: int, size: int) -> bool:
+        """Whether ``[start, start+size)`` is still blank: something (asar ``freecode``) may have written it."""
+        self._file.seek(start)
+        chunk = self._file.read(size)
+        return chunk == bytes(size) or (bank_of(start) in self._expansion_banks and chunk == bytes([0xFF]) * size)
 
     def runs(self) -> list[tuple[int, int]]:
         return sorted((a, b) for runs in self._runs.values() for a, b in runs)
@@ -109,6 +123,9 @@ class FreeSpace:
             start = self._fits(run[0], size, near, reach)
             if start is None or start + size > run[1] or bank_of(start) != bank_of(start + size - 1):
                 continue
+            if not self._still_blank(start, size):
+                self._rescan(b)  # the bank changed behind the pool's back; its runs are stale
+                return self.alloc(size, bank=bank, near=near, reach=reach)
             self._take(b, run, start, size)
             return start
         where = f"bank {bank:#04x}" if bank is not None else "any bank"
