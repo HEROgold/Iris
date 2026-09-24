@@ -13,6 +13,10 @@ from enums.flags import (
 from helpers.bits import bytes_overwrite
 from helpers.files import write_file
 from logger import iris
+from scripting.core import Data as ScriptData
+from scripting.core import Instruction as ScriptInstruction
+from scripting.core import Label as ScriptLabel
+from scripting.l2basm import L2BASM
 from structures import CapsuleMonster, Item, Monster, Spell
 from structures.battle_builder import (
     Target,
@@ -284,18 +288,44 @@ def set_rom_name(name: bytes) -> None:
     write_file.write(name)
 
 def fix_boltfish() -> None:
-    """Fix the boltfish attack script to avoid softlocks.
-    This sets 2 offsets to 0x45.
-    Previously they pointed to itself (0x3b)."""
+    """Fix the Bolt Fish attack script to avoid a softlock.
+
+    Its spell handler at record offset +0x3B jumps to itself twice (the ``on_chance`` and the ``on_fail`` right
+    after it). Both now go to the unreached ``1F 00 08 28 00`` block at +0x45. The decision code's jump into the
+    handler stays.
+    """
     bolt_fish = Monster.from_index(85)
-    assert bolt_fish.attack_script
-    code = bolt_fish.attack_script.bytecode
-    patch = b"\x45"
-    patched_code = bytes_overwrite(code, 0x15, patch)
-    patched_code = bytes_overwrite(patched_code, 0x1A, patch)
-    bolt_fish.attack_script.bytecode = patched_code
+    assert bolt_fish.code is not None
+    body = bolt_fish.code.body
+    _label_at(body, bolt_fish.code_start, 0x45, "L_0045")
+    handler = body.index(ScriptLabel("L_003B"))
+    for item in body[handler + 1 :]:
+        if isinstance(item, ScriptInstruction):
+            item.operands = [ScriptLabel("L_0045") if op == ScriptLabel("L_003B") else op for op in item.operands]
     bolt_fish.write()
-    bolt_fish.attack_script.read()
+
+
+def _label_at(body: list, start: int, offset: int, name: str) -> None:
+    """Put ``Label(name)`` at record ``offset`` in ``body`` (which begins at record offset ``start``)."""
+    if ScriptLabel(name) in body:
+        return
+    position = start
+    for i, item in enumerate(body):
+        if position == offset:
+            body.insert(i, ScriptLabel(name))
+            return
+        if isinstance(item, ScriptData):
+            if position < offset < position + len(item.raw):
+                cut = offset - position
+                body[i : i + 1] = [ScriptData(item.raw[:cut]), ScriptLabel(name), ScriptData(item.raw[cut:])]
+                return
+            position += len(item.raw)
+        elif isinstance(item, ScriptInstruction):
+            spec = L2BASM.spec(item.opcode)
+            position += 1 + sum(kind.size(value) for kind, value in zip(spec.operands, item.operands, strict=True))
+    msg = f"No item boundary at record offset {offset:#x}."
+    raise ValueError(msg)
+
 
 def foomy_s_firebird_valor() -> None:
     """Give capsule Foomy S (index 0) a Firebird/Valor battle AI, authored with the ``battle_builder`` DSL.

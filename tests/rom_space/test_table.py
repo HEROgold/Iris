@@ -172,3 +172,13 @@ def test_no_space_anywhere_raises_no_free_space() -> None:
     table, space = _table(rom, [b"\xa1" * (BANK_SIZE - 8), RECORDS[1], RECORDS[2]], movable=True)
     with pytest.raises(NoFreeSpace):
         table.write()
+
+
+def test_a_fresh_table_knows_the_size_of_a_moved_record() -> None:
+    rom = _rom()
+    table, space = _table(rom, [b"\xa1" * 40, RECORDS[1], RECORDS[2]])
+    table.write()
+    again = Table("t", TABLE, [_Rec(b"\xa1" * 40), _Rec(RECORDS[1]), _Rec(RECORDS[2])], REGION_END, file=rom, space=space)
+    assert again.write() == "unchanged"
+    again.records[0] = _Rec(b"\xa2" * 40)
+    assert again.write() == "in_place"

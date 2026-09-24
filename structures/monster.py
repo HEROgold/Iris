@@ -1,13 +1,28 @@
-from typing import Self
+from functools import cache
+from typing import IO, Self
 
 from _types.objects import Cache
 from abc_.pointers import TablePointer
 from abc_.stats import ScalableRpgStats
 from args import args
-from helpers.bits import find_table_pointer, read_little_int, update_pointer_table
+from helpers.bits import find_table_pointer, read_little_int
 from helpers.files import read_file, restore_pointer, write_file
 from logger import iris
-from structures.battlescript import BattleScript, ScriptType
+from rom_space.table import Table
+from scripting.core import Item as ScriptItem
+from scripting.core import Data, Label, Script, assemble
+from scripting.l2basm import L2BASM, parse_record
+from scripting.l2basm.edit import replace_entry
+from scripting.l2basm.helpers import block
+from scripting.l2basm.records import (
+    MONSTER_HEADER_SIZE,
+    RecordSource,
+    monster_records,
+    read_record,
+    table_address,
+    table_bound,
+)
+from structures.subroutine import make_room_in_bank_96
 from tables import MonsterObject
 
 from .item import Item
@@ -35,8 +50,12 @@ class Monster(TablePointer):
     name: str
     index: int
     sprite_index: int
-    attack_script: BattleScript | None
-    defense_script: BattleScript | None
+    code: Script | None
+    """The record's scripts as one body with ``attack``/``defense`` entry labels (they may share blocks)."""
+    code_start: int
+    """Record offset of the first script byte (the header's length)."""
+    external_entries: dict[str, int]
+    """Entry offsets that point outside the record's script area (some base patches); written back unchanged."""
     _cache = Cache[int, Self]()
     _drop_item: int
     _drop_rate: int
@@ -56,8 +75,9 @@ class Monster(TablePointer):
         self._stats = ScalableRpgStats()
         self.sprite = MonsterSprite.from_index(monster_index)
         self._drop_rate_modifier = 2
-        self.attack_script = None
-        self.defense_script = None
+        self.code = None
+        self.code_start = 0
+        self.external_entries = {}
         self.scale = 1
         self._scaled = False
 
@@ -66,12 +86,7 @@ class Monster(TablePointer):
 
     @property
     def total_size(self) -> int:
-        size = MonsterObject.size
-        if self.attack_script:
-            size += self.attack_script.size
-        if self.defense_script:
-            size += self.defense_script.size
-        return size
+        return len(self.build())
 
     @classmethod
     def from_index(cls, index: int) -> Self:
@@ -80,7 +95,14 @@ class Monster(TablePointer):
             raise IndexError(msg)
         if index == 0xFF:
             return cls("Dummy", 0xFF, 0x0)
-        return cls.from_table(MonsterObject.address, index)
+        return cls.from_table(table_address(write_file, "monster"), index)
+
+    @classmethod
+    def reread(cls, index: int) -> Self:
+        """Drop the cached monsters and read this one again from the output ROM."""
+        cls._cache.clear()
+        _record_sources.cache_clear()
+        return cls.from_index(index)
 
     @classmethod
     @restore_pointer
@@ -102,27 +124,28 @@ class Monster(TablePointer):
         if inst := cls._cache.from_cache(index):
             return inst
 
-        pointer = find_table_pointer(address, index)
-        read_file.seek(pointer)
+        source = write_file  # the output ROM, so base-patch edits are what we read
+        pointer = _entry_target(source, address, index)
+        source.seek(pointer)
 
-        name_text = read_file.read(MonsterObject.name_text).decode("latin-1")  # names use non-UTF-8 bytes
+        name_text = source.read(MonsterObject.name_text).decode("latin-1")  # names use non-UTF-8 bytes
 
-        level = read_little_int(read_file, MonsterObject.level)
-        _unknown = read_little_int(read_file, MonsterObject.unknown)
-        battle_sprite = read_little_int(read_file, MonsterObject.battle_sprite)
-        palette = read_little_int(read_file, MonsterObject.palette)
-        hp = read_little_int(read_file, MonsterObject.hp)
-        mp = read_little_int(read_file, MonsterObject.mp)
-        attack = read_little_int(read_file, MonsterObject.attack)
-        defense = read_little_int(read_file, MonsterObject.defense)
-        agility = read_little_int(read_file, MonsterObject.agility)
-        intelligence = read_little_int(read_file, MonsterObject.intelligence)
-        guts = read_little_int(read_file, MonsterObject.guts)
-        magic_resistance = read_little_int(read_file, MonsterObject.magic_resistance)
-        xp = read_little_int(read_file, MonsterObject.xp)
-        gold = read_little_int(read_file, MonsterObject.gold)
+        level = read_little_int(source, MonsterObject.level)
+        _unknown = read_little_int(source, MonsterObject.unknown)
+        battle_sprite = read_little_int(source, MonsterObject.battle_sprite)
+        palette = read_little_int(source, MonsterObject.palette)
+        hp = read_little_int(source, MonsterObject.hp)
+        mp = read_little_int(source, MonsterObject.mp)
+        attack = read_little_int(source, MonsterObject.attack)
+        defense = read_little_int(source, MonsterObject.defense)
+        agility = read_little_int(source, MonsterObject.agility)
+        intelligence = read_little_int(source, MonsterObject.intelligence)
+        guts = read_little_int(source, MonsterObject.guts)
+        magic_resistance = read_little_int(source, MonsterObject.magic_resistance)
+        xp = read_little_int(source, MonsterObject.xp)
+        gold = read_little_int(source, MonsterObject.gold)
 
-        _misc = read_file.read(MonsterObject.misc)
+        _misc = source.read(MonsterObject.misc)
 
         inst = cls(name_text, index, battle_sprite)
         inst.stats = ScalableRpgStats(
@@ -148,50 +171,85 @@ class Monster(TablePointer):
 
         if _misc == b"\x03":
             # "Gift Bytes" L2_MonsterDataFormat.txt
-            item_low = read_file.read(1) # Item drop index, without high bit.
-            item_high = read_little_int(read_file, 1) # 0x01 or 0x00, + DropRate
-            inst._drop_item = int.from_bytes(item_low)
-            inst._drop_rate = item_high # Also contains the high bit for the item drop.
-            if item_high & 0x01 == 1:
+            inst._drop_item = read_little_int(source, 1)  # Item drop index, without high bit.
+            inst._drop_rate = read_little_int(source, 1)  # Also contains the high bit for the item drop.
+            if inst._drop_rate & 0x01 == 1:
                 iris.debug(f"{inst} has High bit for item drop set.")
-            script = read_file.read(1)
-            if script == b"\x07":
-                inst.create_attack_script()
-            elif script == b"\x08":
-                inst.create_defense_script()
-        elif _misc == b"\x07":
-            inst.create_attack_script()
-        elif _misc == b"\x08":
-            inst.create_defense_script()
+
+        inst.code_start = inst._header_size(0)
+        rec = _record_sources().get(index)
+        if rec is not None:
+            inst.external_entries = dict(rec.external)
+            if rec.entries:
+                record = read_record(source, rec)
+                parsed = parse_record(record, rec.entries, start=rec.script_start)
+                inst.code = parsed.script
+                inst.code_start = parsed.start
+                in_region = address <= rec.start < table_bound(source, address)
+                if in_region and parsed.end < len(record):  # unreached bytes up to the next record stay as they are
+                    inst.code.body.append(Data(record[parsed.end :]))
 
         cls._cache.to_cache(index, inst)
         return inst
 
+    def header_bytes(self, entry_offsets: dict[str, int]) -> bytes:
+        """The record's fixed fields, drop item, ``07``/``08`` script markers and the closing ``00``."""
+        stats = self.stats.to_int()
+        fields = [
+            self.name.encode("latin-1").ljust(MonsterObject.name_text, b" "),
+            stats.level.to_bytes(MonsterObject.level, "little"),
+            self._unknown.to_bytes(MonsterObject.unknown, "little"),
+            self.sprite_index.to_bytes(MonsterObject.battle_sprite, "little"),
+            self._palette.to_bytes(MonsterObject.palette, "little"),
+            stats.health_points.to_bytes(MonsterObject.hp, "little"),
+            stats.mana_points.to_bytes(MonsterObject.mp, "little"),
+            stats.attack.to_bytes(MonsterObject.attack, "little"),
+            stats.defense.to_bytes(MonsterObject.defense, "little"),
+            stats.agility.to_bytes(MonsterObject.agility, "little"),
+            stats.intelligence.to_bytes(MonsterObject.intelligence, "little"),
+            stats.guts.to_bytes(MonsterObject.guts, "little"),
+            stats.magic_resistance.to_bytes(MonsterObject.magic_resistance, "little"),
+            stats.xp.to_bytes(MonsterObject.xp, "little"),
+            stats.gold.to_bytes(MonsterObject.gold, "little"),
+        ]
+        if self.can_drop_item:
+            fields.append(bytes([0x03, self._drop_item, self._drop_rate]))
+        for marker, name in ((0x07, "attack"), (0x08, "defense")):
+            if name in entry_offsets:
+                fields.append(bytes([marker]) + entry_offsets[name].to_bytes(2, "little"))
+        fields.append(b"\x00")
+        header = b"".join(fields)
+        assert len(header) == self._header_size(len(entry_offsets)), self
+        return header
 
-    def create_attack_script(self) -> None:
-        if self.attack_script:
-            msg = f"{self} already has an attack script."
-            raise ValueError(msg)
-        self.attack_script_offset = read_little_int(read_file, 2)
-        self.attack_script = BattleScript(
-            self,
-            self.attack_script_offset,
-            ScriptType.ATTACK,
-        )
-        if read_file.read(1) == b"\x08":
-            self.create_defense_script()
+    def _header_size(self, entry_count: int) -> int:
+        return MONSTER_HEADER_SIZE + 3 * (int(self.can_drop_item) + entry_count) + 1
 
-    def create_defense_script(self) -> None:
-        if self.defense_script:
-            msg = f"{self} already has an attack script."
-            raise ValueError(msg)
-        self.defense_script_offset = read_little_int(read_file, 2)
-        self.defense_script = BattleScript(
-            self,
-            self.defense_script_offset,
-            ScriptType.DEFENSE,
-        )
+    def _entries(self) -> list[str]:
+        if self.code is None:
+            return []
+        names = {item.name for item in self.code.body if isinstance(item, Label)}
+        return [name for name in ("attack", "defense") if name in names]
 
+    def build(self) -> bytes:
+        """The whole record: header, then the assembled scripts (jumps are record-relative)."""
+        entries = self._entries()
+        header_size = self._header_size(len(entries) + len(self.external_entries))
+        if self.code is None:
+            return self.header_bytes(dict(self.external_entries))
+        out = assemble(self.code, header_size)
+        offsets = {name: header_size + out.labels[name] for name in entries} | self.external_entries
+        return self.header_bytes(offsets) + out.data
+
+    def replace_attack(self, items: list[ScriptItem]) -> None:
+        """Replace the attack script; blocks the defense script also uses stay."""
+        self.external_entries.pop("attack", None)
+        if self.code is None:
+            self.code = Script(L2BASM, [Label("attack"), *block(items)])
+        elif "attack" not in self._entries():
+            self.code.body = [Label("attack"), *block(items), *self.code.body]
+        else:
+            replace_entry(self.code, "attack", block(items))
 
     def _set_movement(self) -> None:
         if args.aggressive_movement:
@@ -306,69 +364,40 @@ class Monster(TablePointer):
     def can_drop_item(self, value: bool) -> None:
         self._misc = b"\x03" if value else b"\x00"
 
-    @classmethod
-    def adjust_monster_pointers(cls) -> None:
-        # FIXME: This code edits the file when nothing has changed.
-        start = MonsterObject.address
-        end = start + MonsterObject.count * 2
-        for monster in cls._cache.values():
-            if monster.index == 0:
-                continue
-            previous_monster = cls._cache[monster.index - 1]
-            offset = monster.pointer - end
-            new_pointer = end + offset + previous_monster.total_size
-            if new_pointer == monster.pointer:
-                continue
-            monster.pointer = new_pointer
-
-    @classmethod
-    def adjust_pinter_table(cls) -> None:
-        # FIXME: This code edits the file when nothing has changed.
-        start = MonsterObject.address
-        end = start + TABLE_SIZE
-        for monster in cls._cache.values():
-            offset = monster.pointer - end + TABLE_SIZE
-            update_pointer_table(start, monster.index, offset)
-
     def write(self) -> None:
-        iris.debug(f"Writing Monster {self.index} {self.name!r} → {self.pointer=:#08x}")
-        stats = self.stats.to_int()
-        write_file.seek(self.pointer)
-        has_end_byte = False
+        iris.debug(f"Writing Monster {self.index} {self.name!r}")
+        monster_table().write()
 
-        write_file.write(self.name.encode())
-        write_file.write(stats.level.to_bytes(MonsterObject.level, "little"))
-        write_file.write(self._unknown.to_bytes(MonsterObject.unknown))
-        write_file.write(self.sprite_index.to_bytes(MonsterObject.battle_sprite, "little"))
-        write_file.write(self._palette.to_bytes(MonsterObject.palette))
-        write_file.write(stats.health_points.to_bytes(MonsterObject.hp, "little"))
-        write_file.write(stats.mana_points.to_bytes(MonsterObject.mp, "little"))
-        write_file.write(stats.attack.to_bytes(MonsterObject.attack, "little"))
-        write_file.write(stats.defense.to_bytes(MonsterObject.defense, "little"))
-        write_file.write(stats.agility.to_bytes(MonsterObject.agility, "little"))
-        write_file.write(stats.intelligence.to_bytes(MonsterObject.intelligence, "little"))
-        write_file.write(stats.guts.to_bytes(MonsterObject.guts, "little"))
-        write_file.write(stats.magic_resistance.to_bytes(MonsterObject.magic_resistance, "little"))
-        write_file.write(stats.xp.to_bytes(MonsterObject.xp, "little"))
-        write_file.write(stats.gold.to_bytes(MonsterObject.gold, "little"))
-        if self.can_drop_item:
-            assert self._misc == b"\x03"
-            write_file.write(self._misc)
-            write_file.write(self._drop_item.to_bytes(1))
-            write_file.write(self._drop_rate.to_bytes(1))
-        if self.attack_script:
-            self.attack_script.write_offset()
-            if self.defense_script:
-                self.defense_script.write_offset()
-            self.attack_script.write()
-            if self.defense_script:
-                self.defense_script.write()
-            has_end_byte = True
-        elif self.defense_script:
-            self.defense_script.write()
-            has_end_byte = True
-        if not has_end_byte:
-            write_file.write(b"\x00")
+
+def _entry_target(source: IO[bytes], address: int, index: int) -> int:
+    """Where entry ``index`` of the table at ``address`` in ``source`` points."""
+    source.seek(address + 2 * index)
+    return address + int.from_bytes(source.read(2), "little")
+
+
+@cache
+def _record_sources() -> dict[int, RecordSource]:
+    return {rec.index: rec for rec in monster_records(write_file)}
+
+
+@cache
+def monster_table() -> Table:
+    """Every monster record on ``rom_space.Table``. Growing past bank $96's free space moves the $42 table."""
+    address = table_address(write_file, "monster")
+    records = [Monster.from_index(i) for i in range(MonsterObject.count)]
+    return Table(
+        "monsters",
+        address,
+        records,  # type: ignore[arg-type]
+        table_bound(write_file, address),
+        make_room=make_room_in_bank_96,
+    )
+
+
+def reset_monster_table() -> None:
+    monster_table.cache_clear()
+    _record_sources.cache_clear()
+    Monster._cache.clear()  # noqa: SLF001
 
 
 # sprite_index, name

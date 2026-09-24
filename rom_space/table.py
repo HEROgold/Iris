@@ -50,6 +50,10 @@ class Table:
         if space is not None:
             space.reserve(self.pinned)
         self._sizes: dict[int, int] = {}  # current length of records living outside the region
+        if records:
+            for start, record in zip(self.starts(), records, strict=True):
+                if not self._in_region(start):
+                    self._sizes[start] = len(record.build())
         self._vanilla_address = address
 
     @property

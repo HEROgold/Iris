@@ -76,9 +76,21 @@ def table_starts(source: IO[bytes], table: int, count: int) -> list[int]:
     return [table + _u16(source, table + 2 * i) for i in range(count)]
 
 
-def _bounds(starts: list[int], last_bound: int) -> dict[int, int]:
+def _bounds(source: IO[bytes], starts: list[int], last_bound: int) -> dict[int, int]:
+    """End of each record: the next record start, else ``last_bound``.
+
+    A record past ``last_bound`` (moved out of its table's packed region) ends at the next record after it, or at
+    the next known table or bank end.
+    """
     ordered = sorted(set(starts))
-    return {start: (ordered[i + 1] if i + 1 < len(ordered) else last_bound) for i, start in enumerate(ordered)}
+    bounds = {}
+    for i, start in enumerate(ordered):
+        nxt = ordered[i + 1] if i + 1 < len(ordered) else None
+        if start < last_bound:
+            bounds[start] = nxt if nxt is not None and nxt <= last_bound else last_bound
+        else:
+            bounds[start] = min(nxt, table_bound(source, start)) if nxt is not None else table_bound(source, start)
+    return bounds
 
 
 def table_address(source: IO[bytes], table: str) -> int:
@@ -87,7 +99,7 @@ def table_address(source: IO[bytes], table: str) -> int:
     return address_from_lorom(int.from_bytes(source.read(3), "little"))
 
 
-def _last_bound(source: IO[bytes], address: int) -> int:
+def table_bound(source: IO[bytes], address: int) -> int:
     """End of the last record: the next known table or boundary after ``address`` in its bank, else the bank end."""
     bank_end = (address // 0x8000 + 1) * 0x8000
     marks = [table_address(source, name) for name in TABLE_REFS] + [CAPSULE_BOUND, SPELL_BOUND, SUBROUTINE_BOUND]
@@ -120,7 +132,7 @@ def monster_header_size(record: bytes) -> tuple[int, dict[str, int]]:
 def monster_records(source: IO[bytes]) -> list[RecordSource]:
     address = table_address(source, "monster")
     starts = table_starts(source, address, MonsterObject.count)
-    bounds = _bounds(starts, _last_bound(source, address))
+    bounds = _bounds(source, starts, table_bound(source, address))
     out = []
     for index, start in enumerate(starts):
         source.seek(start)
@@ -134,7 +146,7 @@ def monster_records(source: IO[bytes]) -> list[RecordSource]:
 def capsule_records(source: IO[bytes]) -> list[RecordSource]:
     address = table_address(source, "capsule")
     starts = table_starts(source, address, CapsuleObject.count)
-    bounds = _bounds(starts, _last_bound(source, address))
+    bounds = _bounds(source, starts, table_bound(source, address))
     return [
         RecordSource.split(
             "capsule",
@@ -160,7 +172,7 @@ def item_script_words(flags: int) -> dict[str, int]:
 def item_records(source: IO[bytes]) -> list[RecordSource]:
     address = table_address(source, "item")
     starts = table_starts(source, address, ItemObject.count)
-    bounds = _bounds(starts, _last_bound(source, address))
+    bounds = _bounds(source, starts, table_bound(source, address))
     out = []
     for index, start in enumerate(starts):
         flags = _u16(source, start + ITEM_FLAGS)
@@ -173,7 +185,7 @@ def item_records(source: IO[bytes]) -> list[RecordSource]:
 def spell_records(source: IO[bytes]) -> list[RecordSource]:
     address = table_address(source, "spell")
     starts = table_starts(source, address, SPELL_COUNT)
-    bounds = _bounds(starts, _last_bound(source, address))
+    bounds = _bounds(source, starts, table_bound(source, address))
     return [
         RecordSource.split("spell", index, start, bounds[start], {"effect": _u16(source, start + SPELL_SCRIPT_FIELD)})
         for index, start in enumerate(starts)
@@ -183,14 +195,14 @@ def spell_records(source: IO[bytes]) -> list[RecordSource]:
 def ip_effect_records(source: IO[bytes]) -> list[RecordSource]:
     address = table_address(source, "ip_effect")
     starts = table_starts(source, address, IP_EFFECT_COUNT)
-    bounds = _bounds(starts, _last_bound(source, address))
+    bounds = _bounds(source, starts, table_bound(source, address))
     return [RecordSource("ip_effect", i, start, bounds[start], {"effect": 1}, 0) for i, start in enumerate(starts)]
 
 
 def subroutine_records(source: IO[bytes], table: int | None = None) -> list[RecordSource]:
     address = table_address(source, "subroutine") if table is None else table
     starts = table_starts(source, address, SUBROUTINE_COUNT)
-    bounds = _bounds(starts, _last_bound(source, address))
+    bounds = _bounds(source, starts, table_bound(source, address))
     return [RecordSource("subroutine", i, start, bounds[start], {"body": 0}) for i, start in enumerate(starts)]
 
 
