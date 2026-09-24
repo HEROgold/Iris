@@ -74,3 +74,14 @@ def test_make_room_refuses_until_verified() -> None:
 def test_make_room_ignores_other_banks(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(subroutine, "SUBROUTINES_MOVABLE", True)
     assert subroutine.make_room_in_bank_96(0x17) is False
+
+
+def test_moving_the_table_does_not_stretch_the_item_area(monkeypatch: pytest.MonkeyPatch) -> None:
+    from scripting.l2basm.records import table_address, table_bound  # noqa: PLC0415
+
+    items = table_address(write_file, "item")
+    assert table_bound(write_file, items) == SUBROUTINE_TABLE
+    monkeypatch.setattr(subroutine, "SUBROUTINES_MOVABLE", True)
+    subroutine.make_room_in_bank_96(bank_of(SUBROUTINE_TABLE))
+    write_file.flush()
+    assert table_bound(write_file, items) == SUBROUTINE_TABLE

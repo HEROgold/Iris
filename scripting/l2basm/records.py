@@ -31,6 +31,9 @@ SUBROUTINE_TABLE = 0xB7ADD
 SUBROUTINE_COUNT = 41
 SUBROUTINE_BOUND = 0xB8000  # end of bank $96
 
+VANILLA_TABLES = [0xB05C0, 0xB4F69, SUBROUTINE_TABLE, IP_EFFECT_TABLE, SPELL_TABLE, 0xBDCB8]
+"""Where each table sits in the vanilla ROM (monster, item, $42, IP effect, spell, capsule)."""
+
 # File offset of each table's ``LDA long,X`` operand (the 3-byte LoROM address of the table).
 TABLE_REFS = {
     "monster": 0xFB28,
@@ -103,6 +106,7 @@ def table_bound(source: IO[bytes], address: int) -> int:
     """End of the last record: the next known table or boundary after ``address`` in its bank, else the bank end."""
     bank_end = (address // 0x8000 + 1) * 0x8000
     marks = [table_address(source, name) for name in TABLE_REFS] + [CAPSULE_BOUND, SPELL_BOUND, SUBROUTINE_BOUND]
+    marks += VANILLA_TABLES  # a table that moved away still bounds the data packed before its old home
     return min([mark for mark in marks if address < mark <= bank_end] + [bank_end])
 
 
