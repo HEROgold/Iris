@@ -90,25 +90,32 @@ def decode_text(
         if textcode == 0x0A:
             size = TEXT_PARAMETERS[textcode]
             params, data = data[:size], data[size:]
-            value = int.from_bytes(params, "little")
-            length = (value >> 12) + 2
-            pointer = (value & 0x0FFF) + 2
             consumed = full_data[: len(full_data) - len(data)]
             buffer = pre_data + consumed
-            index = len(buffer) - pointer
-            repeat = buffer[index : index + length] if index >= 0 else b""
-            chunks.append(TextChunk(None, repeat))
+            chunks.append(TextChunk(None, resolve_repeat(buffer, params), repeat=params))
         elif textcode in TEXT_PARAMETERS:
             size = TEXT_PARAMETERS[textcode]
             params, data = data[:size], data[size:]
             chunks.append(TextChunk(textcode, params))
         else:
-            if chunks[-1].tag is not None:
+            if chunks[-1].tag is not None or chunks[-1].repeat is not None:
                 chunks.append(TextChunk(None, b""))
             chunks[-1].data += bytes([textcode])
 
-    chunks = [c for c in chunks if c.data or c.tag is not None]
+    chunks = [c for c in chunks if c.data or c.tag is not None or c.repeat is not None]
     return chunks, data
+
+
+def resolve_repeat(buffer: bytes, params: bytes) -> bytes:
+    """Expand a ``<REPEAT>`` back-reference against ``buffer`` (the window up to and including its params).
+
+    The low 12 bits of ``params`` are the distance back (-2), the high 4 bits the copy length (-2).
+    """
+    value = int.from_bytes(params, "little")
+    length = (value >> 12) + 2
+    pointer = (value & 0x0FFF) + 2
+    index = len(buffer) - pointer
+    return buffer[index : index + length] if index >= 0 else b""
 
 
 def render_text(chunks: list[TextChunk]) -> str:

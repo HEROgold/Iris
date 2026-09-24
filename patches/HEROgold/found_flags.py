@@ -14,10 +14,8 @@ original slot size -- a rewritten script must still fit ``len(script.raw)``. We 
 script and, if it would overrun, **revert that script and skip it** (never corrupting the ROM).
 
 Current reality (important): in-place growth is effectively **impossible** for the existing story-join
-scripts, so this pass patches *zero* of them today and is retained as a safe, self-documenting no-op. Two
-independent reasons: (1) the join scripts are packed to the byte (recompiling equals the original size, no
-room for +2), and (2) dialogue-heavy scripts *inflate* on recompile because the text codec's ``0x0A``
-``<REPEAT>`` back-references decode to literal bytes but ``encode_text`` re-compresses them less tightly.
+scripts, so this pass patches *zero* of them today and is retained as a safe, self-documenting no-op: the
+join scripts are packed to the byte (recompiling reproduces the original bytes exactly, no room for +2).
 Growing a script therefore requires **relocation**, and the only tracked free space (``EMPTY_BYTES`` at
 ``0x286a10``+) is unreachable via the 16-bit event-list offset (a script must sit within 64 KB of its map's
 event-list block near ``0x3xxxx``; the event bank itself has ~156 free bytes total). Making this work needs

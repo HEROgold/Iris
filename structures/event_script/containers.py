@@ -132,6 +132,7 @@ class MapEvent:
         self._magic = EVENT_MAGIC
         self._header_raw = b""
         self.event_lists: list[EventList] = []
+        self.dirty = False
         self._read = False
         self._gen_lists()
 
@@ -225,17 +226,40 @@ class MapEvent:
     def clean_map_name(self) -> bytes:
         return self.map_name.replace(b"\x0a", b"").replace(b"\x00", b"")
 
+    def mark_dirty(self) -> None:
+        """Flag the whole container (record, header, every table and script) for rewriting on :meth:`write`."""
+        self.dirty = True
+        for event_list in self.event_lists:
+            event_list.dirty = True
+            for script in event_list.events:
+                script.dirty = True
+
     def write(self) -> None:
         """Persist the map's event scripts. Only modified scripts (and dirty tables) are written.
 
-        The map record and the event-list header are never mutated by this subsystem (no relocation is
-        wired in), so they are left as-is in the working ROM rather than re-emitted verbatim -- that
-        keeps the write confined to the scripts that actually changed and avoids clobbering other
-        patches. If script relocation is added later, the record/header would need a dirty flag and
-        would be written here.
+        The map record and the event-list header are only re-emitted when this container is ``dirty``
+        (see :meth:`mark_dirty`); otherwise they are left as-is in the working ROM, which keeps the write
+        confined to the scripts that actually changed and avoids clobbering other patches.
         """
+        if self.dirty:
+            self._write_record()
+            self._write_header()
         for event_list in self.event_lists:
             event_list.write()
+
+    def _write_record(self) -> None:
+        write_file.seek(self.pointer)
+        write_file.write(self._eventlist_lowbytes)
+        write_file.write(self._eventlist_highbyte)
+        write_file.write(self._npc_lowbytes)
+        write_file.write(self._npc_highbyte)
+        write_file.write(self._map_name_offset.to_bytes(MapEventObject.map_name_pointer, "little"))
+
+    def _write_header(self) -> None:
+        write_file.seek(self.event_list_pointer)
+        write_file.write(self._magic)
+        for event_list in self.event_lists[1:]:  # [0] is the NPC-load script, referenced by the record
+            write_file.write(event_list.offset.to_bytes(2, "little"))
 
 
 def _next_pointer(all_pointers: list[int], pointer: int) -> int:

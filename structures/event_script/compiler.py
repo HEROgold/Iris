@@ -5,13 +5,18 @@ write verbatim (Mode A) in :meth:`EventScript.write`. The algorithm mirrors terr
 ``Script.compile``: lay out each instruction's bytes, record ``line_number -> byte_offset``, then
 rewrite each :class:`Address` placeholder to its real 2-byte little-endian value.
 
+Text is emitted chunk-by-chunk exactly as decoded (literal runs, word codes and control codes keep their
+original bytes), so an unchanged script compiles back to its original bytes. A literal run decoded from
+a ``<REPEAT>`` back-reference is re-emitted as that back-reference only while it still expands to the
+same bytes in the new output; otherwise (e.g. an earlier edit shifted the window) it is written literally.
+
 Compile once with ``ignore_pointers=True`` to measure the length, allocate, then compile again with
 the real ``script_pointer`` to fix the offsets.
 """
 
 from typing import TYPE_CHECKING
 
-from structures.event_script.codec import render_text
+from structures.event_script.codec import resolve_repeat
 from structures.event_script.instructions import Address, Instruction, TextChunk
 from structures.event_script.opcodes import ADDR, POINTERS, TEXT, VARIABLE, operand_shape
 
@@ -21,13 +26,29 @@ if TYPE_CHECKING:
 
 
 type Token = int | Address
+REPEAT_CODE = 0x0A
 
 
-def _emit_text(line: list[Token], opcode: int, chunks: list[TextChunk]) -> None:
-    from structures.event_script.codec import encode_text  # noqa: PLC0415
-
-    data = encode_text(render_text(chunks), compress=opcode not in {0x6D, 0x6E})
-    line.extend(data)
+def _emit_text(
+    line: list[Token],
+    chunks: list[TextChunk],
+    repeats: list[tuple[int, TextChunk]],
+    literal: set[int],
+) -> None:
+    """Emit ``chunks`` byte-for-byte, recording each re-emitted ``<REPEAT>`` as ``(token index, chunk)``."""
+    for chunk in chunks:
+        if chunk.tag is None:
+            if chunk.repeat is not None and id(chunk) not in literal:
+                repeats.append((len(line), chunk))
+                line.append(REPEAT_CODE)
+                line.extend(chunk.repeat)
+            else:
+                line.extend(chunk.data)
+        elif isinstance(chunk.tag, str):  # "NPC" / "POSITION": the text opcode's leading operands
+            line.extend(chunk.data)
+        else:
+            line.append(chunk.tag)
+            line.extend(chunk.data)
 
 
 def _emit_variable(line: list[Token], operands: list[object], start: int) -> None:
@@ -53,7 +74,11 @@ def _emit_variable(line: list[Token], operands: list[object], start: int) -> Non
             line.append(int(queue.pop(0)))
 
 
-def _emit_instruction(instruction: Instruction) -> list[Token]:
+def _emit_instruction(
+    instruction: Instruction,
+    repeats: list[tuple[int, TextChunk]],
+    literal: set[int],
+) -> list[Token]:
     line: list[Token] = [instruction.opcode]
     shape = operand_shape(instruction.opcode)
     operand_index = 0
@@ -63,7 +88,7 @@ def _emit_instruction(instruction: Instruction) -> list[Token]:
             if not isinstance(chunks, list):
                 msg = "Text operand expected."
                 raise TypeError(msg)
-            _emit_text(line, instruction.opcode, chunks)
+            _emit_text(line, chunks, repeats, literal)
             operand_index += 1
         elif token == POINTERS:
             count = instruction.operands[operand_index]
@@ -89,22 +114,53 @@ def _byte_length(line: list[Token]) -> int:
 
 
 def compile_script(script: "EventScript", script_pointer: int | None = None, *, ignore_pointers: bool = False) -> bytes:
-    """Emit the script's bytecode, resolving every local :class:`Address` to a 2-byte offset."""
+    """Emit the script's bytecode, resolving every local :class:`Address` to a 2-byte offset.
+
+    Compiles, then checks every re-emitted ``<REPEAT>`` against the output; any that no longer expands
+    to its original text is demoted to a literal run and the script is recompiled (only ever shrinking
+    the set of back-references, so this terminates).
+    """
+    literal: set[int] = set()
+    while True:
+        out, repeats = _compile(script, script_pointer, literal, ignore_pointers=ignore_pointers)
+        broken = [
+            chunk
+            for position, chunk in repeats
+            if resolve_repeat(script._pre + out[: position + 3], chunk.repeat or b"") != chunk.data
+        ]
+        if not broken:
+            return out
+        literal.update(id(chunk) for chunk in broken)
+
+
+def _compile(
+    script: "EventScript",
+    script_pointer: int | None,
+    literal: set[int],
+    *,
+    ignore_pointers: bool,
+) -> tuple[bytes, list[tuple[int, TextChunk]]]:
+    """One compile pass; also returns each re-emitted ``<REPEAT>`` as ``(byte offset, chunk)``."""
     partial: dict[int, list[Token]] = {}
+    line_repeats: dict[int, list[tuple[int, TextChunk]]] = {}
     previous = None
     for instruction in script.instructions:
         if previous is not None and instruction.line <= previous:
             msg = "Instruction line numbers must be strictly ascending."
             raise ValueError(msg)
         previous = instruction.line
-        partial[instruction.line] = _emit_instruction(instruction)
+        line_repeats[instruction.line] = []
+        partial[instruction.line] = _emit_instruction(instruction, line_repeats[instruction.line], literal)
 
     ordered = sorted(partial)
     conversions: dict[int, int] = {}
+    repeats: list[tuple[int, TextChunk]] = []
     running = 0
     for line_number in ordered:
         conversions[line_number] = running
-        running += _byte_length(partial[line_number])
+        line = partial[line_number]
+        repeats.extend((running + _byte_length(line[:index]), chunk) for index, chunk in line_repeats[line_number])
+        running += _byte_length(line)
 
     base = script.base_pointer
     pointer = script_pointer if script_pointer is not None else script.pointer
@@ -126,7 +182,7 @@ def compile_script(script: "EventScript", script_pointer: int | None = None, *, 
                 out.append(value >> 8)
             else:
                 out.append(tok & 0xFF)
-    return bytes(out)
+    return bytes(out), repeats
 
 
 def _snap(conversions: dict[int, int], target: int) -> int:
