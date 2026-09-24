@@ -84,3 +84,15 @@ def test_default_name_is_the_species_name() -> None:
 def test_rejects_bad_input(species: int, name: str | None) -> None:
     with pytest.raises(ValueError, match="capsule"):
         start_capsule(species, name)
+
+
+# Event flag the story's join scene sets before ``81 XX``: byte $7E:077E + flag / 8, bit flag % 8 ($80:BE30).
+@pytest.mark.parametrize(("species", "flag"), [(0, 0x08), (1, 0x09), (2, 0x0C), (3, 0x0D), (4, 0x0E), (5, 0x0F), (6, 0x10)])
+def test_story_flag_is_set_so_the_capsule_cannot_join_twice(species: int, flag: int) -> None:
+    start_capsule(species)
+    hook = _hook(_output())
+    address = (0x7E077E + flag // 8).to_bytes(3, "little")
+    load = bytes([0xAF, *address])  # LDA $7E077E+n
+    set_bit = bytes([0x09, 1 << (flag % 8)])  # ORA #mask
+    store = bytes([0x8F, *address])  # STA $7E077E+n
+    assert load + set_bit + store in hook

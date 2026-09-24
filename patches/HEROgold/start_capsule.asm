@@ -4,6 +4,7 @@
 ;   !species   capsule species 0-6 (capsule table index // 5: Foomy, Shaggy, Hard Hat, Red Fish,
 ;              Myconido, Raddisher, Armor Dog)
 ;   !n0..!n4   the capsule's name, 5 ASCII bytes (0 pads a shorter name)
+;   !flag_address, !flag_mask   the species' story flag (byte and bit in the event flags at $7E:077E)
 ;   (no stub: bank $82 has no free space, see the tail call below)
 ;
 ; Hook: the new-game setup at $83:AD80 already checks whether to start with a capsule:
@@ -15,6 +16,9 @@
 ;
 ; What giving a capsule means (mirrors the data part of the capsule-join routine $82:E7AA, which event
 ; opcode 81 uses, without its naming screen):
+;   story flag of species s        the flag the join scene sets before "81 s" (Foomy 08, Shaggy 09,
+;                                  Hard Hat 0C, Red Fish 0D, Myconido 0E, Raddisher 0F, Armor Dog 10),
+;                                  so the scene treats the capsule as already given
 ;   $7E:11BB+s = 1                 owned flag for species s
 ;   $7F:F1A3+s = [$8E:E4C4+s]      the species' start level (vanilla table)
 ;   $7F:F180+s*5 = name            5-byte name per species
@@ -47,6 +51,9 @@ start_capsule_hook:
     beq .give
     jml $83AD87                 ; bit set: vanilla's own special start, untouched
 .give:
+    lda.l !flag_address
+    ora.b #!flag_mask
+    sta.l !flag_address         ; story flag: the join scene won't give this capsule again
     ldx.w #!species
     lda.b #$01
     sta.l $7E11BB,x             ; owned

@@ -16,6 +16,10 @@ _ASM = Path(__file__).parent / "start_capsule.asm"
 SPECIES_COUNT = 7
 FORMS_PER_SPECIES = 5
 NAME_LENGTH = 5
+EVENT_FLAGS = 0x7E077E  # event flag n: byte EVENT_FLAGS + n // 8, bit n % 8 (the game's helper at $80:BE30)
+# Flag each species' story join scene sets right before event opcode ``81 XX`` (Foomy: map 0E, Hard Hat:
+# map 70, ...). Setting it keeps the scene from giving the same capsule a second time.
+STORY_FLAGS = (0x08, 0x09, 0x0C, 0x0D, 0x0E, 0x0F, 0x10)
 
 
 def default_name(species: int) -> str:
@@ -38,6 +42,8 @@ def start_capsule(species: int, name: str | None = None) -> None:
     padded = name.encode("ascii").ljust(NAME_LENGTH, b"\x00")
     defines = {
         "species": str(species),
+        "flag_address": str(EVENT_FLAGS + STORY_FLAGS[species] // 8),
+        "flag_mask": str(1 << (STORY_FLAGS[species] % 8)),
         **{f"n{i}": str(byte) for i, byte in enumerate(padded)},
     }
     apply_asm_patch(_ASM, defines=defines)
