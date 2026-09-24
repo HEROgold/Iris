@@ -35,3 +35,11 @@ class NoFreeSpace(Exception):  # noqa: N818 (name fixed by the spec)
 
 class PlacementVerifyError(Exception):
     """Bytes read back after a placement differ from what was written."""
+
+
+class TableNotMovable(Exception):  # noqa: N818 (name fixed by the spec)
+    """A table would have to move banks, but its code references aren't verified."""
+
+
+class CodeRefMismatch(Exception):  # noqa: N818 (name fixed by the spec)
+    """A code reference doesn't hold the value it should before a table move."""
