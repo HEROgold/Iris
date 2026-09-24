@@ -5,6 +5,9 @@ class Cache[K, V]:
     def __init__(self) -> None:
         self._cache: dict[K, V] = {}
 
+    def clear(self) -> None:
+        self._cache.clear()
+
     def from_cache(self, key: K) -> V | None:
         if key in self._cache:
             return self._cache[key]

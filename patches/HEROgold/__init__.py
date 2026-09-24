@@ -13,7 +13,20 @@ from enums.flags import (
 from helpers.bits import bytes_overwrite
 from helpers.files import write_file
 from logger import iris
-from structures import Item, Monster, Spell
+from structures import CapsuleMonster, Item, Monster, Spell
+from structures.battle_builder import (
+    Target,
+    cast_spell_free,
+    end,
+    flee,
+    if_ge,
+    label,
+    on_chance,
+    physical_attack,
+    resist,
+    sequence,
+    set_reg,
+)
 from structures.character import InitialEquipment, PlayableCharacter
 from structures.chest import AddressChest, PointerChest
 from structures.ip_attack import IPAttack
@@ -29,13 +42,10 @@ from tables import (
     SpellObject,
 )
 
+# maxim_warp imports `lookups`, which crashes on FRUE/Spekkio/Kureji spell names (UTF-8 decode in
+# Spell.from_pointer). It imports fine on vanilla.
 # from .maxim_warp import maxim_starts_with_warp  # pyright: ignore[reportUnusedImport] # noqa: F401
-# Importing maxim_warp causes   File "C:\Users\marti\Documents\GitHub\Iris\src\structures\battlescript.py", line 674, in get_arguments
-#    return op_codes[opcode]["params"]
-#           ~~~~~~~~^^^^^^^^
-#KeyError: 163
-#?
-# FIXME
+from .found_flags import set_found_flags_on_story_joins  # pyright: ignore[reportUnusedImport] # noqa: F401
 from .party_toggle import party_toggle_in_elcid  # pyright: ignore[reportUnusedImport] # noqa: F401
 from .unlock_warps import unlock_all_warp_destinations  # pyright: ignore[reportUnusedImport] # noqa: F401
 
@@ -284,3 +294,43 @@ def fix_boltfish() -> None:
     bolt_fish.attack_script.bytecode = patched_code
     bolt_fish.write()
     bolt_fish.attack_script.read()
+
+def foomy_s_firebird_valor() -> None:
+    """Give capsule Foomy S (index 0) a Firebird/Valor battle AI, authored with the ``battle_builder`` DSL.
+
+    The attack (per-turn AI) script keeps vanilla Foomy S's flee check: ``42 25 00`` puts the % of HP lost
+    in reg $80 and ``GUT * 25 / reg $82`` (reg $82 = 0x11 for Foomy S) in reg $81; if reg $80 >= reg $81
+    the capsule flees. Otherwise each turn it rolls:
+      - ~19% (0x30/255)                  -> cast Valor (spell 0x1E) on all allies (support/revive)
+      - ~56% (69% of the remaining 81%)  -> cast Firebird (spell 0x05) on one foe (offense)
+      - ~25%                             -> physical attack on one foe
+    Both casts use the MP-free IP sequence (``cast_spell_free`` -> ``47 78 00 54 XX 01 4F``) because
+    capsules have no MP pool.
+
+    The script is 49 bytes and Foomy S's attack slot holds 36, so ``CapsuleMonster.write()``
+    moves the record into free space in bank $97, repoints its table entry, recomputes the reaction
+    offset, and zeroes the old record. The reaction script stays vanilla ``42 11 00`` (status immunity):
+    the reaction slot runs passive-protection code in the attacker's damage calculation, so it cannot
+    hold a spell cast.
+    """
+    iris.info("Giving Foomy S a Firebird/Valor AI via the battle_builder DSL.")
+    foomy = CapsuleMonster.from_index(0)
+    # Spell.from_index avoids the eager `lookups` import (which trips a pre-existing spell-name decode
+    # bug); with `lookups` fixed these are simply ``Spells.VALOR`` / ``Spells.FIREBIRD``.
+    valor = Spell.from_index(30)
+    firebird = Spell.from_index(5)
+    foomy.set_scripts(
+        attack=sequence(
+            set_reg(0x82, 0x0011),          # GUT divisor used by subroutine 0x25
+            resist(0x25),                   # 42 25 00: reg $80 = % HP lost, reg $81 = GUT threshold
+            if_ge(0x80, 0x8081, "flee"),    # reg $80 >= reg $81 -> flee (0x8081 = register $81)
+            on_chance(0x30, "valor"),
+            on_chance(0xB0, "firebird"),
+            physical_attack(target=Target.ONE_FOE), end(),
+            label("firebird"), cast_spell_free(firebird, target=Target.ONE_FOE), end(),
+            label("valor"), cast_spell_free(valor, target=Target.ALL_ALLIES), end(),
+            label("flee"), flee(), end(),
+        ),
+        reaction=sequence(resist(0x11), end()),  # vanilla: full status immunity
+    )
+    foomy.write()

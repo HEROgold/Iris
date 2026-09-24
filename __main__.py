@@ -10,25 +10,26 @@ from patcher import (
 )
 from patches.genie_codes import (
     AIRSHIP_ANYWHERE,
-    ALWAYS_DROP_33,
     CAPSULE_ALWAYS_LOVE_FOOD,
     ELCID_REPORT,
     MASTER_ONE_SHOT,
     NO_SCENARIO_ITEMS,
-    UNLOCK_WARP,
 )
 from patches.HEROgold import (
     arty_to_artea,
     ax_to_axe,
     fix_boltfish,
+    foomy_s_firebird_valor,
     gorem_to_golem,
     guy_the_mage,
     # maxim_starts_with_warp,
     party_toggle_in_elcid,
+    set_found_flags_on_story_joins,
     set_rom_name,
     swap_pierre_danielle_sprites,
     unlock_all_warp_destinations,
 )
+from patches.HEROgold.start_capsule import start_capsule
 from patches.RealCritical import (
     ac_more_enemies,
     fix_cave_chest_table,
@@ -56,25 +57,26 @@ def main() -> None:
     set_rom_name(b"Lufia II (Iris patch)") # For identification purposes.
 
     party_toggle_in_elcid()  # event-script demo: Elcid townspeople toggle party join/leave
+    set_found_flags_on_story_joins()  # story joins also set each character's "found/unlocked" flag
 
     apply_patch(args.selected_patch) # TODO: test with others besides Vanilla.
     if args.fix_softlocks:
         fix_boltfish()
+    if args.foomy_firebird:
+        foomy_s_firebird_valor()
 
     if args.debug:
         # apply_game_genie_codes(DEBUG_MODE)
         apply_game_genie_codes(*MASTER_ONE_SHOT)
         apply_game_genie_codes(NO_SCENARIO_ITEMS)
         apply_game_genie_codes(*AIRSHIP_ANYWHERE)
-        apply_game_genie_codes(ALWAYS_DROP_33)
+        # ALWAYS_DROP_33 is left out: it turns `CMP $09FB` at $81:FB55 into `BRA $FB52`, which loops forever
+        # inside the item-drop roll, so the game freezes when a defeated enemy rolls for its drop.
         apply_game_genie_codes(CAPSULE_ALWAYS_LOVE_FOOD)
         apply_game_genie_codes(ELCID_REPORT)
-        # Unlock all warp locations.
-        # Doesn't apply to ROM. Why? Because some are applied to running memory.
-        # These also don't contain a `-` between the 2 parts of the code
-        # Like flags for warp unlocks
-        apply_game_genie_codes(*UNLOCK_WARP)
-        apply_game_genie_codes("7E0C4324") # Maxim starts with warp. (slot 1)
+        # UNLOCK_WARP and "7E0C4324" (Maxim knows Warp) are Pro Action Replay RAM codes. They can't be baked
+        # into the ROM; decoding them as Game Genie codes wrote 0x3F into random ROM bytes, so
+        # apply_game_genie_codes now rejects them. Warps are unlocked by unlock_all_warp_destinations() below.
 
     apply_game_genie_codes(*args.game_genie_codes)
 
@@ -138,6 +140,8 @@ def main() -> None:
     # Dev/debug patches (not intended for release):
     # maxim_starts_with_warp()  # dev fix: Maxim begins every game knowing Warp (field teleport)
     unlock_all_warp_destinations()  # dev fix: every Warp destination available from a fresh save
+    if args.start_capsule is not None:
+        start_capsule(args.start_capsule, args.start_capsule_name)
 
     # Apply RealCritical patches
     fix_menu()

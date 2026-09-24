@@ -1,6 +1,6 @@
 import logging
 from enum import Enum
-from typing import TYPE_CHECKING, TypedDict
+from typing import IO, TYPE_CHECKING, TypedDict
 
 from helpers.files import read_file, restore_pointer, write_file
 from logger import iris
@@ -23,12 +23,12 @@ op_codes: dict[int, OpCode] = {
     0x3: {"params": 2, "comment": "GoTo"}, # first 2 params > GoTo
     0x4: {"params": 2, "comment": "On Failure GoTo"}, # first 1 params > EQ Value, last 2 > GoTo
     0x5: {"params": 3, "comment": "On Chance GoTo"}, # first 1 params > EQ Value, last 2 > GoTo
-    0x6: {"params": 5, "comment": "If Equal GoTo"}, # first 2 params > EQ Value, last 2 > GoTo
-    0x7: {"params": 5, "comment": "If Not Equal GoTo"}, # first 2 params > EQ Value, last 2 > GoTo
-    0x8: {"params": 5, "comment": "If Greater GoTo"}, # first 2 params > EQ Value, last 2 > GoTo
-    0x9: {"params": 5, "comment": "If Less GoTo"}, # first 2 params > EQ Value, last 2 > GoTo
-    0xA: {"params": 5, "comment": "If Greater or Equal GoTo"}, # first 2 params > EQ Value, last 2 > GoTo
-    0xB: {"params": 5, "comment": "If Less or Equal GoTo"}, # first 2 params > EQ Value, last 2 > GoTo
+    0x6: {"params": 5, "comment": "If Equal GoTo"}, # reg(1) + value(2, LE) + jumpOffset(2, LE) = 5 operand bytes
+    0x7: {"params": 5, "comment": "If Not Equal GoTo"}, # reg(1) + value(2, LE) + jumpOffset(2, LE) = 5 operand bytes
+    0x8: {"params": 5, "comment": "If Greater GoTo"}, # reg(1) + value(2, LE) + jumpOffset(2, LE) = 5 operand bytes
+    0x9: {"params": 5, "comment": "If Less GoTo"}, # reg(1) + value(2, LE) + jumpOffset(2, LE) = 5 operand bytes
+    0xA: {"params": 5, "comment": "If Greater or Equal GoTo"}, # reg(1) + value(2, LE) + jumpOffset(2, LE) = 5 operand bytes
+    0xB: {"params": 5, "comment": "If Less or Equal GoTo"}, # reg(1) + value(2, LE) + jumpOffset(2, LE) = 5 operand bytes
     0xC: {"params": 3, "comment": "Register Set"}, # first 1 params > Register, last 2 > Value
     #  LOAD reg($XX), $YY YY
     #              Load $YY YY in "register" $XX
@@ -337,7 +337,7 @@ op_codes: dict[int, OpCode] = {
     #                  - load $00XX in reg($24)
     #                  *Else:
     #                  - load $0002 in reg($10)
-    0x2E: {"params": 1, "comment": "Unknown"},
+    0x2E: {"params": 0, "comment": "Unknown"},  # L2_Effects.txt: 0 operands (loads $000D in reg($23))
     # $2E            : ???
     #                  Effect on registers:
     #                  - load $000D in reg($23)
@@ -372,7 +372,7 @@ op_codes: dict[int, OpCode] = {
     #                  $03 => HP recovery? (see Potion)
     #                  $22 => 'Smoke ball' (escape from battle)
     #                  $25 => 'Curselifter'
-    0x36: {"params": 0, "comment": "Unknown"},
+    0x36: {"params": 1, "comment": "Unknown"},  # L2_Effects.txt: "$36 XX" = 1 operand
     # $36 XX         : ???
     0x37: {"params": 0, "comment": "Weapon Physical Attack"},
     # $37            : Physical attack(?)
@@ -410,7 +410,7 @@ op_codes: dict[int, OpCode] = {
     # $3F XX YY YY   : If Capsule Monster has learned its learnable
     #                  attack number $XX (in range [1, 3])
     #                  => jump to +$YYYY
-    0x40: {"params": 0, "comment": "Unknown"},
+    0x40: {"params": 1, "comment": "Unknown"},  # L2_Effects.txt: "$40 XX" = 1 operand
     # $40 XX         : ???
     0x41: {"params": 0, "comment": "Wait > Checking Situation"},
     # $41            : "Checking situation."
@@ -640,6 +640,35 @@ subroutines = {
 }
 
 
+# Byte index (within the operands) of the 2-byte record-relative jump target, per branching opcode.
+JUMP_OPERAND: dict[int, int] = {
+    0x03: 0, 0x04: 0, 0x05: 1,
+    0x06: 3, 0x07: 3, 0x08: 3, 0x09: 3, 0x0A: 3, 0x0B: 3,
+    0x3F: 1,
+}
+
+
+def rebase_jumps(code: bytes, old_offset: int, new_offset: int) -> bytes:
+    """Move a contiguous script from record offset ``old_offset`` to ``new_offset``.
+
+    Jump targets are record-relative, so every target that points inside the script (including one past
+    its last byte, the "out" idiom) shifts by the same distance. Targets outside it stay as they are.
+    """
+    out = bytearray(code)
+    delta = new_offset - old_offset
+    pos = 0
+    while pos < len(code):
+        opcode = code[pos]
+        size = 1 + op_codes[opcode]["params"]
+        if opcode in JUMP_OPERAND:
+            at = pos + 1 + JUMP_OPERAND[opcode]
+            target = int.from_bytes(code[at:at + 2], "little")
+            if old_offset <= target <= old_offset + len(code):
+                out[at:at + 2] = (target + delta).to_bytes(2, "little")
+        pos += size
+    return bytes(out)
+
+
 class ScriptType(Enum):
     ATTACK = 0x07.to_bytes()
     DEFENSE = 0x08.to_bytes()
@@ -652,7 +681,19 @@ class SubRoutine:
 
 
 class BattleScript:
+    """An L2BASM script (monster attack/defense, capsule attack/reaction, IP effect).
+
+    A script's *reachable* body extends past its first ``0x00`` END: the decision logic branches
+    forward (``0x03/0x04/0x05`` GoTo and ``0x06``-``0x0B`` compares) into small handler blocks
+    (Target/Attack, Defend, Flee, ...). ``read`` follows those branches via ``stack``, so the
+    disassembly spans all reachable blocks -- not just up to the first END. Capsule records store
+    the attack- and reaction-script offsets as two ``u16``s at record+37/+39 (see ``capsule.py``);
+    monsters use the ``0x07``/``0x08`` markers (see ``monster.py``).
+    """
+
     bytecode: bytes
+    reach_end: int
+    """Record-relative offset one past the last reachable instruction (set by ``read``)."""
     _pretty: list[tuple[str, str]]
     _visited: list[int]
     crash_codes = [0x02, 0x31, 0x33, 0x34, 0x38, 0x39, 0x3A, 0x3B]
@@ -712,47 +753,74 @@ class BattleScript:
         self.bytecode = read_file.read(end - start)
 
     @restore_pointer
-    def read(self, offset: int=0) -> None:
+    def read(self, offset: int=0, source: "IO[bytes] | None" = None) -> None:
+        """Disassemble the script from ``source`` (default: the original ROM, ``read_file``).
+
+        Pass ``write_file`` to read the per-seed output instead, e.g. to check what was just written.
+        """
+        file = read_file if source is None else source
+        restore = file.tell()
+        try:
+            self._read(file, offset)
+        finally:
+            file.seek(restore)
+
+    def _read(self, file: "IO[bytes]", offset: int) -> None:
+        self.reach_end = self.offset
         stack: list[int] = [self.pointer]
-        read_file.seek(self.pointer + offset)
+        file.seek(self.pointer + offset)
 
         code: list[tuple[int, bytes, bytes]] = []
         self._pretty = []
         visited = []
         while True:
-            tell = read_file.tell()
+            tell = file.tell()
 
             if tell in visited:
                 if len(stack) == 0:
                     break
                 self.logger.debug(f"{tell} already visited. (continue...)")
-                read_file.seek(stack.pop())
+                file.seek(stack.pop())
                 continue
 
             visited.append(tell)
 
             if tell == self.monster.pointer:
                 self.logger.debug(f"{tell} reached monster pointer. (continue...)")
-                read_file.seek(stack.pop())
+                file.seek(stack.pop())
                 continue
 
-            byte = read_file.read(1)
+            byte = file.read(1)
+            if not byte:  # EOF -- end this path
+                if stack:
+                    file.seek(stack.pop())
+                    continue
+                break
             op_code = byte[0]
+            if op_code not in op_codes:
+                # op_codes is a documented subset (0x00-0x5C); a byte outside it means this path ran
+                # into data (not script). End the path instead of KeyError-ing the whole run.
+                self.logger.warning(f"Unknown AI opcode {op_code:#04x} at {tell:#x}; ending path.")
+                if stack:
+                    file.seek(stack.pop())
+                    continue
+                break
             nr_args = self.get_arguments(op_code)
             comment = op_codes[op_code]["comment"]
 
             offset += 1
             if nr_args > 0:
                 offset += nr_args
-                args = read_file.read(nr_args)
+                args = file.read(nr_args)
             else:
                 args = b""
 
             code.append((tell, byte, args))
+            self.reach_end = max(self.reach_end, tell + 1 + nr_args - self.monster.pointer)
             self._pretty.append((hex(op_code), f"Code -->> {comment}"))
 
             if op_code == 0x0:
-                read_file.seek(stack.pop())
+                file.seek(stack.pop())
                 continue
             if op_code == 0x1:
                 # Execute effect code
@@ -761,11 +829,14 @@ class BattleScript:
                 # Crashes game.
                 self.logger.critical(f"Crash code {hex(op_code)} found.")
             elif op_code == 0x3:
+                # Unconditional GoTo: JUMP to the target -- do NOT fall through to the next byte
+                # (the bytes after a GoTo are handler-block data, reachable only via other branches).
                 assert nr_args == 2
                 assert args
                 jump_offset = int.from_bytes(args[0:2], "little")
                 self._pretty.append((hex(jump_offset), "0 -> Jump Offset"))
-                stack.append(self.monster.pointer + jump_offset)
+                file.seek(self.monster.pointer + jump_offset)
+                continue
             elif op_code == 0x4: # On Failure GoTo > If previous command failed
                 assert nr_args == 2
                 assert args
@@ -784,9 +855,9 @@ class BattleScript:
             elif op_code == 0x6:
                 assert nr_args == 5
                 assert args
-                compare_value = int.from_bytes(args[0:2], "little")
-                compare_against = int.from_bytes(args[2:4], "little")
-                jump_offset = int.from_bytes(args[4:6], "little")
+                compare_value = args[0]  # register index (1 byte)
+                compare_against = int.from_bytes(args[1:3], "little")  # value (2 bytes, LE)
+                jump_offset = int.from_bytes(args[3:5], "little")  # jump offset (2 bytes, LE, record-relative)
                 self._pretty.append((hex(compare_value), "1 -> Compare == (Reg)"))
                 self._pretty.append((hex(compare_against), "2 -> Comparison (Value)"))
                 self._pretty.append((hex(jump_offset), "3 -> Jump Offset"))
@@ -794,9 +865,9 @@ class BattleScript:
             elif op_code == 0x7:
                 assert nr_args == 5
                 assert args
-                compare_value = int.from_bytes(args[0:2], "little")
-                compare_against = int.from_bytes(args[2:4], "little")
-                jump_offset = int.from_bytes(args[4:6], "little")
+                compare_value = args[0]  # register index (1 byte)
+                compare_against = int.from_bytes(args[1:3], "little")  # value (2 bytes, LE)
+                jump_offset = int.from_bytes(args[3:5], "little")  # jump offset (2 bytes, LE, record-relative)
                 self._pretty.append((hex(compare_value), "1 -> Compare != (Reg)"))
                 self._pretty.append((hex(compare_against), "2 -> Comparison (Value)"))
                 self._pretty.append((hex(jump_offset), "3 -> Jump Offset"))
@@ -804,9 +875,9 @@ class BattleScript:
             elif op_code == 0x8:
                 assert nr_args == 5
                 assert args
-                compare_value = int.from_bytes(args[0:2], "little")
-                compare_against = int.from_bytes(args[2:4], "little")
-                jump_offset = int.from_bytes(args[4:6], "little")
+                compare_value = args[0]  # register index (1 byte)
+                compare_against = int.from_bytes(args[1:3], "little")  # value (2 bytes, LE)
+                jump_offset = int.from_bytes(args[3:5], "little")  # jump offset (2 bytes, LE, record-relative)
                 self._pretty.append((hex(compare_value), "1 -> Compare > (Reg)"))
                 self._pretty.append((hex(compare_against), "2 -> Comparison (Value)"))
                 self._pretty.append((hex(jump_offset), "3 -> Jump Offset"))
@@ -814,9 +885,9 @@ class BattleScript:
             elif op_code == 0x9:
                 assert nr_args == 5
                 assert args
-                compare_value = int.from_bytes(args[0:2], "little")
-                compare_against = int.from_bytes(args[2:4], "little")
-                jump_offset = int.from_bytes(args[4:6], "little")
+                compare_value = args[0]  # register index (1 byte)
+                compare_against = int.from_bytes(args[1:3], "little")  # value (2 bytes, LE)
+                jump_offset = int.from_bytes(args[3:5], "little")  # jump offset (2 bytes, LE, record-relative)
                 self._pretty.append((hex(compare_value), "1 -> Compare < (Reg)"))
                 self._pretty.append((hex(compare_against), "2 -> Comparison (Value)"))
                 self._pretty.append((hex(jump_offset), "3 -> Jump Offset"))
@@ -824,9 +895,9 @@ class BattleScript:
             elif op_code == 0xA:
                 assert nr_args == 5
                 assert args
-                compare_value = int.from_bytes(args[0:2], "little")
-                compare_against = int.from_bytes(args[2:4], "little")
-                jump_offset = int.from_bytes(args[4:6], "little")
+                compare_value = args[0]  # register index (1 byte)
+                compare_against = int.from_bytes(args[1:3], "little")  # value (2 bytes, LE)
+                jump_offset = int.from_bytes(args[3:5], "little")  # jump offset (2 bytes, LE, record-relative)
                 self._pretty.append((hex(compare_value), "1 -> Compare >= (Reg)"))
                 self._pretty.append((hex(compare_against), "2 -> Comparison (Value)"))
                 self._pretty.append((hex(jump_offset), "3 -> Jump Offset"))
@@ -834,12 +905,21 @@ class BattleScript:
             elif op_code == 0xB:
                 assert nr_args == 5
                 assert args
-                compare_value = int.from_bytes(args[0:2], "little")
-                compare_against = int.from_bytes(args[2:4], "little")
-                jump_offset = int.from_bytes(args[4:6], "little")
+                compare_value = args[0]  # register index (1 byte)
+                compare_against = int.from_bytes(args[1:3], "little")  # value (2 bytes, LE)
+                jump_offset = int.from_bytes(args[3:5], "little")  # jump offset (2 bytes, LE, record-relative)
                 self._pretty.append((hex(compare_value), "1 -> Compare <= (Reg)"))
                 self._pretty.append((hex(compare_against), "2 -> Comparison (Value)"))
                 self._pretty.append((hex(jump_offset), "3 -> Jump Offset"))
+                stack.append(self.monster.pointer + jump_offset)
+            elif op_code == 0x3F:
+                # Learnable-attack branch: ``3F slot jumpOffset(2, LE)``. The learned-attack block is
+                # reachable only through this jump, so follow it like the other conditional branches.
+                assert nr_args == 3
+                assert args
+                jump_offset = int.from_bytes(args[1:3], "little")
+                self._pretty.append((hex(args[0]), "0 -> Learnable attack slot"))
+                self._pretty.append((hex(jump_offset), "1 -> Jump Offset"))
                 stack.append(self.monster.pointer + jump_offset)
             elif op_code in [0xC, 0xD, 0xE, 0xF, 0x10, 0x16, 0x17, 0x18]:
                 assert nr_args == 3
@@ -873,7 +953,8 @@ class BattleScript:
                 assert nr_args == 2
                 assert args
                 assert args[1:2] == b"\x00"
-                self._pretty.append((hex(args[0]), f"0 -> {subroutines[args[0]]}"))
+                # subroutines documents 0x00-0x24; capsule scripts use higher indices (e.g. 0x25-0x27).
+                self._pretty.append((hex(args[0]), f"0 -> {subroutines.get(args[0], '??? (see L2_Subroutines$42XX.txt)')}"))
                 self._pretty.append((hex(args[1]), "1 -> Empty Byte"))
                 # TODO: read subroutines. (So we could edit it later) (Separate class?)
             elif op_code == 0x43:

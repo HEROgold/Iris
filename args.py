@@ -83,6 +83,17 @@ class Args(argparse.Namespace):
     zero_capsule_command: bool
     zero_gold_command: bool
     fix_softlocks: bool
+    foomy_firebird: bool
+    start_capsule: int | None
+    start_capsule_name: str | None
+    # Sprite extract/import (uncompressed 4bpp <-> PNG). Take a registry name or a headerless hex offset.
+    extract_sprite: str | None
+    import_sprite: str | None
+    sprite_file: str | None
+    sprite_tiles: int | None
+    sprite_width: int
+    sprite_palette: str | None
+    sprite_palette_index: int
 
 
 # TODO: rewrite using herogold.args
@@ -91,7 +102,7 @@ parser.add_argument("-v", "--version", action="version", version=f"{PROJECT_NAME
 parser.add_argument("-d", "--debug", action="store_true", help="Enable debug mode.")
 parser.add_argument("-s", "--seed", type=int, default=int(time()), help="Seed for the randomizer.")
 parser.add_argument("-f", "--file", type=str, help="File to randomize.", required=True)
-parser.add_argument("-gg", "--game_genie_codes", action="append", nargs="+", default=[""], help="Game Genie code to activate (on the ROM), Multiple uses supported.")
+parser.add_argument("-gg", "--game_genie_codes", action="extend", nargs="+", default=[], help="Game Genie codes to write into the ROM. Can be given more than once.")
 # Randomization flags
 parser.add_argument("--character", action="store_true", help="Randomize characters.", default=False)
 parser.add_argument("--item", action="store_true", help="Randomize items and item.", default=False)
@@ -139,6 +150,19 @@ parser.add_argument("--spell_target_limit", action="store_true")
 parser.add_argument("--zero_capsule_command", action="store_true")
 parser.add_argument("--zero_gold_command", action="store_true")
 parser.add_argument("--fix-softlocks", action="store_true")
+parser.add_argument("--foomy-firebird", action="store_true", help="Give capsule Foomy S a Firebird (offense) / Valor (support) battle AI.")
+parser.add_argument("--start-capsule", type=int, choices=range(7), default=None, metavar="SPECIES",
+                    help="Start new games with a capsule: 0 Foomy, 1 Shaggy, 2 Hard Hat, 3 Red Fish, 4 Myconido, "
+                         "5 Raddisher, 6 Armor Dog. Works with any start location.")
+parser.add_argument("--start-capsule-name", type=str, default=None, help="Name for --start-capsule (1-5 ASCII).")
+# Sprite extract/import (uncompressed 4bpp sprites <-> PNG for paint.net). Runs standalone, then exits.
+parser.add_argument("--extract-sprite", type=str, default=None, help="Extract a sprite to PNG. Value is a KNOWN_SPRITES name (e.g. bunny_girls) or a headerless hex offset (e.g. 0x123C00).")
+parser.add_argument("--import-sprite", type=str, default=None, help="Import a PNG back into the ROM. Value is a KNOWN_SPRITES name or a headerless hex offset.")
+parser.add_argument("--sprite-file", type=str, default=None, help="PNG path for --extract-sprite / --import-sprite (default: <name-or-offset>.png).")
+parser.add_argument("--sprite-tiles", type=int, default=None, help="Number of 8x8 tiles (required when addressing a sprite by raw offset).")
+parser.add_argument("--sprite-width", type=int, default=16, help="Sheet width in tiles for raw-offset sprites (default 16). Ignored for registry names.")
+parser.add_argument("--sprite-palette", type=str, default=None, help="Headerless hex offset of the 16-colour BGR555 palette for raw-offset sprites (default 0x133F00).")
+parser.add_argument("--sprite-palette-index", type=int, default=0, help="Which 16-colour slot within the palette region to use (default 0).")
 
 
 args: Args = parser.parse_args(namespace=Args())
