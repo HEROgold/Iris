@@ -23,6 +23,7 @@ from patches.HEROgold import (
     gorem_to_golem,
     guy_the_mage,
     # maxim_starts_with_warp,
+    everyone_learns_reset,
     max_out_party,
     party_toggle_in_elcid,
     set_found_flags_on_story_joins,
@@ -62,6 +63,7 @@ def main() -> None:
     set_found_flags_on_story_joins()  # story joins also set each character's "found/unlocked" flag
 
     apply_patch(args.selected_patch) # TODO: test with others besides Vanilla.
+    everyone_learns_reset()  # the party toggle can remove Maxim, who alone learned Reset in vanilla
     if args.fix_softlocks:
         fix_boltfish()
     if args.foomy_firebird:
