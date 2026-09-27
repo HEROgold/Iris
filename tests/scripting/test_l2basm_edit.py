@@ -47,3 +47,12 @@ def test_unknown_entry_raises() -> None:
     parsed = parse_record(SHARED, {"attack": 0, "defense": 3})
     with pytest.raises(KeyError, match="reaction"):
         replace_entry(parsed.script, "reaction", sequence(end()))
+
+
+def test_replacing_an_entry_inside_another_entrys_path_keeps_that_path() -> None:
+    # attack: 28 (physical attack), 29 (defend), 00 (end); defense enters at +1, inside attack's fall-through
+    parsed = parse_record(bytes.fromhex("28 29 00"), {"attack": 0, "defense": 1})
+    replace_entry(parsed.script, "defense", sequence(flee(), end()))
+    out = assemble(parsed.script, parsed.start)
+    assert out.data[out.labels["attack"] : out.labels["attack"] + 3] == bytes.fromhex("28 29 00")
+    assert out.data[out.labels["defense"] :] == bytes.fromhex("2a 00")

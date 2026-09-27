@@ -1,5 +1,5 @@
 from functools import cache
-from typing import IO, Self
+from typing import IO, Literal, Self
 
 from _types.objects import Cache
 from abc_.pointers import TablePointer
@@ -245,13 +245,21 @@ class Monster(TablePointer):
 
     def replace_attack(self, items: list[ScriptItem]) -> None:
         """Replace the attack script; blocks the defense script also uses stay."""
-        self.external_entries.pop("attack", None)
+        self.replace_script("attack", items)
+
+    def replace_script(self, entry: Literal["attack", "defense"], items: list[ScriptItem]) -> None:
+        """Replace one entry's script; blocks the other entry also uses stay.
+
+        A monster without that script gains one: ``build()`` adds its ``07``/``08`` marker, so the record grows.
+        """
+        self.external_entries.pop(entry, None)
         if self.code is None:
-            self.code = Script(L2BASM, [Label("attack"), *block(items)])
-        elif "attack" not in self._entries():
-            self.code.body = [Label("attack"), *block(items), *self.code.body]
+            self.code = Script(L2BASM, [Label(entry), *block(items)])
+        elif entry not in self._entries():
+            new = [Label(entry), *block(items)]
+            self.code.body = [*new, *self.code.body] if entry == "attack" else [*self.code.body, *new]
         else:
-            replace_entry(self.code, "attack", block(items))
+            replace_entry(self.code, entry, block(items))
 
     def _set_movement(self) -> None:
         if args.aggressive_movement:

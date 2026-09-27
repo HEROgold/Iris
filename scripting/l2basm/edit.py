@@ -42,6 +42,10 @@ def replace_entry(script: Script, entry: str, items: list[Item]) -> None:
 
     Instructions another entry label also reaches stay. Labels stay in place (a label nothing jumps to costs no bytes).
     Unreached Data stays too, so bytes between blocks are kept unless the caller removes them.
+
+    When the entry label sits inside another entry's path (a shared block the other entry falls through or jumps
+    into), putting ``items`` there would run them on that path too. Then the entry label moves to the end of the body
+    with ``items`` after it; ``items`` end with an END (see ``block``), so nothing falls through past them.
     """
     others = [
         item.name for item in script.body if isinstance(item, Label) and item.name != entry and not item.name.startswith("L_")
@@ -50,11 +54,20 @@ def replace_entry(script: Script, entry: str, items: list[Item]) -> None:
     for name in others:
         keep |= reachable(script, name)
     drop = reachable(script, entry) - keep
+    at = _label_index(script)[entry]
+    following = next((i for i in range(at + 1, len(script.body)) if isinstance(script.body[i], Instruction)), None)
+    move = following is not None and following in keep
     new_body: list[Item] = []
     for i, item in enumerate(script.body):
         if i in drop:
             continue
-        new_body.append(item)
         if isinstance(item, Label) and item.name == entry:
+            if move:
+                continue
+            new_body.append(item)
             new_body.extend(items)
+            continue
+        new_body.append(item)
+    if move:
+        new_body.extend([Label(entry), *items])
     script.body = new_body
