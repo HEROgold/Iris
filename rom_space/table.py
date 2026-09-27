@@ -19,6 +19,8 @@ log = logging.getLogger(f"{iris.name}.RomSpace.Table")
 
 
 class TableRecord(Protocol):
+    """A record's bytes. A record may also have ``loaded_bytes``: what it was parsed from (see ``Table._build``)."""
+
     def build(self) -> bytes: ...
 
 
@@ -51,10 +53,14 @@ class Table:
             space.reserve(self.pinned)
         self._sizes: dict[int, int] = {}  # current length of records living outside the region
         self._count = len(records)  # entries on disk; appended records have none until the next write
+        self._synced: list[bytes] = []
+        """Each record's build when it last matched the disk: when it was parsed, or when this table wrote it."""
         if records:
             for start, record in zip(self.starts(), records, strict=True):
+                size = len(record.build())
                 if not self._in_region(start):
-                    self._sizes[start] = len(record.build())
+                    self._sizes[start] = size
+                self._synced.append(getattr(record, "loaded_bytes", None) or self._current(start, size))
         self._vanilla_address = address
 
     @property
@@ -96,22 +102,32 @@ class Table:
         self.file.seek(start)
         return self.file.read(size)
 
+    def _build(self, starts: list[int]) -> tuple[list[bytes], list[bytes]]:
+        """Every record's bytes to write, and every record's own build.
+
+        A record whose build hasn't changed since it last matched the disk keeps the bytes on disk, so edits other
+        patches made in between (raw writes, Game Genie codes, asar) survive a write, a repack or a move.
+        """
+        own = [record.build() for record in self.records]
+        built = list(own)
+        for i, (data, synced) in enumerate(zip(own, self._synced, strict=False)):
+            if i < len(starts) and data == synced:
+                built[i] = self._current(starts[i], len(data))
+        return built, own
+
     # -- steps ------------------------------------------------------------------------------------------
 
     def write(self) -> str:
-        built = [record.build() for record in self.records]
         starts = self.starts()
+        built, own = self._build(starts)
         if len(built) > self._count:
             step = self._grow_entries(built, starts)
-            self.file.flush()
-            log.debug("%s: %s", self.name, step)
-            return step
-        if self._fits(built, starts) and all(
+        elif self._fits(built, starts) and all(
             self._current(s, room) == b + bytes(room - len(b))
             for s, b, room in zip(starts, built, self._rooms(starts), strict=True)
         ):
             return "unchanged"
-        if self._fits(built, starts):
+        elif self._fits(built, starts):
             self._in_place(built, starts)
             step = "in_place"
         elif self._can_repack(built):
@@ -119,6 +135,7 @@ class Table:
             step = "repack"
         else:
             step = self._move_records(built, starts)
+        self._synced = own
         self.file.flush()
         log.debug("%s: %s", self.name, step)
         return step
@@ -231,4 +248,6 @@ class Table:
 
     def move(self) -> None:
         """Force step 4 (used to make room in a full bank)."""
-        self._move_table([record.build() for record in self.records], self.starts())
+        built, own = self._build(self.starts())
+        self._move_table(built, self.starts())
+        self._synced = own

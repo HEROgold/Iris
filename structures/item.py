@@ -176,6 +176,7 @@ class Item(TablePointer):
         elif in_region and rec.script_start is not None and rec.script_start < len(record):
             inst.code = Script(L2BASM, [Data(record[rec.script_start :])])
         inst._validate_requirements()
+        inst.loaded_bytes = inst.build()  # what it was parsed from; Table keeps later raw patches to untouched records
         cls._cache.to_cache(index, inst)
         return inst
 

@@ -90,6 +90,7 @@ class Spell(Pointer):
             msg = f"Spell with index {index} not found."
             raise SpellNotFound(msg)
         inst = cls._from_record(rec)
+        inst.loaded_bytes = inst.build()  # what it was parsed from; Table keeps later raw patches to untouched records
         cls._int_cache.to_cache(index, inst)
         return inst
 

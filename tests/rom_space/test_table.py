@@ -220,3 +220,59 @@ def test_append_without_room_raises_when_not_movable() -> None:
     with pytest.raises(TableNotMovable):
         table.write()
     assert rom.getvalue() == before
+
+
+def _poke(rom: io.BytesIO, at: int, value: bytes) -> None:
+    rom.seek(at)
+    rom.write(value)
+
+
+def test_a_record_another_patch_changed_after_load_keeps_that_change_in_place() -> None:
+    rom = _rom()
+    records = [_Rec(r) for r in RECORDS]
+    table, _ = _table(rom, [])
+    table = Table("t", TABLE, records, REGION_END, file=rom, space=table.space)  # type: ignore[arg-type]
+    _poke(rom, FIRST + 8, b"\xee")  # a raw patch edits record 1 after the table was loaded
+    records[0].data = b"\xa1" * 4
+    assert table.write() == "in_place"
+    assert _record_at(rom, FIRST + 8, 8) == b"\xee" + b"\xb2" * 7
+
+
+def test_a_record_another_patch_changed_after_load_keeps_that_change_through_a_repack() -> None:
+    rom = _rom()
+    records = [_Rec(r) for r in RECORDS]
+    table, _ = _table(rom, [])
+    table = Table("t", TABLE, records, REGION_END, file=rom, space=table.space)  # type: ignore[arg-type]
+    _poke(rom, FIRST + 16, b"\xee")  # record 2
+    records[0].data = b"\xa1" * 12
+    assert table.write() == "repack"
+    assert _record_at(rom, FIRST + 20, 8) == b"\xee" + b"\xc3" * 7
+
+
+def test_a_later_patch_survives_a_second_write() -> None:
+    rom = _rom()
+    records = [_Rec(r) for r in RECORDS]
+    table, _ = _table(rom, [])
+    table = Table("t", TABLE, records, REGION_END, file=rom, space=table.space)  # type: ignore[arg-type]
+    records[0].data = b"\xa1" * 4
+    table.write()
+    _poke(rom, FIRST + 8, b"\xee")  # a raw patch edits record 1 between two writes
+    records[0].data = b"\xa1" * 5
+    table.write()
+    assert _record_at(rom, FIRST + 8, 1) == b"\xee"
+
+
+@dataclass
+class _Loaded(_Rec):
+    loaded_bytes: bytes = b""
+
+
+def test_a_record_read_before_a_later_patch_keeps_that_patch() -> None:
+    rom = _rom()
+    records = [_Loaded(r, r) for r in RECORDS]  # objects parsed before the patch below
+    _poke(rom, FIRST + 8, b"\xee")  # a raw patch edits record 1 before the table is built
+    table, _ = _table(rom, [])
+    table = Table("t", TABLE, records, REGION_END, file=rom, space=table.space)  # type: ignore[arg-type]
+    records[0].data = b"\xa1" * 4
+    table.write()
+    assert _record_at(rom, FIRST + 8, 1) == b"\xee"

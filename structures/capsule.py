@@ -117,7 +117,9 @@ class CapsuleMonster(TablePointer):
     def from_index(cls, index: int) -> Self:
         if index in cls._cache:
             return cls._cache[index]  # type: ignore[return-value]
-        return cls.from_table(table_address(write_file, "capsule"), index)
+        inst = cls.from_table(table_address(write_file, "capsule"), index)
+        inst.loaded_bytes = inst.build()  # what it was parsed from; Table keeps later raw patches to untouched records
+        return inst
 
     @classmethod
     def from_table(cls, address: int, index: int) -> Self:
