@@ -130,7 +130,7 @@ parser.add_argument("--kureji", action="store_true", help="Apply the Kureji Lufi
 # Event patches
 parser.add_argument("--max_world_clock", action="store_true")  # TODO: Implement and set default to True
 parser.add_argument("--open_world_base", action="store_true")  # TODO: Implement and set default to True
-parser.add_argument("--skip_tutorial", action="store_true")  # TODO: Implement and set default to True
+parser.add_argument("--skip-tutorial", "--skip_tutorial", dest="skip_tutorial", action="store_true", help="Skip the Secret Skills Cave tutorial: its flags are set at new game and Maxim starts with Reset.")
 # Patch flags
 parser.add_argument("--aggressive-movement", action="store_true", help="Set all monsters to be aggressive.")
 parser.add_argument("--passive-movement", action="store_true", help="Set all monsters to be passive.")
@@ -191,7 +191,6 @@ args: Args = parser.parse_args(namespace=Args())
 
 assert not args.max_world_clock,"EventPatch not implemented."
 assert not args.open_world_base,"EventPatch not implemented."
-assert not args.skip_tutorial,"EventPatch not implemented."
 assert not args.custom_spawn_city, "Custom starting location not implemented."
 assert args.spawn_location == "Portravia", "Custom starting location not implemented."
 assert not args.unlock_gift_mode, "Patch not implemented."

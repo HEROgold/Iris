@@ -30,7 +30,7 @@ from patches.HEROgold import (
     scale_encounters,
     set_rom_name,
     swap_pierre_danielle_sprites,
-    unlock_all_warp_destinations,
+    apply_new_game_hook,
 )
 from patches.HEROgold.start_capsule import start_capsule
 from patches.RealCritical import (
@@ -80,7 +80,7 @@ def main() -> None:
         apply_game_genie_codes(ELCID_REPORT)
         # UNLOCK_WARP and "7E0C4324" (Maxim knows Warp) are Pro Action Replay RAM codes. They can't be baked
         # into the ROM; decoding them as Game Genie codes wrote 0x3F into random ROM bytes, so
-        # apply_game_genie_codes now rejects them. Warps are unlocked by unlock_all_warp_destinations() below.
+        # apply_game_genie_codes now rejects them. Warps are unlocked by apply_new_game_hook() below.
 
     apply_game_genie_codes(*args.game_genie_codes)
 
@@ -90,8 +90,6 @@ def main() -> None:
     #     max_world_clock()
     # if args.open_world_base:
     #     open_world_base()
-    # if args.skip_tutorial:
-    #     skip_tutorial()
     # if args.treadool_warp:
     #     treadool_warp()
 
@@ -143,7 +141,8 @@ def main() -> None:
     guy_the_mage()
     # Dev/debug patches (not intended for release):
     # maxim_starts_with_warp()  # dev fix: Maxim begins every game knowing Warp (field teleport)
-    unlock_all_warp_destinations()  # dev fix: every Warp destination available from a fresh save
+    # One asar hook at the new-game handoff: every Warp destination unlocked (dev fix), and --skip-tutorial.
+    apply_new_game_hook(unlock_warps=True, skip_tutorial=args.skip_tutorial)
     if args.debug_party:
         max_out_party()
     if args.start_capsule is not None:
