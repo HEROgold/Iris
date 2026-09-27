@@ -173,7 +173,8 @@ def item_script_words(flags: int) -> dict[str, int]:
     }
 
 
-def item_records(source: IO[bytes]) -> list[RecordSource]:
+def item_sources(source: IO[bytes]) -> list[RecordSource]:
+    """Every item record, with or without scripts. ``script_start`` is the first byte after the property words."""
     address = table_address(source, "item")
     starts = table_starts(source, address, ItemObject.count)
     bounds = _bounds(source, starts, table_bound(source, address))
@@ -181,9 +182,12 @@ def item_records(source: IO[bytes]) -> list[RecordSource]:
     for index, start in enumerate(starts):
         flags = _u16(source, start + ITEM_FLAGS)
         entries = {name: _u16(source, start + word) for name, word in item_script_words(flags).items()}
-        if entries:
-            out.append(RecordSource.split("item", index, start, bounds[start], entries))
+        out.append(RecordSource.split("item", index, start, bounds[start], entries, ITEM_WORDS + 2 * flags.bit_count()))
     return out
+
+
+def item_records(source: IO[bytes]) -> list[RecordSource]:
+    return [rec for rec in item_sources(source) if rec.entries or rec.external]
 
 
 def spell_records(source: IO[bytes]) -> list[RecordSource]:
