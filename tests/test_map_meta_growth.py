@@ -5,19 +5,16 @@ same bytes). This proves relocation actually works end to end: add a new exit (g
 past its original size, so it cannot be written in place), write, then read the relocated bytes
 back straight from the ROM to confirm both the new data and the repointed 0x27FCBC entry survive.
 
-Deliberately does NOT re-parse via ``ZoneData(new_pointer)``: ``ZoneData.__init__`` reads through
-``helpers.files.read_file``, which is always the pristine *original* ROM (per this codebase's
-read/write model -- see the iris-conventions skill) and can never see bytes that exist only in the
-expanded, per-seed ``write_file``/``new_file``. So verification here reads ``new_file`` directly and
-replicates just enough of ``ZoneData._parse_offsets``'s section-extraction to check section 2,
-independent of any ``ZoneData``/cache state.
+Deliberately does NOT re-parse via ``ZoneData(new_pointer)``, so the check doesn't depend on the code under test:
+verification reads the session's image (``output_bytes()``) and replicates just enough of
+``ZoneData._parse_offsets``'s section-extraction to check section 2, independent of any ``ZoneData``/cache state.
 
 Caveat: like the rest of this suite, ZoneData._cache/MapMeta don't get reset between tests, only the
 ROM bytes do (via reset_file). Pick a map index no other test in this session touches.
 """
 
 from helpers.addresses import address_from_lorom
-from helpers.files import new_file, write_file
+from helpers.files import output_bytes, write_file
 from structures.map_meta import MapMeta
 from structures.zone import Boundary, Exit
 from tables import MapMetaObject
@@ -66,7 +63,7 @@ def test_adding_an_exit_relocates_zonedata_and_repoints_the_table() -> None:
 
         # Read the pointer table entry straight from the written ROM, independent of the (now
         # stale) MapMeta instance, to prove the table itself was actually repointed.
-        rom = new_file.read_bytes()
+        rom = output_bytes()
         table_offset = MapMetaObject.address + _MAP_INDEX * MapMetaObject.reference_pointer
         raw = int.from_bytes(rom[table_offset:table_offset + 3], "little")
         new_pointer = address_from_lorom(raw)

@@ -1,7 +1,7 @@
 import re
-import shutil
 import struct
 import subprocess
+import tempfile
 from os.path import getsize
 from pathlib import Path
 from typing import cast
@@ -10,7 +10,7 @@ from bitstring import BitArray
 
 from enums.patches import Patch
 from helpers.addresses import address_from_lorom
-from helpers.files import BackupFile, new_file, write_file
+from helpers.files import output_path, write_file
 from logger import iris
 from patches.parser import PatchData, PatchParser
 from structures.item import Item
@@ -35,30 +35,29 @@ def apply_asm_patch(
 
     asar keys header detection off the file *extension*: a ``.smc`` is treated as headered, so every
     write lands 512 bytes too high and the output gains a copier header. We therefore assemble on a
-    headerless ``.sfc`` copy of ``new_file`` and copy the result back, keeping the ``write_file`` handle
-    in sync so later structure writes see asar's output (e.g. the ROM expanded to 3MB).
+    headerless ``.sfc`` copy of the session's image in a temporary directory and read the result back
+    into the image, so later structure writes see asar's output (e.g. the ROM expanded to 3MB). Nothing
+    is written next to the ROM.
 
     ``defines`` become asar ``-Dname=value`` arguments, readable in the patch as ``!name``.
     """
     if include_dirs is None:
         include_dirs = []
-    write_file.flush()  # push buffered structure writes to disk before asar reads new_file
-    sfc = new_file.with_suffix(".sfc")
-    shutil.copyfile(new_file, sfc)
-    cmd = [str(ASAR_EXE), *(f"-I{d}" for d in include_dirs), *(f"-D{k}={v}" for k, v in (defines or {}).items()),
-           f"--fix-checksum={'on' if fix_checksum else 'off'}", "--no-title-check", str(asm_path), str(sfc)]
-    iris.debug(f"Running asar: {cmd}")
-    result = subprocess.run(cmd, capture_output=True, text=True, check=False)  # noqa: S603
-    if result.returncode != 0:
-        sfc.unlink(missing_ok=True)
-        msg = f"asar failed to assemble {asm_path.name}:\n{result.stdout}\n{result.stderr}"
-        raise RuntimeError(msg)
-    data = sfc.read_bytes()
+    with tempfile.TemporaryDirectory(prefix="iris-asar-") as tmp:
+        sfc = Path(tmp)/"rom.sfc"
+        write_file.seek(0)
+        sfc.write_bytes(write_file.read())
+        cmd = [str(ASAR_EXE), *(f"-I{d}" for d in include_dirs), *(f"-D{k}={v}" for k, v in (defines or {}).items()),
+               f"--fix-checksum={'on' if fix_checksum else 'off'}", "--no-title-check", str(asm_path), str(sfc)]
+        iris.debug(f"Running asar: {cmd}")
+        result = subprocess.run(cmd, capture_output=True, text=True, check=False)  # noqa: S603
+        if result.returncode != 0:
+            msg = f"asar failed to assemble {asm_path.name}:\n{result.stdout}\n{result.stderr}"
+            raise RuntimeError(msg)
+        data = sfc.read_bytes()
     write_file.seek(0)
     write_file.write(data)
     write_file.truncate()
-    write_file.flush()
-    sfc.unlink(missing_ok=True)
     iris.info(f"Assembled {asm_path.name} ({len(data)} bytes).")
 
 
@@ -86,7 +85,7 @@ def apply_patch(patch: Patch) -> Path:
     # Vanilla > Frue > Spekkio, Kureji
     iris.info(f"Applying patch {patch.name}")
     if patch == Patch.VANILLA:
-        return new_file
+        return output_path()
     patch_dir = Path(__file__).parent/"patches"
     if patch == Patch.FRUE:
         patch_dir = patch_dir/"Lufia2_-_Frue_Lufia_v7"
@@ -111,7 +110,7 @@ def patch_files(patch: Path) -> Path:
     while ``write_file`` is headerless, so every record offset drops by 512.
     """
     header_size = 512
-    iris.debug(f"Applying patch {patch=} to {new_file=}.")
+    iris.debug(f"Applying patch {patch=}.")
     records = 0
     with patch.open("rb") as pf:
         patch_size = getsize(patch)
@@ -138,9 +137,9 @@ def patch_files(patch: Path) -> Path:
             iris.debug(f"IPS truncate {trim_size=:#08x}")
             write_file.truncate(trim_size)
 
-    write_file.flush()
-    iris.info(f"Patch applied. {records} records written to {new_file.name} (final size {getsize(new_file)} bytes).")
-    return new_file
+    write_file.seek(0, 2)
+    iris.info(f"Patch applied. {records} records written (final size {write_file.tell()} bytes).")
+    return output_path()
 
 
 def unpack_int(string: bytes):
@@ -307,44 +306,41 @@ def apply_absynnonym_patch(name: str) -> None:
 def verify_patch(patch: PatchData, validation: PatchData) -> None:
     # Check if Validation is same as expected data. (before patching)
     iris.debug(f"Verifying patch. {patch=}, {validation=}")
-    with BackupFile(new_file) as backup, backup.open("rb") as file:
-        for (address, _), code in sorted(validation.items()):
-            file.seek(address)
-            written = file.read(len(code))
-            if code != written:
-                msg = f"Validation {address:x} conflicts with unmodified data."
-                raise Exception(msg)
+    for (address, _), code in sorted(validation.items()):
+        write_file.seek(address)
+        written = write_file.read(len(code))
+        if code != written:
+            msg = f"Validation {address:x} conflicts with unmodified data."
+            raise Exception(msg)
 
 
 def verify_after_patch(patch: PatchData) -> None:
     # Apply patch, then check if it is the same as the expected data.
     iris.debug(f"Verifying after patch. {patch=}")
-    with BackupFile(new_file) as backup, backup.open("rb") as file:
-        for (address, _), code in sorted(patch.items()):
-            file.seek(address)
-            written = file.read(len(code))
-            if code != written:
-                msg = f"Patch {address:x} conflicts with modified data."
-                raise Exception(msg)
+    for (address, _), code in sorted(patch.items()):
+        write_file.seek(address)
+        written = write_file.read(len(code))
+        if code != written:
+            msg = f"Patch {address:x} conflicts with modified data."
+            raise Exception(msg)
 
 
 def write_patch(patch: PatchData, validation: PatchData, no_verify: bool = False) -> None:
     iris.debug(f"Writing patch. {patch=}, {validation=}")
-    with BackupFile(new_file) as backup, backup.open("rb+") as f:
-        for patch_dict in (validation, patch):
-            for (address, _), code in sorted(patch_dict.items()):
-                code = cast("bytearray", code)
-                f.seek(address)
+    for patch_dict in (validation, patch):
+        for (address, _), code in sorted(patch_dict.items()):
+            code = cast("bytearray", code)
+            write_file.seek(address)
 
-                if patch_dict is validation:
-                    validate = f.read(len(code))
-                    if validate != code[:len(validate)]:
-                        error = f"Patch {patch:s}-{address:x} did not pass validation."
-                        if no_verify:
-                            pass
-                        else:
-                            raise Exception(error)
-                else:
-                    assert patch_dict is patch
-                    iris.debug(f"Writing {code=} to {address=}")
-                    f.write(code)
+            if patch_dict is validation:
+                validate = write_file.read(len(code))
+                if validate != code[:len(validate)]:
+                    error = f"Patch {patch:s}-{address:x} did not pass validation."
+                    if no_verify:
+                        pass
+                    else:
+                        raise Exception(error)
+            else:
+                assert patch_dict is patch
+                iris.debug(f"Writing {code=} to {address=}")
+                write_file.write(code)

@@ -405,10 +405,8 @@ class ZoneData:
         self.dirty = False
         # Re-register under the new pointer: from_pointer's cache is keyed by construction-time
         # pointer only, so without this a later ZoneData.from_pointer(pointer) (e.g. a second
-        # MapMeta.write() on an already-relocated zone) would miss the cache and try to build a
-        # fresh instance by reading this address from `read_file` -- always the pristine original
-        # ROM, which has no bytes at a freespace address -- producing garbage instead of reusing
-        # this already-correct, in-memory object.
+        # MapMeta.write() on an already-relocated zone) would miss the cache and parse a second,
+        # separate instance of the same blob instead of reusing this in-memory object.
         self._cache.to_cache(pointer, self)
 
     def write_section18_inplace(self) -> None:

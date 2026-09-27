@@ -1,10 +1,9 @@
 from args import args
-from helpers.files import read_file, write_file
+from helpers.files import open_rom, save
 from logger import iris
 from patcher import (
     apply_absynnonym_patch,
     apply_game_genie_codes,
-    apply_patch,
     set_spawn_location,
     start_engine,
 )
@@ -50,11 +49,14 @@ def main() -> None:
     if args.debug:
         iris.setLevel("DEBUG")
 
+    if not args.file:
+        msg = "Pass the ROM to randomize with --file."
+        raise SystemExit(msg)
+    # One read of the ROM, with the base patch (FRUE, Spekkio, Kureji) applied before any structure reads it.
+    open_rom(base=args.selected_patch)
+
     if args.no_patch:
         read_write_all()
-        # Cleanup after testing.
-        write_file.close()
-        # new_file.unlink()
         return
 
     set_rom_name(b"Lufia II (Iris patch)") # For identification purposes.
@@ -62,7 +64,6 @@ def main() -> None:
     party_toggle_in_elcid(require_found=not args.debug_party)  # event-script demo: Elcid townspeople toggle party join/leave
     set_found_flags_on_story_joins()  # story joins also set each character's "found/unlocked" flag
 
-    apply_patch(args.selected_patch) # TODO: test with others besides Vanilla.
     everyone_learns_reset()  # the party toggle can remove Maxim, who alone learned Reset in vanilla
     if args.fix_softlocks:
         fix_boltfish()
@@ -179,9 +180,7 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-read_file.close()
-write_file.close()
+    save()  # the one disk write of the run
 
 # TODO: Implement the following:
 # Create own rom extractor, which can and should extract data from the rom. > well on its way

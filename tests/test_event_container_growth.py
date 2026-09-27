@@ -8,7 +8,7 @@ inside banks $80-$BF for a whole container, so growth raises instead of writing 
 import pytest
 
 from errors import EventFreeSpaceError
-from helpers.files import new_file, write_file
+from helpers.files import output_bytes, write_file
 from structures.event_script import MapEvent
 from structures.event_script.containers import EventScript
 from structures.event_script.instructions import Instruction
@@ -40,11 +40,11 @@ def test_overflowing_a_script_refuses_to_move_the_container_out_of_banks_80_to_b
         script.dirty = True
         assert map_event._needs_relocation()  # noqa: SLF001 (confirm the overflow was actually detected)
         write_file.flush()
-        before = new_file.read_bytes()
+        before = output_bytes()
 
         with pytest.raises(EventFreeSpaceError, match=r"\$80-\$BF"):
             map_event.write()
         write_file.flush()
-        assert new_file.read_bytes() == before
+        assert output_bytes() == before
     finally:
         reset_file()

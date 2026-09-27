@@ -37,7 +37,7 @@ ALL_CITIES = ", ".join([  # noqa: FLY002
 class Args(argparse.Namespace):
     debug: bool
     seed: int
-    file: str
+    file: str | None
     character: bool
     item: bool
     spell: bool
@@ -109,7 +109,7 @@ parser = argparse.ArgumentParser(prog=PROJECT_NAME, description="Randomize Lufia
 parser.add_argument("-v", "--version", action="version", version=f"{PROJECT_NAME}, {VERSION}")
 parser.add_argument("-d", "--debug", action="store_true", help="Enable debug mode.")
 parser.add_argument("-s", "--seed", type=int, default=int(time()), help="Seed for the randomizer.")
-parser.add_argument("-f", "--file", type=str, help="File to randomize.", required=True)
+parser.add_argument("-f", "--file", type=str, default=None, help="File to randomize. Required to build a ROM; importing Iris works without it.")
 parser.add_argument("-gg", "--game_genie_codes", action="extend", nargs="+", default=[], help="Game Genie codes to write into the ROM. Can be given more than once.")
 # Randomization flags
 parser.add_argument("--character", action="store_true", help="Randomize characters.", default=False)

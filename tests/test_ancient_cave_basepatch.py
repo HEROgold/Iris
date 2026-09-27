@@ -13,7 +13,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from helpers.files import new_file, original_file, write_file
+from helpers.files import original_file, output_bytes, write_file
 from patcher import ASAR_EXE
 from patches.archipelago.ancient_cave.basepatch import _ARCHIPELAGO_DIR, apply_ancient_cave_base
 from tests.reset_file import reset_file
@@ -42,7 +42,7 @@ def test_hybrid_matches_full_asar_assembly() -> None:
     try:
         apply_ancient_cave_base()
         write_file.flush()
-        produced = new_file.read_bytes()
+        produced = output_bytes()
         assert produced == reference, "hybrid basepatch output differs from full-asar assembly"
     finally:
         reset_file()

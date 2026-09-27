@@ -105,7 +105,7 @@ class StartingSpells(MutableSequence[Spell], Pointer):
 
     def __init__(self, spells: Iterable[Spell]) -> None:
         self._indices: list[int] = [self._validated(spell).index for spell in spells]
-        # Byte length of the pristine on-ROM list (spell indices + the 0xFF terminator). Kept separate from
+        # Byte length of the on-ROM list when it was read (spell indices + the 0xFF terminator). Kept separate from
         # the in-memory list so write() can reflow later records against the ORIGINAL length; overwritten by
         # from_pointer to the value actually read from the ROM.
         self._rom_length = len(self._indices) + 1
@@ -173,14 +173,14 @@ class StartingSpells(MutableSequence[Spell], Pointer):
         own EXP/equipment and every later character's record. We reproduce that shift in the output ROM;
         any growth is absorbed by the unused padding after the last record.
 
-        This is a **terminal write** for the party-template block: it copies the record tail from the
-        pristine source ROM, so it must run BEFORE the fixed-offset EXP/equipment writers in
-        :meth:`PlayableCharacter.write` (otherwise it would clobber their values back to vanilla). Grow at
+        This is a **terminal write** for the party-template block: it copies the record tail as it stands in
+        the image at its original offset, so it must run BEFORE the fixed-offset EXP/equipment writers in
+        :meth:`PlayableCharacter.write` (otherwise it would copy their old values over the new ones). Grow at
         most one spell list per run; growing a list moves Iris' read-side EXP/equipment offsets out of sync
         with the shifted layout, so a grown character's other template fields can no longer be written.
         """
         list_start = self.pointer
-        old_len = self._rom_length  # pristine list length read from the source ROM (+ 0xFF terminator)
+        old_len = self._rom_length  # list length when it was read (+ 0xFF terminator)
         new_bytes = bytes(self._indices) + bytes([SPELL_TERMINATOR])
 
         block_end = InitialEquipObject.pointers[-1] + RECORD_TAIL_AFTER_EQUIP  # end of last record (exclusive)
@@ -342,8 +342,8 @@ class PlayableCharacter(TablePointer):
         # FIXME: some data are shuffled after writing.
         iris.debug(f"Writing PlayableCharacter {self.index} {self.name!r} → {self.pointer=:#08x}")
 
-        # Reflow the party-template block FIRST: it copies this record's tail (incl. EXP/equipment) from the
-        # pristine ROM, so the fixed-offset xp/equipment writers below must run afterwards to keep their values.
+        # Reflow the party-template block FIRST: it copies this record's tail (incl. EXP/equipment) as it stands,
+        # so the fixed-offset xp/equipment writers below must run afterwards to keep their values.
         self.starting_spells.write()
 
         level_start = CharLevelObject.pointers[self.index]

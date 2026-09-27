@@ -1,106 +1,130 @@
-"""Contains files that are used for the project, also contains a file that is opened for fast reading.
-Don't forget to close the file after importing from this module!
-```python
-from helpers.files import file
-file.close()
-```
+"""The ROM session every structure reads and writes (HER-221).
+
+``read_file`` and ``write_file`` are views of one in-memory image, the active :class:`api.Rom` session. Both see the
+same bytes, so a structure can't read the original ROM behind an earlier patch's back. Nothing is written to disk
+until :func:`save`.
+
+The CLI opens the session explicitly (:func:`open_rom`). Anything else that touches ``read_file`` / ``write_file``
+first opens a default session from ``--file``, so tests and scripts keep working unchanged. Importing this module
+(or any structure) doesn't need ``--file``.
+
+``original_file`` (the headerless source ROM on disk) and ``new_file`` (where :func:`save` writes by default) are
+resolved on first use.
 """
 
-import shutil
 from collections.abc import Callable
 from pathlib import Path
-from types import TracebackType
-from typing import IO, Any, Literal
+from typing import TYPE_CHECKING, Any
 
+from api.rom import Rom, RomView
 from args import args
-from logger import iris
 
 # Converts a ROM file to a different extension, and removes a header if present.
 from helpers.extension import convert_rom
+from logger import iris
 
 
-# Below this many bytes a write is logged with its full hex; larger writes (asar's whole-ROM rewrite,
-# sprite/tile blobs) log only their length so a single line never balloons to megabytes.
-_HEX_LOG_LIMIT = 32
+if TYPE_CHECKING:
+    from enums.patches import Patch
 
 
-class LoggingFile:
-    """Transparent proxy around the per-seed ROM handle that traces every mutation to ``iris.log``.
+_session: Rom | None = None
 
-    Nearly every ROM write in Iris ultimately lands here as ``write_file.seek(addr); write_file.write(bytes)``
-    (structure ``.write()`` methods, RealCritical raw writes, chest/event/zone writers, ``update_pointer_table``).
-    Wrapping the handle once instruments all of them at ``.debug`` with zero per-callsite edits, naming the
-    exact address and bytes changed. All other attributes/methods delegate to the real handle, so the proxy is
-    behaviourally identical to the file object it wraps.
-    """
 
-    def __init__(self, file: IO[bytes]) -> None:
-        self._file = file
-        self._offset = file.tell()
+def _source() -> Path:
+    if not args.file:
+        msg = "No ROM session: pass --file, or open one with helpers.files.open_rom()."
+        raise RuntimeError(msg)
+    return convert_rom(Path(args.file), ".smc")
 
-    def __getattr__(self, name: str) -> Any:  # noqa: ANN401 - transparent delegation to the wrapped handle
-        return getattr(self._file, name)
 
+def output_path(source: Path | None = None) -> Path:
+    """Where :func:`save` writes by default: the source ROM's name with the seed appended."""
+    source = _source() if source is None else source
+    return source.with_stem(f"{source.stem}-{args.seed}").with_suffix(source.suffix)
+
+
+def use(rom: Rom | None) -> None:
+    """Make ``rom`` the active session (``None`` drops it; the next use opens the default one again)."""
+    global _session  # noqa: PLW0603
+    _session = rom
+
+
+def open_rom(path: Path | None = None, base: "Patch | None" = None) -> Rom:
+    """Read ``path`` (default: ``--file``) into a new active session and apply the base patch to it."""
+    rom = Rom.open(_source() if path is None else convert_rom(Path(path), ".smc"))
+    use(rom)
+    if base is not None:
+        from patcher import apply_patch  # noqa: PLC0415 - patcher imports this module
+
+        apply_patch(base)
+    return rom
+
+
+def session() -> Rom:
+    """The active session, opening the default one (``--file``, no base patch) on first use."""
+    if _session is None:
+        iris.debug("Opening the default ROM session from --file.")
+        return open_rom()
+    return _session
+
+
+def save(path: Path | None = None) -> Path:
+    """Write the session's image to ``path`` (default: :func:`output_path`). The one disk write of a run."""
+    rom = session()
+    path = output_path(rom.source) if path is None else path
+    rom.save(path)
+    return path
+
+
+def output_bytes() -> bytes:
+    """A copy of the current image: what :func:`save` would write."""
+    return bytes(session().image)
+
+
+class _SessionFile:
+    """``read_file`` / ``write_file``: forwards every call to the active session's read or write view."""
+
+    def __init__(self, view: str) -> None:
+        self._view = view
+
+    def _target(self) -> RomView:
+        return getattr(session(), self._view)
+
+    def __getattr__(self, name: str) -> Any:  # noqa: ANN401 - transparent delegation, like a file object
+        return getattr(self._target(), name)
+
+    def __repr__(self) -> str:
+        return f"<{self._view} view of the active ROM session>"
+
+    # The hot paths, forwarded without __getattr__.
     def seek(self, offset: int, whence: int = 0) -> int:
-        self._offset = self._file.seek(offset, whence)
-        return self._offset
+        return self._target().seek(offset, whence)
 
-    def write(self, data: Any) -> int:  # noqa: ANN401 - accepts any bytes-like, like the real handle
-        addr = self._offset
-        detail = f", {bytes(data).hex()=}" if len(data) <= _HEX_LOG_LIMIT else ""
-        iris.debug(f"write_file: {addr=:#08x} len={len(data)}{detail}")
-        written = self._file.write(data)
-        self._offset += written
-        return written
+    def tell(self) -> int:
+        return self._target().tell()
 
     def read(self, size: int = -1, /) -> bytes:
-        data = self._file.read(size)
-        self._offset += len(data)
-        return data
+        return self._target().read(size)
 
-    def truncate(self, size: int | None = None) -> int:
-        iris.debug(f"write_file: truncate {size=}")
-        return self._file.truncate(size)
-
-    def flush(self) -> None:
-        iris.debug("write_file: flush")
-        self._file.flush()
+    def write(self, data: bytes | bytearray | memoryview) -> int:
+        return self._target().write(data)
 
 
-original_file = convert_rom(Path(args.file), ".smc")
-read_file = original_file.open("rb")
-"""Opened file, make sure you close this somewhere in the program!"""
-
-new_file = original_file.with_stem(f"{original_file.stem}-{args.seed}").with_suffix(original_file.suffix)
-write_file = LoggingFile(new_file.open("wb+"))
-"""Opened file, make sure you close this somewhere in the program!"""
-shutil.copy(original_file, new_file)
+read_file = _SessionFile("reader")
+"""The active session's image, read-only. Same bytes as ``write_file``."""
+write_file = _SessionFile("writer")
+"""The active session's image. Writes stay in memory until :func:`save`."""
 
 
-
-class BackupFile:
-    def __init__(self, file: Path) -> None:
-        self.file = file
-
-    def __enter__(self) -> Path:
-        self.original = self.file
-        self.temp = self.original.with_suffix(".tmp")
-        shutil.copy(self.original, self.temp)
-        return self.temp
-
-    def __exit__(
-        self,
-        exc_type: type | None,
-        exc_value: Any | None,
-        traceback: TracebackType | None,
-    ) -> None | Literal[False]:
-        if exc_type or exc_value or traceback:
-            return False
-
-        new = self.temp.with_stem(f"{self.temp.stem}").with_suffix(self.original.suffix)
-        shutil.copy(self.temp, new)
-        self.temp.unlink()
-        return None
+def __getattr__(name: str) -> Path:
+    """``original_file`` and ``new_file``, resolved from the session (or ``--file``) on first use."""
+    if name == "original_file":
+        return session().source or _source()
+    if name == "new_file":
+        return output_path(session().source)
+    msg = f"module {__name__!r} has no attribute {name!r}"
+    raise AttributeError(msg)
 
 
 def restore_pointer[F, **P](func: Callable[P, F]) -> Callable[P, F]:

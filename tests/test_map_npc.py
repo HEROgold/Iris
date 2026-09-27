@@ -9,7 +9,7 @@ Uses Elcid (map 0x03), the map `patches/HEROgold/party_toggle.py` edits in place
 import pytest
 
 from errors import EventFreeSpaceError
-from helpers.files import new_file, write_file
+from helpers.files import output_bytes, write_file
 from structures.event_script.instructions import Instruction
 from structures.map_npc import add_npc
 from structures.zone import Zone
@@ -29,10 +29,10 @@ def test_adding_an_npc_refuses_to_move_the_event_container_out_of_banks_80_to_bf
         add_npc(zone, x=10, y=12, sprite_index=5, talk_instructions=[Instruction(0, _END_OPCODE, [])])
         assert zone.event.npc_script.dirty
         write_file.flush()
-        before = new_file.read_bytes()
+        before = output_bytes()
         with pytest.raises(EventFreeSpaceError, match=r"\$80-\$BF"):
             zone.write_events()
         write_file.flush()
-        assert new_file.read_bytes() == before
+        assert output_bytes() == before
     finally:
         reset_file()

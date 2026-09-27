@@ -5,7 +5,7 @@ relocate_pointer_table_entry) which the ROM fixture in conftest.py already provi
 """
 
 from errors import EventFreeSpaceError
-from helpers.files import new_file, write_file
+from helpers.files import output_bytes, write_file
 from helpers.freespace import BANK_MASK, REACH, FreeSpaceAllocator, relocate_pointer_table_entry
 from tests.reset_file import reset_file
 
@@ -104,7 +104,7 @@ def test_relocate_pointer_table_entry_writes_raw_value_without_encode() -> None:
         address, index, size = 0x1000, 2, 2
         relocate_pointer_table_entry(address, index, size, 0x1234)
         write_file.flush()
-        rom = new_file.read_bytes()
+        rom = output_bytes()
         assert rom[address + index * size: address + index * size + size] == (0x1234).to_bytes(2, "little")
     finally:
         reset_file()
@@ -115,7 +115,7 @@ def test_relocate_pointer_table_entry_applies_encode() -> None:
         address, index, size = 0x1000, 2, 3
         relocate_pointer_table_entry(address, index, size, 0x90000, encode=lambda offset: offset + 1)
         write_file.flush()
-        rom = new_file.read_bytes()
+        rom = output_bytes()
         assert rom[address + index * size: address + index * size + size] == (0x90001).to_bytes(3, "little")
     finally:
         reset_file()

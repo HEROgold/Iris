@@ -18,7 +18,7 @@ from typing import IO
 
 from constants import EXPANDED_ROM_SIZE, RESERVED_REGIONS
 from errors import NoFreeSpace
-from helpers.files import write_file
+from helpers.files import session, write_file
 from helpers.rom_expansion import ensure_rom_expanded
 
 
@@ -184,18 +184,14 @@ class FreeSpace:
                 outer.extend(journal)
 
 
-_pool: FreeSpace | None = None
-
-
 def pool() -> FreeSpace:
-    """The shared pool on ``write_file``. Built on first use, after base patches have been applied."""
-    global _pool  # noqa: PLW0603
-    if _pool is None:
+    """The active session's pool on ``write_file``. Built on first use, after base patches have been applied."""
+    rom = session()
+    if rom.pool is None:
         ensure_rom_expanded(EXPANDED_ROM_SIZE)
-        _pool = FreeSpace(write_file, EXPANSION, RESERVED_REGIONS)
-    return _pool
+        rom.pool = FreeSpace(write_file, EXPANSION, RESERVED_REGIONS)
+    return rom.pool
 
 
 def reset_pool() -> None:
-    global _pool  # noqa: PLW0603
-    _pool = None
+    session().pool = None

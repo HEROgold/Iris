@@ -17,7 +17,7 @@ from constants import (
     SCALE_ENCOUNTERS_TABLE,
     SCALE_ENCOUNTERS_TABLE_SIZE,
 )
-from helpers.files import new_file, read_file, write_file
+from helpers.files import original_file, output_bytes, read_file, write_file
 from patches.HEROgold.scale_encounters import (
     MAX_LEVEL,
     MIN_LEVEL,
@@ -51,8 +51,7 @@ def _reset_rom() -> None:
     patch grows the ROM to 4MB, so without dropping the tail the next test would still see the
     reserved region occupied and the patch's own freespace guard would (correctly) refuse to bake.
     """
-    read_file.seek(0)
-    data = read_file.read()
+    data = original_file.read_bytes()
     write_file.seek(0)
     write_file.write(data)
     write_file.truncate(len(data))
@@ -103,7 +102,7 @@ def test_bake_writes_the_reserved_region() -> None:
         table = _build_level_table(random.Random(_SEED))
         _write_scale_data(table, _LOW, _HIGH)
         write_file.flush()
-        rom = new_file.read_bytes()
+        rom = output_bytes()
 
         assert rom[SCALE_ENCOUNTERS_TABLE:SCALE_ENCOUNTERS_TABLE + SCALE_ENCOUNTERS_TABLE_SIZE] == table
         assert rom[SCALE_ENCOUNTERS_LOW] == _LOW_BYTE
@@ -116,7 +115,7 @@ def test_full_patch_assembles_over_the_baked_data() -> None:
     try:
         scale_encounters(_LOW, _HIGH)
         write_file.flush()
-        rom = new_file.read_bytes()
+        rom = output_bytes()
 
         assert len(rom) == SCALE_ENCOUNTERS_ROM_SIZE, "the patch should expand the ROM to 4MB"
         # asar must not have disturbed the data written before it ran...
@@ -140,5 +139,4 @@ def test_reserved_region_is_blank_in_the_base_rom() -> None:
     """
     assert SCALE_ENCOUNTERS_REGION.start >= _BASE_ROM_SIZE
     assert SCALE_ENCOUNTERS_REGION.stop <= SCALE_ENCOUNTERS_ROM_SIZE
-    read_file.seek(0, 2)
-    assert read_file.tell() <= _BASE_ROM_SIZE, "base ROM is larger than expected; re-check the reservation"
+    assert len(original_file.read_bytes()) <= _BASE_ROM_SIZE, "base ROM is larger than expected; re-check the reservation"
