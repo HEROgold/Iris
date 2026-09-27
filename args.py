@@ -140,7 +140,7 @@ parser.add_argument("--equip-anywhere", action="store_true", help="Any item can 
 parser.add_argument("--custom_spawn_city", action="store_true")
 parser.add_argument("--spawn_location", action="store", default="portravia", help="Set the starting location. Default is Portravia. Available locations:\n" + ALL_CITIES)
 parser.add_argument("--capsule_feeding_bonus", action="store_true")
-parser.add_argument("--clear_initial_spells", action="store_true")
+parser.add_argument("--clear-initial-spells", "--clear_initial_spells", dest="clear_initial_spells", action="store_true", help="Characters join without their starting spells (absynnonym patch). Not implied by --debug.")
 parser.add_argument("--eat_dragon_eggs", action="store_true")
 parser.add_argument("--no_boat_encounters", action="store_true")
 parser.add_argument("--secondary_tool", action="store_true")
@@ -241,7 +241,7 @@ if args.debug:
     args.skip_tutorial = True
     args.treadool_warp = True
     args.capsule_feeding_bonus = True
-    args.clear_initial_spells = True
+    # Not --clear-initial-spells: check ROMs need the party's vanilla spells (Selan's Flash, MP to restore).
     args.eat_dragon_eggs = True
     args.no_boat_encounters = True
     args.secondary_tool = True
