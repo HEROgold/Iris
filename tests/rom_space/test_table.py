@@ -182,3 +182,41 @@ def test_a_fresh_table_knows_the_size_of_a_moved_record() -> None:
     assert again.write() == "unchanged"
     again.records[0] = _Rec(b"\xa2" * 40)
     assert again.write() == "in_place"
+
+
+def _all_entries(rom: io.BytesIO, count: int, table: int = TABLE) -> list[int]:
+    rom.seek(table)
+    raw = rom.read(2 * count)
+    return [table + int.from_bytes(raw[2 * i : 2 * i + 2], "little") for i in range(count)]
+
+
+def test_append_that_fits_the_slack_repacks_with_one_more_entry() -> None:
+    rom = _rom()
+    table, _ = _table(rom, RECORDS)
+    assert table.append(_Rec(b"\xd4\xd4")) == COUNT  # type: ignore[arg-type]
+    assert table.write() == "repack"
+    first = TABLE + 2 * (COUNT + 1)
+    assert _all_entries(rom, COUNT + 1) == [first, first + 8, first + 16, first + 24]
+    assert _record_at(rom, first + 24, 2) == b"\xd4\xd4"
+    assert table.starts() == [first, first + 8, first + 16, first + 24]
+    assert table.write() == "unchanged"
+
+
+def test_append_without_room_moves_the_table_when_movable() -> None:
+    rom = _rom()
+    table, _ = _table(rom, RECORDS, movable=True)
+    table.append(_Rec(b"\xd4" * 8))  # type: ignore[arg-type]
+    assert table.write() == "move_table"
+    assert bank_of(table.address) == bank_of(EXPANSION.start)
+    starts = _all_entries(rom, COUNT + 1, table.address)
+    assert [_record_at(rom, s, 8) for s in starts] == [*RECORDS, b"\xd4" * 8]
+
+
+def test_append_without_room_raises_when_not_movable() -> None:
+    rom = _rom()
+    before = rom.getvalue()
+    table, _ = _table(rom, RECORDS)
+    table.append(_Rec(b"\xd4" * 8))  # type: ignore[arg-type]
+    with pytest.raises(TableNotMovable):
+        table.write()
+    assert rom.getvalue() == before

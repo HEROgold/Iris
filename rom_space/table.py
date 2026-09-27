@@ -50,6 +50,7 @@ class Table:
         if space is not None:
             space.reserve(self.pinned)
         self._sizes: dict[int, int] = {}  # current length of records living outside the region
+        self._count = len(records)  # entries on disk; appended records have none until the next write
         if records:
             for start, record in zip(self.starts(), records, strict=True):
                 if not self._in_region(start):
@@ -73,9 +74,15 @@ class Table:
         return self.address + 2 * index
 
     def starts(self) -> list[int]:
+        """Where each record on disk starts. Records appended since the last write have no start yet."""
         self.file.seek(self.address)
-        raw = self.file.read(2 * len(self.records))
-        return [self.address + int.from_bytes(raw[2 * i : 2 * i + 2], "little") for i in range(len(self.records))]
+        raw = self.file.read(2 * self._count)
+        return [self.address + int.from_bytes(raw[2 * i : 2 * i + 2], "little") for i in range(self._count)]
+
+    def append(self, record: TableRecord) -> int:
+        """Add a record at the end; returns its index. ``write()`` adds its entry (repack or whole-table move)."""
+        self.records.append(record)
+        return len(self.records) - 1
 
     def _in_region(self, start: int) -> bool:
         return self.address <= start < self.region_end
@@ -94,6 +101,11 @@ class Table:
     def write(self) -> str:
         built = [record.build() for record in self.records]
         starts = self.starts()
+        if len(built) > self._count:
+            step = self._grow_entries(built, starts)
+            self.file.flush()
+            log.debug("%s: %s", self.name, step)
+            return step
         if self._fits(built, starts) and all(
             self._current(s, room) == b + bytes(room - len(b))
             for s, b, room in zip(starts, built, self._rooms(starts), strict=True)
@@ -111,6 +123,16 @@ class Table:
         log.debug("%s: %s", self.name, step)
         return step
 
+    def _grow_entries(self, built: list[bytes], starts: list[int]) -> str:
+        """Appended records need more entries, which shifts every record: repack if the region has room, else move."""
+        if self._can_repack(built):
+            self._repack(built, starts)
+            step = "repack"
+        else:
+            step = self._move_table(built, starts)
+        self._count = len(built)
+        return step
+
     def _fits(self, built: list[bytes], starts: list[int]) -> bool:
         return all(len(b) <= room for b, room in zip(built, self._rooms(starts), strict=True))
 
@@ -124,7 +146,7 @@ class Table:
                 self._sizes[start] = len(data)
 
     def _first_record(self) -> int:
-        return self.address + 2 * len(self.records)
+        return self.address + 2 * len(self.records)  # after a repack, including appended records
 
     def _can_repack(self, built: list[bytes]) -> bool:
         if any(self._first_record() <= p < self.region_end for p in self.pinned):
