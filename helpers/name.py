@@ -74,22 +74,32 @@ def find_substring_in_rom(target: bytes) -> int | None:
 
 def create_compression_reference(address: int, copy_size: int) -> bytes:
     """
-    Create the 2-byte compression reference.
+    Create the 2-byte operand of a ``0x0A`` back-reference.
+
+    The game reads it as a little-endian word: the low 12 bits are the source's offset from ``$87:8000``
+    (file ``0x38000``), the high 4 bits are ``copy_size - 2`` (terrorwave ``parse_name``).
 
     Args:
-        address: The address to copy from
-        copy_size: Number of bytes to copy from address
+        address: File offset to copy from, inside the compressed-name window
+        copy_size: Number of bytes to copy from address (3-17)
     """
-    return BitArray(uint=((address & 0xFFF) << 4) | ((copy_size - 2) & 0xF), length=16).tobytes()
+    offset = address - COMPRESSED_NAMES_START
+    if not 0 <= offset <= MAX_ADDRESS_OFFSET:
+        msg = f"back-reference source {address:#x} is outside the name window"
+        raise ValueError(msg)
+    return (((copy_size - 2) & 0xF) << 12 | offset).to_bytes(2, "little")
 
 
-def write_compressed_name(pointer: int, name: bytes) -> None:
+def compress_name(pointer: int, name: bytes) -> bytes:
     """
-    Write a name to ROM with compression.
+    The bytes that encode ``name`` at ``pointer``, ending with the ``0x00`` terminator. Writes nothing.
+
+    ``pointer`` matters: a run of the name is replaced by a back-reference only when the same bytes already sit in
+    the name window before ``pointer``, so the same name encodes differently at different addresses.
 
     Args:
-        pointer: ROM address where to write the compressed name
-        name: The name string to compress and write
+        pointer: ROM address the compressed name will be written to
+        name: The name to compress, without terminator
     """
     # O(n^2)
     # First tries to find end to front matches
@@ -99,8 +109,7 @@ def write_compressed_name(pointer: int, name: bytes) -> None:
     # then
     # World > orld > rld > ld
     # etc.
-    write_file.seek(pointer)
-
+    out = bytearray()
     written_bytes = 0
     while written_bytes < len(name):
         # Try to find the longest substring that exists elsewhere in ROM. Also store it's size.
@@ -113,8 +122,8 @@ def write_compressed_name(pointer: int, name: bytes) -> None:
             target_address = find_substring_in_rom(substring)
 
             if target_address is not None:
-                # Avoid self-referencing.
-                if target_address >= pointer + written_bytes:
+                # Only reference bytes before the name: the old name is still at pointer while this runs.
+                if target_address + length > pointer:
                     continue
 
                 best_match = target_address
@@ -122,36 +131,22 @@ def write_compressed_name(pointer: int, name: bytes) -> None:
                 break
 
         if best_match and size > MIN_COMPRESSION_LENGTH:
-            # Write compression reference.
-            write_file.write(COMPRESS)
-            reference_bytes = create_compression_reference(best_match, size)
-            write_file.write(reference_bytes)
+            out += COMPRESS + create_compression_reference(best_match, size)
             written_bytes += size
         else:
-            # Write literal byte
-            write_file.write(name[written_bytes:written_bytes+1])
+            out += name[written_bytes:written_bytes+1]
             written_bytes += 1
 
-    # Write null terminator
-    # write_file.write(END)
+    return bytes(out + END)
 
-def test_compression_round_trip(name: bytes, test_pointer: int = 0x100000) -> bool:
+
+def write_compressed_name(pointer: int, name: bytes) -> None:
     """
-    Test that compression and decompression work correctly for a given name.
+    Write a name to ROM with compression, terminator included (see :func:`compress_name`).
 
     Args:
-        name: The name to test
-        test_pointer: ROM address to use for testing (should be safe area)
-
-    Returns:
-        True if round-trip is successful, False otherwise
+        pointer: ROM address where to write the compressed name
+        name: The name string to compress and write
     """
-    # Write compressed name
-    write_compressed_name(test_pointer, name)
-
-    # Read it back
-    result = read_compressed_name(test_pointer)
-
-    # Check if they match (accounting for null terminator)
-    expected = name.encode("ascii") + END
-    return result == expected
+    write_file.seek(pointer)
+    write_file.write(compress_name(pointer, name))

@@ -17,7 +17,7 @@ from helpers.addresses import address_to_lorom
 from helpers.bits import read_little_int
 from helpers.files import read_file, restore_pointer, write_file
 from helpers.freespace import relocate_pointer_table_entry, zone_data_allocator
-from helpers.name import read_as_decompressed_name, write_compressed_name
+from helpers.name import compress_name, read_as_decompressed_name
 from logger import iris
 from structures.event_script import EventScript, MapEvent, ZoneEventManager
 from structures.zone_data_pointers import zone_data_pointers
@@ -655,11 +655,9 @@ class Zone:
     def write(self) -> None:
         """Write zone name to ROM.
 
-        If the zone name has been modified via set_name(), this will:
-        1. Check if the new compressed name fits in the original space
-        2. If not, allocate new freespace for the name
-        3. Write the compressed name to the appropriate location
-        4. Update the zone's start pointer if relocated
+        A name set through ``name`` is compressed for this zone's address and written over the old one, padded with
+        spaces to the old length. A name that doesn't fit raises ``ValueError`` and writes nothing: moving a name
+        elsewhere isn't supported yet.
 
         If the name hasn't been modified, writes back the original compressed bytes.
         """
@@ -672,56 +670,21 @@ class Zone:
             write_file.write(compressed_name)
             return
 
-        # Name was modified, need to compress and check space
-        from io import BytesIO
-
-
-        # Calculate how much space the new compressed name will take
-        # Write to a temporary buffer to measure size
-        temp_buffer = BytesIO()
-        original_pos = write_file.tell()
-
-        # Temporarily redirect write_file to our buffer
-        import helpers.files
-        old_write_file = helpers.files.write_file
-        helpers.files.write_file = temp_buffer
-
-        try:
-            write_compressed_name(0, self._modified_name)
-            new_compressed_size = temp_buffer.tell()
-            compressed_bytes = temp_buffer.getvalue()
-        finally:
-            # Restore original write_file
-            helpers.files.write_file = old_write_file
-            write_file.seek(original_pos)
-
-        # Calculate available space at original location
-        original_compressed = self.read_compressed_name(self.start)
-        original_size = len(original_compressed)
+        # Encode at the zone's own address (back-references depend on it) without writing anything yet.
+        compressed_bytes = compress_name(self.start, self._modified_name)
         available_space = self.end - self.start
-
-        if new_compressed_size <= available_space:
-            # Fits in original location, write it there
-            write_file.seek(self.start)
-            write_file.write(compressed_bytes)
-            # Pad with zeros if shorter than original to avoid leftover data
-            if new_compressed_size < original_size:
-                write_file.write(b"\x00" * (original_size - new_compressed_size))
-        else:
-            # Need to allocate new space
-            # TODO: Implement freespace allocation
-            # For now, write a warning and fall back to original location
-            iris.warning(
-                f"Zone {self.index} '{self.clean_name.decode()}': "
-                f"New compressed name size ({new_compressed_size} bytes) exceeds "
-                f"available space ({available_space} bytes). "
-                f"Freespace allocation not yet implemented. Name change may cause corruption!",
+        if len(compressed_bytes) > available_space:
+            # TODO: place the name through rom_space and repoint the map's name pointer (HER-244 left this out).
+            msg = (
+                f"Zone {self.index}: compressed name {self._modified_name!r} needs {len(compressed_bytes)} bytes, "
+                f"only {available_space} are free at {self.start:#x}."
             )
-            # Write anyway (will overwrite next zone!)
-            write_file.seek(self.start)
-            write_file.write(compressed_bytes)
-
-        return
+            raise ValueError(msg)
+        # Names are packed back to back, and Zone._find_zone_address walks them terminator by terminator, so a
+        # shorter name keeps its old span: pad with spaces before the terminator, not with extra 0x00 names.
+        padding = b" " * (available_space - len(compressed_bytes))
+        write_file.seek(self.start)
+        write_file.write(compressed_bytes[:-1] + padding + compressed_bytes[-1:])
 
     @staticmethod
     def read_compressed_name(pointer: int) -> bytes:
