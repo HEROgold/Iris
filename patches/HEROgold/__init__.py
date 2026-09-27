@@ -20,7 +20,7 @@ from scripting.l2basm import L2BASM
 from structures import CapsuleMonster, Item, Monster, Spell
 from scripting.l2basm.helpers import (
     Target,
-    cast_spell_free,
+    capsule_attack,
     end,
     flee,
     if_ge,
@@ -30,7 +30,9 @@ from scripting.l2basm.helpers import (
     resist,
     sequence,
     set_reg,
+    target,
 )
+from structures.capsule_attacks import append_capsule_attack, write_capsule_attacks
 from structures.character import InitialEquipment, PlayableCharacter
 from structures.chest import AddressChest, PointerChest
 from structures.ip_attack import IPAttack
@@ -328,30 +330,50 @@ def _label_at(body: list, start: int, offset: int, name: str) -> None:
     raise ValueError(msg)
 
 
+ITEM_BOOST = 0x57
+"""``57 item item boost``: a spell hits harder when the caster wears a matching item. Capsules can't equip items."""
+FIREBIRD_ANIMATION = 0x82  # Inferno's animation byte
+VALOR_ANIMATION = 0x2D  # Healing aura's animation byte
+
+
+def _spell_effect(spell: Spell) -> list[ScriptInstruction]:
+    """The spell's effect instructions up to and including END, without item boosts."""
+    assert spell.code is not None
+    effect = [item for item in spell.code.body if isinstance(item, ScriptInstruction) and item.opcode != ITEM_BOOST]
+    return effect[: next(i for i, ins in enumerate(effect) if ins.opcode == 0x00) + 1]
+
+
 def foomy_s_firebird_valor() -> None:
-    """Give capsule Foomy S (index 0) a Firebird/Valor battle AI, authored with ``scripting.l2basm.helpers``.
+    """Give capsule Foomy S (index 0) a Firebird/Valor battle AI whose casts show their names.
+
+    Firebird and Valor become new capsule attacks (``structures.capsule_attacks``): a name, an animation, then the
+    spell's own effect script behind the target, the way native capsule magic like Inferno works. The AI runs them
+    with ``3E XX``, which shows the attack's name in battle (HER-177). Capsules have no MP pool, and capsule attacks
+    cost none.
 
     The attack (per-turn AI) script keeps vanilla Foomy S's flee check: ``42 25 00`` puts the % of HP lost
     in reg $80 and ``GUT * 25 / reg $82`` (reg $82 = 0x11 for Foomy S) in reg $81; if reg $80 >= reg $81
     the capsule flees. Otherwise each turn it rolls:
-      - ~19% (0x30/255)                  -> cast Valor (spell 0x1E) on all allies (support/revive)
-      - ~56% (69% of the remaining 81%)  -> cast Firebird (spell 0x05) on one foe (offense)
+      - ~19% (0x30/255)                  -> Valor on all allies (support/revive)
+      - ~56% (69% of the remaining 81%)  -> Firebird on one foe (offense)
       - ~25%                             -> physical attack on one foe
-    Both casts use the MP-free IP sequence (``cast_spell_free`` -> ``47 78 00 54 XX 01 4F``) because
-    capsules have no MP pool.
 
-    The script is 49 bytes and Foomy S's attack slot holds 36, so ``CapsuleMonster.write()``
-    moves the record into free space in bank $97, repoints its table entry, recomputes the reaction
-    offset, and zeroes the old record. The reaction script stays vanilla ``42 11 00`` (status immunity):
-    the reaction slot runs passive-protection code in the attacker's damage calculation, so it cannot
-    hold a spell cast.
+    The reaction script stays vanilla ``42 11 00`` (status immunity): the reaction slot runs passive-protection
+    code in the attacker's damage calculation, so it cannot hold a spell cast.
     """
-    iris.info("Giving Foomy S a Firebird/Valor AI via scripting.l2basm.helpers.")
+    iris.info("Giving Foomy S a Firebird/Valor AI with named capsule attacks.")
     foomy = CapsuleMonster.from_index(0)
     # Spell.from_index avoids the eager `lookups` import (which trips a pre-existing spell-name decode
     # bug); with `lookups` fixed these are simply ``Spells.VALOR`` / ``Spells.FIREBIRD``.
     valor = Spell.from_index(30)
     firebird = Spell.from_index(5)
+    firebird_attack = append_capsule_attack(
+        "Firebird", FIREBIRD_ANIMATION, sequence(target(Target.ONE_FOE), _spell_effect(firebird)),
+    )
+    valor_attack = append_capsule_attack(
+        "Valor", VALOR_ANIMATION, sequence(target(Target.ALL_ALLIES), _spell_effect(valor)),
+    )
+    write_capsule_attacks()
     foomy.set_scripts(
         attack=sequence(
             set_reg(0x82, 0x0011),          # GUT divisor used by subroutine 0x25
@@ -360,8 +382,8 @@ def foomy_s_firebird_valor() -> None:
             on_chance(0x30, "valor"),
             on_chance(0xB0, "firebird"),
             physical_attack(target=Target.ONE_FOE), end(),
-            label("firebird"), cast_spell_free(firebird, target=Target.ONE_FOE), end(),
-            label("valor"), cast_spell_free(valor, target=Target.ALL_ALLIES), end(),
+            label("firebird"), capsule_attack(firebird_attack), end(),
+            label("valor"), capsule_attack(valor_attack), end(),
             label("flee"), flee(), end(),
         ),
         reaction=sequence(resist(0x11), end()),  # vanilla: full status immunity

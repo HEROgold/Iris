@@ -102,6 +102,11 @@ def display_name(name_number: int, *, capsule: bool = True) -> Block:
     return _ins(0x3E if capsule else 0x1E, name_number & 0xFF)
 
 
+def capsule_attack(index: int) -> Block:
+    """``3E XX``: a capsule runs CapAttack ``XX`` and the battle shows its name (``structures.capsule_attacks``)."""
+    return _ins(0x3E, index & 0xFF)
+
+
 def resist(index: int) -> Block:
     return _ins(0x42, index & 0xFF, 0x00)
 

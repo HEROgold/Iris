@@ -29,6 +29,7 @@ from scripting.l2basm.helpers import (
 from scripting.l2basm.opcodes import PARAM_COUNTS
 from structures.capsule import CapsuleMonster, reset_capsule_table
 from structures.capsule_attack_names import capsule_attack_names
+from structures.capsule_attacks import reset_capsule_attacks
 from tables import CapsuleObject
 from tests.reset_file import reset_file
 
@@ -49,11 +50,13 @@ def _clean_output() -> Iterator[None]:
     reset_file()
     reset_pool()
     reset_capsule_table()
+    reset_capsule_attacks()
     yield
     capsule_attack_names.unload()
     reset_file()
     reset_pool()
     reset_capsule_table()
+    reset_capsule_attacks()
 
 
 def _write(capsule: CapsuleMonster, attack: list[Item] | None, reaction: list[Item] | None) -> None:
@@ -225,12 +228,12 @@ def test_original_rom_is_untouched() -> None:
 # -- the Foomy S Firebird/Valor patch --------------------------------------------------------------
 
 FOOMY_ATTACK = bytes.fromhex(
-    "0C 82 11 00 42 25 00 0A 80 81 80 5A 00"  # vanilla flee check: flee when HP lost % >= GUT threshold
-    "05 30 4E 00 05 B0 44 00"                # ~19% Valor, else ~69% Firebird
+    "0C 82 11 00 42 25 00 0A 80 81 80 4A 00"  # vanilla flee check: flee when HP lost % >= GUT threshold
+    "05 30 47 00 05 B0 44 00"                # ~19% Valor, else ~69% Firebird
     "32 01 28 00"                            # default: physical attack on one foe
-    "32 01 47 78 00 54 05 01 4F 00"          # +0x44 Firebird on one foe, no MP
-    "32 06 32 05 47 78 00 54 1E 01 4F 00"    # +0x4E Valor on all allies, no MP
-    "2A 00",                                 # +0x5A flee
+    "3E 54 00"                               # +0x44 capsule attack $54, Firebird (the first one appended)
+    "3E 55 00"                               # +0x47 capsule attack $55, Valor
+    "2A 00",                                 # +0x4A flee
 )
 
 
