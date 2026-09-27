@@ -5,6 +5,8 @@ Operand counts come from the old ``structures.battlescript.op_codes`` table (``_
 operand byte, named ``op_XX``. Opcodes missing from both tables are unknown: the parser stops a path there.
 """
 
+from dataclasses import dataclass
+
 from scripting.core import U8, U16, Flow, Jump, Language, OpcodeSpec, OperandKind
 
 
@@ -234,6 +236,63 @@ PARAM_COUNTS: dict[int, int] = {**_OLD_PARAMS, **CORRECTIONS}
 
 _REG_VALUE_JUMP: tuple[OperandKind, ...] = (U8("reg"), U16("value"), Jump())
 
+# What each vanilla $42 subroutine does, read from its bytes (info/L2_Subroutines$42XX.txt has copy-paste errors in its
+# headers and masks, and skips 0x18-0x20 and 0x24). Register $2A holds the damage (negative hurts), $27 the attack's
+# element and effectiveness flags, $4E/$50/$52/$54/$56/$58 the target's status protections.
+SUBROUTINE_DESCRIPTIONS: dict[int, str] = {
+    0x00: "fire damage x2",
+    0x01: "thunder damage x2",
+    0x02: "water damage x2",
+    0x03: "ice damage x2",
+    0x04: "only anti-flying: damage x2; only earth: damage 0",
+    0x05: "light damage x2",
+    0x06: "fire damage /2",
+    0x07: "thunder damage /2",
+    0x08: "water damage /2",
+    0x09: "ice damage /2",
+    0x0A: "light damage /2",
+    0x0B: "neutral-only damage /2",
+    0x0C: "only anti-dragon: damage x2",
+    0x0D: "shadow damage x2",
+    0x0E: "shadow damage /2",
+    0x0F: "only anti-hard: damage x2",
+    0x10: "only anti-insect: damage x2",
+    0x11: "full protection: clear $4E $50 $54 $56 $58 (poison, silence, paralysis, confusion, sleep)",
+    0x12: "healing turns into damage; clear $52 (instant death); op 35",
+    0x13: "DFP soaks damage: $2A = -(DFP/2 + (-$2A - DFP/2)/10)",
+    0x14: "non-neutral damage /2",
+    0x15: "element in reg $81: damage 0",
+    0x16: "element in reg $80: damage heals instead",
+    0x17: "only anti-hard: damage /2",
+    0x18: "element in reg $81: damage /2, reg $86 - 1",
+    0x19: "element in reg $81: damage 0, reg $86 - 1",
+    0x1A: "element in reg $81: op 51",
+    0x1B: "$52 (instant death) / reg $80",
+    0x1C: "$4E / reg $80",
+    0x1D: "$56 / reg $80",
+    0x1E: "$54 / reg $80",
+    0x1F: "$58 / reg $80",
+    0x20: "$50 / reg $80",
+    0x21: "reg $80 = own ATP x 1.5",
+    0x22: "$2A = -(reg $80 x 2 + target DFP / 2)",
+    0x23: "reg $80 = own ATP + temporary ATP bonus",
+    0x24: "damage 0 unless $2A > 0",
+    0x25: "reg $80 = % of HP lost; reg $81 = GUT x 25 / reg $82",
+    0x26: "reg $80 = 3; reg $81 = RAND(3) + 1",
+    0x27: "reg $80 - 1; reg $81 + 1, wrapping 4 to 1",
+    0x28: "evade: unless $23 == 2, a faster target may dodge (damage 0)",
+}
+
+
+@dataclass(frozen=True)
+class SubroutineRef(U8):
+    """The ``XX`` of ``42 XX 00``: a subroutine number. Listings add what the subroutine does."""
+
+    def render(self, value: object) -> str:
+        what = SUBROUTINE_DESCRIPTIONS.get(value)  # type: ignore[arg-type]
+        return f"{super().render(value)} ({what})" if what else super().render(value)
+
+
 _TYPED: dict[int, tuple[str, tuple[OperandKind, ...], Flow]] = {
     0x00: ("end", (), Flow.END),
     0x01: ("execute", (), Flow.CONTINUE),
@@ -264,7 +323,7 @@ _TYPED: dict[int, tuple[str, tuple[OperandKind, ...], Flow]] = {
     0x32: ("target", (U8("target"),), Flow.CONTINUE),
     0x3E: ("display_name", (U8("name"),), Flow.CONTINUE),
     0x3F: ("learnable", (U8("slot"), Jump()), Flow.BRANCH),
-    0x42: ("call", (U8("subroutine"), U8("zero")), Flow.CONTINUE),
+    0x42: ("call", (SubroutineRef("subroutine"), U8("zero")), Flow.CONTINUE),
     0x43: ("return", (), Flow.END),
     0x5A: ("battle_anim", (U8("anim"),), Flow.CONTINUE),
 }

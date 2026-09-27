@@ -226,5 +226,19 @@ def block(items: Block) -> Block:
     return items if _ends_in_end(items) else [*items, *end()]
 
 
+def ret() -> Block:
+    """``43``: return from a $42 subroutine to the calling script."""
+    return _ins(0x43)
+
+
+def routine(items: Block) -> Block:
+    """A $42 subroutine body: ``items`` with a terminating RETURN (``43``) added if the last item isn't one.
+
+    Use this instead of ``block`` for subroutines: ``00`` there ends the calling script, not just the subroutine.
+    """
+    last = next((item for item in reversed(items) if not isinstance(item, Label)), None)
+    return items if isinstance(last, Instruction) and last.opcode == 0x43 else [*items, *ret()]  # noqa: PLR2004
+
+
 def assemble_block(items: Block, origin: int, *, max_size: int | None = None) -> bytes:
     return assemble(Script(L2BASM, block(items)), origin, max_size=max_size).data
