@@ -73,3 +73,21 @@ def test_skip_tutorial_teaches_maxim_reset_with_the_games_own_routine() -> None:
 def test_tutorial_flags_match_the_cave_events() -> None:
     # 0x15 finished tutorial, 0x77 Tia's cave scene seen, 0xAC Reset lesson done, then the cave's trigger-tile lessons.
     assert set(TUTORIAL_FLAGS) == {0x15, 0x77, 0xAC, 0x9E, 0x9F, 0xA0, 0xA1, 0xA2, 0xA3, 0xAB}
+
+
+def test_start_items_go_through_the_games_add_item_routine() -> None:
+    from lookups.items import Items  # noqa: PLC0415
+
+    apply_new_game_hook(unlock_warps=False, start_items=[(Items.SPEED_POTION, 3), (Items.SHORT_SWORD, 1)])
+    hook = _hook()
+    assert bytes.fromhex("22 0C E8 82") in hook  # JSL $82:E80C
+    assert bytes.fromhex("A9 80 48 AB") in hook  # DBR $80 so $09CD/$09CF reach WRAM
+    assert bytes.fromhex("14 00 03 00 3F 00 01 00") in hook  # the (item, quantity) table
+    assert _rejoins_vanilla(hook)
+
+
+def test_start_items_reject_a_quantity_a_slot_cant_hold() -> None:
+    from lookups.items import Items  # noqa: PLC0415
+
+    with pytest.raises(ValueError, match="quantity"):
+        apply_new_game_hook(start_items=[(Items.POTION, 10)])

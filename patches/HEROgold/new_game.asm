@@ -10,11 +10,15 @@
 ;                 ($7E:097B..$7E:0996): 0x00 = locked, 0xFF = unlocked. This bakes in the UNLOCK_WARP Game Genie codes.
 ; !skip_tutorial  Leave the Secret Skills Cave (map 5) as vanilla leaves it after the tutorial: set the tutorial's
 ;                 event flags and have Maxim learn Reset. See new_game.py for what each flag does.
+; !start_items    Put items in the inventory through the game's add-item routine $82:E80C (item in $09CF, quantity
+;                 in $09CD), as the Archipelago Ancient Cave patch's StartInventory does.
 
 lorom
 
 !unlock_warps ?= 1
 !skip_tutorial ?= 0
+!start_item_count ?= 0      ; number of (item, quantity) pairs in !start_items
+!start_items ?= 0           ; "item,quantity,item,quantity,..." as dw values
 
 ; Event flag n is bit n % 8 (low bit first) of $7E:077E + n / 8, as the game's own helper at $80:BE30 computes it.
 macro set_event_flag(n)
@@ -83,8 +87,38 @@ if !skip_tutorial
     plb
     plp
 endif
-if !skip_tutorial || !unlock_warps == 0
+if !start_item_count
+    ; $82:E80C reads $09CD/$09CF through the data bank and can return with A 8-bit, so save everything around it.
+    php
+    phb
+    sep #$20
+    lda #$80
+    pha
+    plb
+    rep #$30
+    ldx #$0000
+.next_item:
+    lda.l start_items,x
+    sta $09CF               ; item index
+    lda.l start_items+2,x
+    sta $09CD               ; quantity
+    phx
+    jsl $82E80C
+    rep #$30
+    plx
+    inx #4
+    cpx.w #!start_item_count*4
+    bcc .next_item
+    plb
+    plp
+endif
+if !skip_tutorial || !unlock_warps == 0 || !start_item_count
     lda #$FF                ; A is still $FF after the warp stores unless something since changed it
 endif
     sta.l $7E099D           ; the original displaced write (LDA #$FF : STA $099D)
     jml $03B18E             ; continue exactly where the vanilla JMP $B18E went
+
+if !start_item_count
+start_items:
+    dw !start_items
+endif

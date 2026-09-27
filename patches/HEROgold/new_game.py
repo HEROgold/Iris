@@ -8,15 +8,21 @@ asar can only hook the new-game handoff once, so every new-game feature is a swi
 - ``skip_tutorial``: the Secret Skills Cave (map 5) behaves as vanilla leaves it after the tutorial, and Maxim knows
   Reset. This sets event flags instead of editing event scripts, because grown event containers can't be placed yet
   (HER-232, HER-237). The flags come from the cave's own events and absynnonym's ``eventpatch_skip_tutorial.txt``.
+- ``start_items``: ``(item, quantity)`` pairs the game's add-item routine ($82:E80C) puts in the inventory.
 """
 
+from collections.abc import Sequence
 from pathlib import Path
 
 from logger import iris
 from patcher import apply_asm_patch
+from structures.item import Item
 
 
 _ASM = Path(__file__).parent / "new_game.asm"
+
+MAX_ITEM_QUANTITY = 9
+"""An inventory slot holds at most 9 of an item."""
 
 EVENT_FLAGS = 0x077E
 """Event flag n is bit n % 8 (low bit first) of $7E:077E + n // 8."""
@@ -36,7 +42,23 @@ TUTORIAL_FLAGS = (
 """Set at new game by ``skip_tutorial``. The Elcid "Bad news" scene (flag 0x96) still plays and starts the quest."""
 
 
-def apply_new_game_hook(*, unlock_warps: bool = True, skip_tutorial: bool = False) -> None:
-    """Install the new-game hook with the chosen features. Call once per build: a second call replaces the first."""
-    iris.info(f"New-game hook: unlock_warps={unlock_warps}, skip_tutorial={skip_tutorial}.")
-    apply_asm_patch(_ASM, defines={"unlock_warps": str(int(unlock_warps)), "skip_tutorial": str(int(skip_tutorial))})
+def apply_new_game_hook(
+    *,
+    unlock_warps: bool = True,
+    skip_tutorial: bool = False,
+    start_items: Sequence[tuple[Item, int]] = (),
+) -> None:
+    """Install the new-game hook with the chosen features. Call once per build: a second call replaces the first.
+
+    ``start_items`` are ``(item, quantity)`` pairs added to the inventory at new game.
+    """
+    iris.info(f"New-game hook: unlock_warps={unlock_warps}, skip_tutorial={skip_tutorial}, start_items={len(start_items)}.")
+    defines = {"unlock_warps": str(int(unlock_warps)), "skip_tutorial": str(int(skip_tutorial))}
+    if start_items:
+        for item, quantity in start_items:
+            if not 1 <= quantity <= MAX_ITEM_QUANTITY:
+                msg = f"start item {item.index} quantity must be 1..{MAX_ITEM_QUANTITY}, got {quantity}"
+                raise ValueError(msg)
+        defines["start_item_count"] = str(len(start_items))
+        defines["start_items"] = ",".join(f"${value:04X}" for item, quantity in start_items for value in (item.index, quantity))
+    apply_asm_patch(_ASM, defines=defines)
