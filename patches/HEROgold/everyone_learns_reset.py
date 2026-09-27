@@ -30,6 +30,7 @@ _SHIFT = 0x20  # room for the inserted lines: every later line number moves up b
 
 
 def _shift(operand: object, after: int) -> object:
+    # TODO: Fix typing on this function.
     if isinstance(operand, Address) and operand.offset > after:
         return Address(operand.offset + _SHIFT)
     if isinstance(operand, list):
