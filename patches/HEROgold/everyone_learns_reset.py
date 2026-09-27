@@ -4,12 +4,13 @@ Vanilla only lets Maxim learn Reset: the spell record's "who can learn" byte is 
 Cave (map 5) teaches it with ``23(00-26)``, "character 0 learns spell 0x26". That event writes into Maxim's stat
 block whether or not he's in the party, so a party that removed Maxim through the Elcid toggle never gets Reset.
 
-This patch sets the learn byte to all seven characters and, after each ``23(00-26)``, adds
-``6A(party flag -> skip) ; 23(XX-26)`` for every other character. Only characters in the party at that moment
-learn it, so no stat block of a character who hasn't joined yet is touched. The grown scripts make
-``MapEvent.write`` relocate the map's event container.
+This patch sets the learn byte to all seven characters. It also tries to add, after each ``23(00-26)``,
+``6A(party flag -> skip) ; 23(XX-26)`` for every other character, so only characters in the party at that moment
+learn it. Those scripts don't fit map 5's container in place, and a container moved out of banks $80-$BF breaks the
+map in game (HER-232), so for now the grants are skipped with a warning and the cave stays vanilla.
 """
 
+from errors import EventFreeSpaceError
 from helpers.files import write_file
 from logger import iris
 from scripting.l2basm.records import spell_records
@@ -66,13 +67,19 @@ def _teach_the_party(script: EventScript) -> bool:
 
 
 def everyone_learns_reset() -> None:
-    iris.info("Reset: learnable by every character; the tutorial teaches it to the whole party.")
+    iris.info("Reset: learnable by every character.")
     record = spell_records(write_file)[RESET]  # type: ignore[arg-type]
     write_file.seek(record.start + _SPELL_CHARACTERS)
     write_file.write(bytes([ALL_CHARACTERS]))
 
     map_event = MapEvent.from_index(TUTORIAL_MAP)
     changed = [script for event_list in map_event.event_lists for script in event_list.events if _teach_the_party(script)]
-    if changed:
+    if not changed:
+        return
+    try:
         map_event.write()
+    except EventFreeSpaceError as error:
+        MapEvent._cache.discard(TUTORIAL_MAP)  # noqa: SLF001 (drop the unwritten edits so no later write picks them up)
+        iris.warning(f"  Reset grants not added to map {TUTORIAL_MAP:#04x}; the tutorial still teaches only Maxim: {error}")
+        return
     iris.info(f"  {len(changed)} Reset grant script(s) on map {TUTORIAL_MAP:#04x} now teach the whole party.")

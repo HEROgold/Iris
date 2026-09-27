@@ -1,4 +1,4 @@
-"""everyone_learns_reset: Reset is learnable by every character, and the tutorial teaches it to the whole party."""
+"""everyone_learns_reset: Reset is learnable by every character; the tutorial cave stays vanilla (HER-232)."""
 
 from collections.abc import Iterator
 
@@ -7,7 +7,6 @@ import pytest
 from helpers.files import write_file
 from patches.HEROgold.everyone_learns_reset import ALL_CHARACTERS, RESET, TUTORIAL_MAP, everyone_learns_reset
 from scripting.l2basm.records import spell_records
-from structures.character import PlayableCharacter
 from structures.event_script.containers import MapEvent
 from tests.reset_file import reset_file
 
@@ -36,21 +35,16 @@ def test_reset_is_learnable_by_everyone() -> None:
     assert _output(record.start + SPELL_CHARACTERS, 1) == bytes([ALL_CHARACTERS])
 
 
-def test_both_tutorial_grants_teach_maxim_and_every_party_member() -> None:
+def test_the_tutorial_cave_is_left_in_place() -> None:
+    """HER-232: the grants don't fit map 5's container in place, and moving it breaks the cave in game."""
+    from helpers.files import original_file  # noqa: PLC0415
+    from tables import MapEventObject  # noqa: PLC0415
+
     everyone_learns_reset()
+    record = MapEventObject.address + TUTORIAL_MAP * MapEventObject.size
+    vanilla = original_file.read_bytes()
+    assert _output(record, MapEventObject.size) == vanilla[record : record + MapEventObject.size]
     map_event = MapEvent.from_index(TUTORIAL_MAP)
-    grants = [
-        script for event_list in map_event.event_lists for script in event_list.events
-        if any(i.opcode == 0x23 and i.operands == [0, RESET] for i in script.instructions)  # noqa: PLR2004
-    ]
-    assert len(grants) == 2  # noqa: PLR2004 (the Reset lesson's two variants)
-    for script in grants:
-        data = _output(script.pointer, len(script.raw))
-        assert data == bytes(script.raw)
-        assert bytes([0x23, 0, RESET]) in data
-        for index in range(1, 7):
-            flag = PlayableCharacter.from_index(index).party_flag
-            teach = bytes([0x23, index, RESET])
-            at = data.index(teach)
-            assert data[at - 4] == 0x6A  # noqa: PLR2004 (6A flag lo hi: skip the grant when not in the party)
-            assert data[at - 3] == flag
+    for event_list in map_event.event_lists:
+        for script in event_list.events:
+            assert _output(script.pointer, len(script.raw)) == vanilla[script.pointer : script.pointer + len(script.raw)]

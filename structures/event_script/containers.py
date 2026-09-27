@@ -19,6 +19,7 @@ from typing import Self
 
 from _types.objects import Cache
 from enums.event_scripts import EventClass
+from errors import EventFreeSpaceError
 from helpers.files import read_file, restore_pointer, write_file
 from helpers.name import read_as_decompressed_name
 from logger import iris
@@ -31,6 +32,12 @@ log = logging.getLogger(f"{iris.name}.MapEvent")
 EVENT_MAGIC = b"PH"
 EVENT_LIST_COUNT = 6
 EVENT_HEADER_SIZE = 2 + (EVENT_LIST_COUNT * 2)  # magic + six relative pointers
+
+EVENT_BANK_LIMIT = 0x200000
+"""Event scripts must sit below this file offset (SNES banks $80-$BF). The interpreter sets the data bank to the
+script's bank (``LDA $09B9; PHA; PLB``, e.g. at $80:9CD9) and then reads its own RAM variables with 16-bit
+addresses, which only reach WRAM in banks $00-$3F/$80-$BF. A container moved to bank $E8 played in an emulator
+with no dialogue, no NPC or monster spawns and stuttering movement (HER-232)."""
 
 # Sentinels bounding the last script in each cluster (from terrorwave).
 END_NPC_POINTER = 0x3AE4D
@@ -306,6 +313,14 @@ class MapEvent:
         table_sizes = [len(event_list.events) * 3 + 1 for event_list in class_lists]
         total_size = EVENT_HEADER_SIZE + sum(table_sizes) + sum(lengths.values())
         header_base = event_script_allocator.allocate(total_size)
+        if header_base + total_size > EVENT_BANK_LIMIT:
+            event_script_allocator.deallocate(header_base, total_size)
+            msg = (
+                f"Map {self.index:#04x}: its event container ({total_size} bytes) no longer fits in place, and event "
+                f"scripts must stay in banks $80-$BF (below {EVENT_BANK_LIMIT:#x}); there is no free space there "
+                "(HER-232)."
+            )
+            raise EventFreeSpaceError(msg)
 
         # Pass 2: assign every final address now that the full layout size is known.
         cursor = header_base + EVENT_HEADER_SIZE
