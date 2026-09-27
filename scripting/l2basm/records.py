@@ -196,16 +196,16 @@ def spell_records(source: IO[bytes]) -> list[RecordSource]:
     ]
 
 
-def ip_effect_records(source: IO[bytes]) -> list[RecordSource]:
+def ip_effect_records(source: IO[bytes], count: int = IP_EFFECT_COUNT) -> list[RecordSource]:
     address = table_address(source, "ip_effect")
-    starts = table_starts(source, address, IP_EFFECT_COUNT)
+    starts = table_starts(source, address, count)
     bounds = _bounds(source, starts, table_bound(source, address))
     return [RecordSource("ip_effect", i, start, bounds[start], {"effect": 1}, 0) for i, start in enumerate(starts)]
 
 
-def subroutine_records(source: IO[bytes], table: int | None = None) -> list[RecordSource]:
+def subroutine_records(source: IO[bytes], table: int | None = None, count: int = SUBROUTINE_COUNT) -> list[RecordSource]:
     address = table_address(source, "subroutine") if table is None else table
-    starts = table_starts(source, address, SUBROUTINE_COUNT)
+    starts = table_starts(source, address, count)
     bounds = _bounds(source, starts, table_bound(source, address))
     return [RecordSource("subroutine", i, start, bounds[start], {"body": 0}) for i, start in enumerate(starts)]
 
