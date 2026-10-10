@@ -10,6 +10,7 @@ from worlds.Files import APProcedurePatch, APTokenMixin, APTokenTypes
 
 from . import data
 from .items import GAME
+from .locations import GRANT_BASE
 
 US_MD5 = "6efc477d6203ed2b3b9133c1cd9e9c5d"
 """The headerless US ROM (No-Intro, 2.5MB): what the base patch is built against."""
@@ -38,6 +39,12 @@ class L2OWProcedurePatch(APProcedurePatch, APTokenMixin):
         high = ITEM_HIGH_BIT if item_index & 0x100 else 0
         self.write_token(APTokenTypes.WRITE, record, bytes([(misc1 & ~ITEM_HIGH_BIT) | high]))
         self.write_token(APTokenTypes.WRITE, record + 2, bytes([item_index & 0xFF]))
+
+    def write_grant(self, location: int, item_index: int) -> None:
+        """Make a script grant give ``item_index``: opcode 0x20 gives items below 0x100, 0x21 gives 0x100 + its byte."""
+        _, _, offset, _, _, _ = data.GRANTS[location - GRANT_BASE]
+        opcode = 0x21 if item_index & 0x100 else 0x20
+        self.write_token(APTokenTypes.WRITE, offset - 1, bytes([opcode, item_index & 0xFF]))
 
     def write_auth(self, auth: bytes) -> None:
         self.write_token(APTokenTypes.WRITE, data.CONFIG["AP_CONFIG_AUTH_OFFSET"], auth.ljust(AUTH_SIZE, b"\0"))

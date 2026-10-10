@@ -1,8 +1,8 @@
-"""SNI client: authenticates against the config block, reports opened chests and the goal (Iris-Dev#36).
+"""SNI client: authenticates against the config block, reports opened chests, script grants and the goal (Iris-Dev#36).
 
-Not here yet: receiving items (needs the ROM's RX buffer, Iris-Dev#20), script grants (#22), death link. Nothing has
-been tried against an emulator. There is no "a save is loaded" flag yet; ``looks_uninitialised`` only rejects the
-fill pattern some emulators put in WRAM at power-on.
+Chests are read from the opened-chest bits (confirmed in a real run); a script grant is reported once the event flag its
+script sets is on. Not here yet: receiving items (needs the ROM's RX buffer, Iris-Dev#20), death link. There is no
+"a save is loaded" flag; ``looks_uninitialised`` only rejects the fill pattern some emulators put in WRAM at power-on.
 """
 
 import logging
@@ -13,6 +13,7 @@ from worlds.AutoSNIClient import SNIClient
 
 from . import data
 from .items import BASE_ID, GAME
+from .locations import GRANT_FLAGS
 
 if TYPE_CHECKING:
     from SNIClient import SNIContext
@@ -28,7 +29,12 @@ AUTH_SIZE = data.CONFIG["AP_CONFIG_AUTH_SIZE"]
 CHEST_BITS = WRAM_START + (data.CHEST_OPENED_BITS & 0xFFFF)
 CHEST_BYTES = max(data.CHESTS)[0] // 8 + 1
 EVENT_FLAGS = WRAM_START + 0x077E
+EVENT_FLAG_BYTES = 32
 GOAL_FLAG = data.GOAL_FLAG
+
+
+def is_set(flags: bytes, flag: int) -> bool:
+    return bool(flags[flag >> 3] & (1 << (flag & 7)))
 
 
 def opened_chests(bits: bytes) -> list[int]:
@@ -68,17 +74,20 @@ class L2OWSNIClient(SNIClient):
         if ctx.server is None or ctx.slot is None:
             return
 
+        checked: list[int] = []
         bits = await snes_read(ctx, CHEST_BITS, CHEST_BYTES)
         if bits is not None and not looks_uninitialised(bits):
-            chests = [BASE_ID + index for index in opened_chests(bits) if BASE_ID + index in ctx.server_locations]
-            new = [location for location in chests if location not in ctx.locations_checked]
-            if new:
-                ctx.locations_checked.update(new)
-                await ctx.send_msgs([{"cmd": "LocationChecks", "locations": new}])
+            checked += [BASE_ID + index for index in opened_chests(bits)]
+        flags = await snes_read(ctx, EVENT_FLAGS, EVENT_FLAG_BYTES)
+        if flags is not None and not looks_uninitialised(flags):
+            checked += [location for location, flag in GRANT_FLAGS.items() if is_set(flags, flag)]
+        new = [loc for loc in checked if loc in ctx.server_locations and loc not in ctx.locations_checked]
+        if new:
+            ctx.locations_checked.update(new)
+            await ctx.send_msgs([{"cmd": "LocationChecks", "locations": new}])
 
-        if not ctx.finished_game:
-            flags = await snes_read(ctx, EVENT_FLAGS + (GOAL_FLAG >> 3), 1)
-            if flags is not None and flags[0] & (1 << (GOAL_FLAG & 7)):
+        if not ctx.finished_game and flags is not None and not looks_uninitialised(flags):
+            if is_set(flags, GOAL_FLAG):
                 await ctx.send_msgs([{"cmd": "StatusUpdate", "status": ClientStatus.CLIENT_GOAL}])
                 ctx.finished_game = True
                 logger.info("Daos is defeated: goal complete.")

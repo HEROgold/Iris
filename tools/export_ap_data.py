@@ -26,6 +26,9 @@ from iris.structures.chest import PointerChest
 from iris.structures.chest_location import CHEST_MAP
 from iris.structures.chest_names import CHEST_NAMES
 from iris.structures.item import Item
+from iris.structures.key_doors import key_doors
+from iris.structures.zone import Zone
+from iris.structures.zone_data_pointers import zone_data_pointers
 from iris.tables import ChestObject, ItemObject, select
 from tools.dump_item_grants import collect
 
@@ -77,6 +80,16 @@ def _grants() -> list[tuple[int, str, int, int, int, tuple[int, ...]]]:
     return [(row["map"], row["sig"], row["addr"], row["item"], row["count"], tuple(row["flags"])) for row in rows]
 
 
+def _map_names() -> dict[int, str]:
+    """Map index -> the game's own map name; maps whose name doesn't decode to plain text are left out."""
+    names = {}
+    for index in range(len(zone_data_pointers)):
+        name = Zone.from_index(index).clean_name.decode("ascii", errors="replace")
+        if name and name.isprintable() and "�" not in name:
+            names[index] = name
+    return names
+
+
 def render() -> str:
     """The module's text, from the active ROM session (a vanilla ROM with the vanilla tables selected)."""
     ap_constants = {name: getattr(constants, name) for name in dir(constants) if name.startswith("AP_")}
@@ -96,6 +109,9 @@ def render() -> str:
         "# Event-script grants: (map, event signature, offset of the item byte, item, count, flags the script sets).",
         "# Opcode 0x21 grants item 0x100 + the byte, opcode 0x20 the byte itself.",
         f"GRANTS = {pformat(_grants(), width=120)}\n",
+        "# Locked doors: (map, map object, key item). A door opens when the party holds the key.",
+        f"KEY_DOORS = {pformat([(d.map_index, d.map_object, d.item) for d in key_doors()], width=120)}\n",
+        f"MAP_NAMES = {pformat(_map_names(), width=120)}\n",
         f"EVENT_FLAGS = {pformat({flag.name: int(flag) for flag in EventFlag}, width=120, sort_dicts=False)}",
         f"GOAL_FLAG = {int(GOAL_FLAG)}\n",
         "# The config block (docs/ap/config_block.md).",
