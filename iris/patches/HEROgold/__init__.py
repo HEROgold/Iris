@@ -1,0 +1,392 @@
+import random
+from copy import deepcopy
+
+from iris.enums.flags import (
+    Alignment,
+    CastableSpells,
+    EquipableCharacter,
+    ItemEffects,
+    MenuIcon,
+    Targeting,
+    Usability,
+)
+from iris.helpers.bits import bytes_overwrite
+from iris.helpers.files import write_file
+from iris.logger import iris
+from iris.scripting.core import Data as ScriptData
+from iris.scripting.core import Instruction as ScriptInstruction
+from iris.scripting.core import Label as ScriptLabel
+from iris.scripting.l2basm import L2BASM
+from iris.scripting.l2basm.helpers import (
+    Target,
+    capsule_attack,
+    end,
+    flee,
+    if_ge,
+    label,
+    on_chance,
+    physical_attack,
+    resist,
+    sequence,
+    set_reg,
+    target,
+)
+from iris.structures import CapsuleMonster, Item, Monster, Spell
+from iris.structures.capsule_attacks import append_capsule_attack, write_capsule_attacks
+from iris.structures.character import InitialEquipment, PlayableCharacter
+from iris.structures.chest import AddressChest, PointerChest
+from iris.structures.ip_attack import IPAttack
+from iris.structures.item import ItemName
+from iris.tables import (
+    AncientChest1Object,
+    AncientChest2Object,
+    BlueChestObject,
+    ChestObject,
+    IPAttackObject,
+    ItemObject,
+    MonsterObject,
+    SpellObject,
+)
+
+from .debug_party import max_out_party  # pyright: ignore[reportUnusedImport] # noqa: F401
+from .everyone_learns_reset import everyone_learns_reset  # pyright: ignore[reportUnusedImport] # noqa: F401
+
+# maxim_warp imports `lookups`, which crashes on FRUE/Spekkio/Kureji spell names (UTF-8 decode in
+# Spell.from_pointer). It imports fine on vanilla.
+# from .maxim_warp import maxim_starts_with_warp  # pyright: ignore[reportUnusedImport] # noqa: F401
+from .found_flags import set_found_flags_on_story_joins  # pyright: ignore[reportUnusedImport] # noqa: F401
+from .new_game import apply_new_game_hook  # pyright: ignore[reportUnusedImport] # noqa: F401
+from .party_toggle import party_toggle_in_elcid  # pyright: ignore[reportUnusedImport] # noqa: F401
+from .scale_encounters import scale_encounters  # pyright: ignore[reportUnusedImport] # noqa: F401
+
+
+def get_items() -> list[Item]:
+    return [
+        Item.from_index(i)
+        for i in range(ItemObject.count)
+    ]
+def get_spells() -> list[Spell]:
+    return [
+        Spell.from_pointer(pointer)
+        for pointer in SpellObject.pointers
+    ]
+def get_chests() -> list[AddressChest | PointerChest]:
+    return (
+        [PointerChest.from_pointer(i) for i in ChestObject.pointers] +
+        [AddressChest.from_table(BlueChestObject.address, i * BlueChestObject.item_index) for i in range(BlueChestObject.count)] +
+        [AddressChest.from_table(AncientChest1Object.address, i * AncientChest1Object.item_index) for i in range(AncientChest1Object.count)] +
+        [AddressChest.from_table(AncientChest2Object.address, i * AncientChest2Object.item_index) for i in range(AncientChest2Object.count)]
+    )
+def get_monsters() -> list[Monster]:
+    return [
+        Monster.from_index(i)
+        for i in range(MonsterObject.count)
+    ]
+
+
+def start_char_with_equipment(char: PlayableCharacter, equipment: InitialEquipment) -> None:
+    iris.info(f"Starting {char.name} with {equipment=}.")
+    char.equipment = equipment
+    char.equipment.write()
+
+
+def randomize_starting_equipment(char: PlayableCharacter) -> PlayableCharacter:
+    iris.info(f"Randomizing starting equipment for {char=}.")
+    char.equipment.weapon = Item.from_index(random.randint(0 ,466))
+    char.equipment.armor = Item.from_index(random.randint(0 ,466))
+    char.equipment.shield = Item.from_index(random.randint(0 ,466))
+    char.equipment.helmet = Item.from_index(random.randint(0 ,466))
+    char.equipment.ring = Item.from_index(random.randint(0 ,466))
+    char.equipment.jewelry = Item.from_index(random.randint(0 ,466))
+    char.equipment.write()
+    return char
+
+
+def randomize_all_spells() -> None:
+    iris.info("Randomizing spells.")
+    spells = get_spells()
+    for spell in deepcopy(spells):
+        spell.name = random.choice(spells).name
+        spell.unk1
+        spell.element = int(random.choice([
+            Alignment.NEUTRAL,
+            Alignment.LIGHT,
+            Alignment.WIND,
+            Alignment.WATER,
+            Alignment.DARK,
+            Alignment.SOIL,
+            Alignment.FIRE,
+        ]))
+        spell.characters = CastableSpells(random.randint(0, CastableSpells.ALL))
+        spell.unk4
+        spell.mp_cost = random.randint(0, 0xFF)
+        spell.price = random.randint(0, 0xFFFF)
+        spell.write()
+
+
+def randomize_all_items() -> None:
+    iris.info("Randomizing items.")
+    items = get_items()
+    for item in deepcopy(items):
+        item.name_pointer = random.choice(items).name_pointer
+        item.price = random.randint(0, 0xFFFF)
+        item.equip_types
+        item.usability = Usability(random.randint(0, Usability.ALL))
+        item.targeting = Targeting(random.randint(0, 0xFF))
+        item.icon = MenuIcon(random.choice([MenuIcon.ALL]))
+        item.equipability = EquipableCharacter(random.randint(0, EquipableCharacter.ALL))
+        item.item_effects = ItemEffects(random.randint(0, ItemEffects.ALL))
+        item.item_effects = ItemEffects(random.randint(0, ItemEffects.ALL))
+        item.item_types
+        item.unknown2
+        item.write()
+
+
+def randomize_all_monsters() -> None:
+    iris.info("Randomizing monsters.")
+    monsters = get_monsters()
+    for monster in deepcopy(monsters):
+        monster.name = random.choice(monsters).name
+        monster.stats.health_points = random.randint(0, 0xFFFF)
+        monster.stats.mana_points = random.randint(0, 0xFFFF)
+        monster.stats.attack = random.randint(0, 0xFFFF)
+        monster.stats.defense = random.randint(0, 0xFFFF)
+        monster.stats.agility = random.randint(0, 0xFF)
+        monster.stats.intelligence = random.randint(0, 0xFF)
+        monster.stats.guts = random.randint(0, 0xFF)
+        monster.stats.magic_resistance = random.randint(0, 0xFF)
+        monster.stats.xp = random.randint(0, 0xFFFF)
+        monster.stats.gold = random.randint(0, 0xFF)
+        monster.write()
+
+
+def randomize_chest_items() -> None:
+    iris.warning("Randomizing chest items will overwrite the current chest items.")
+    chests = get_chests()
+    for chest in deepcopy(chests):
+        chest.item = Item.from_index(random.randint(0, 466))
+        chest.write()
+
+
+def shuffle_chest_items() -> None:
+    # TODO: Find out what happens, that causes some chests to appear
+    # as if they're opened already. When they still contain an item.
+    iris.info("Shuffling chest items.")
+    chests = get_chests()
+    items = [
+        i.item
+        for i in chests
+    ]
+
+    random.shuffle(items)
+
+    for chest in deepcopy(chests):
+        chest.item = items.pop(0)
+        chest.write()
+
+def shuffle_items() -> None:
+    """Effectively shuffles all items in the entire game.
+    Regardless of where they are pointed from."""
+    iris.info("Shuffling items.")
+    items = get_items()
+    shuffled = deepcopy(items)
+    random.shuffle(shuffled)
+
+    for item in shuffled:
+        item.name_pointer = shuffled.pop(0).name_pointer
+        item.equip_types = shuffled.pop(0).equip_types
+        item.usability = shuffled.pop(0).usability
+        item.targeting = shuffled.pop(0).targeting
+        item.icon = shuffled.pop(0).icon
+        item.equipability = shuffled.pop(0).equipability
+        item.item_effects = shuffled.pop(0).item_effects
+        item.item_effects = shuffled.pop(0).item_effects
+        item.item_types = shuffled.pop(0).item_types
+        item.unknown2 = shuffled.pop(0).unknown2
+        item.write()
+
+def shuffle_monsters() -> None:
+    iris.info("Shuffling monsters.")
+    monsters = get_monsters()
+    shuffled = deepcopy(monsters)
+    random.shuffle(shuffled)
+
+    for monster in shuffled:
+        monster.name = shuffled.pop(0).name
+        monster.stats.health_points = shuffled.pop(0).stats.health_points
+        monster.stats.mana_points = shuffled.pop(0).stats.mana_points
+        monster.stats.attack = shuffled.pop(0).stats.attack
+        monster.stats.defense = shuffled.pop(0).stats.defense
+        monster.stats.agility = shuffled.pop(0).stats.agility
+        monster.stats.intelligence = shuffled.pop(0).stats.intelligence
+        monster.stats.guts = shuffled.pop(0).stats.guts
+        monster.stats.magic_resistance = shuffled.pop(0).stats.magic_resistance
+        monster.stats.xp = shuffled.pop(0).stats.xp
+        monster.stats.gold = shuffled.pop(0).stats.gold
+        monster.write()
+
+
+def arty_to_artea() -> None:
+    """Change Arty to Artea, and Arty's bow to Artea's Bow."""
+    iris.info("Changing Arty to Artea.")
+    artea = PlayableCharacter.from_index(3)
+    item_name = ItemName.from_index(163)
+
+    artea.name = "Artea"
+    item_name.name = "Artea's Bow"
+
+    artea.write()
+    item_name.write()
+
+
+def ax_to_axe() -> None:
+    """Rename all items with "ax" in their name to "axe"."""
+    iris.info("Renaming 'ax' to 'axe'.")
+    for index in range(ItemObject.count):
+        item = Item.from_index(index)
+        if "ax" in item.name_pointer.name:
+            # Include the spaces to avoid overwriting big names
+            item.name_pointer.name = item.name_pointer.name.replace(" ax ", " axe")
+            iris.info(f"Renamed to: {item.name_pointer}.")
+            item.write()
+
+    ax_attack = IPAttack.from_pointer(IPAttackObject.pointers[164])
+    ax_attack.name = ax_attack.name.replace("ax ", "axe")
+    iris.info(f"Renamed to: {ax_attack.name}.")
+
+
+def swap_pierre_danielle_sprites() -> None:
+    """Swap the sprites of Piere and Danielle.
+    Reflects their damage type with their colors, rather than weakness type."""
+    iris.info("Swapping sprites for Pierre and Danielle.")
+    pierre = Monster.from_index(191)
+    danielle = Monster.from_index(192)
+
+    pierre.sprite_index, danielle.sprite_index = danielle.sprite_index, pierre.sprite_index
+    pierre.write()
+    danielle.write()
+
+
+def guy_the_mage() -> None:
+    iris.info("Making Guy a mage (max MP, all spells).")
+    guy = PlayableCharacter.from_index(1)
+    guy.stats.mana_points = 0xFFFF
+
+    for spell in get_spells():
+        spell.characters += CastableSpells.GUY
+        spell.write()
+
+
+def gorem_to_golem() -> None:
+    iris.info("Renaming 'Gorem' monsters to 'Golem'.")
+    for monster in get_monsters():
+        if "Gorem" in monster.name:
+            monster.name = monster.name.replace("Gorem", "Golem")
+            monster.write()
+
+def set_rom_name(name: bytes) -> None:
+    iris.info(f"Setting ROM name to {name!r}.")
+    write_file.seek(0x007FC0)
+    empty_name = bytes(21)
+    assert len(name) <= len(empty_name)
+    write_file.write(name)
+
+def fix_boltfish() -> None:
+    """Fix the Bolt Fish attack script to avoid a softlock.
+
+    Its spell handler at record offset +0x3B jumps to itself twice (the ``on_chance`` and the ``on_fail`` right
+    after it). Both now go to the unreached ``1F 00 08 28 00`` block at +0x45. The decision code's jump into the
+    handler stays.
+    """
+    bolt_fish = Monster.from_index(85)
+    assert bolt_fish.code is not None
+    body = bolt_fish.code.body
+    _label_at(body, bolt_fish.code_start, 0x45, "L_0045")
+    handler = body.index(ScriptLabel("L_003B"))
+    for item in body[handler + 1 :]:
+        if isinstance(item, ScriptInstruction):
+            item.operands = [ScriptLabel("L_0045") if op == ScriptLabel("L_003B") else op for op in item.operands]
+    bolt_fish.write()
+
+
+def _label_at(body: list, start: int, offset: int, name: str) -> None:
+    """Put ``Label(name)`` at record ``offset`` in ``body`` (which begins at record offset ``start``)."""
+    if ScriptLabel(name) in body:
+        return
+    position = start
+    for i, item in enumerate(body):
+        if position == offset:
+            body.insert(i, ScriptLabel(name))
+            return
+        if isinstance(item, ScriptData):
+            if position < offset < position + len(item.raw):
+                cut = offset - position
+                body[i : i + 1] = [ScriptData(item.raw[:cut]), ScriptLabel(name), ScriptData(item.raw[cut:])]
+                return
+            position += len(item.raw)
+        elif isinstance(item, ScriptInstruction):
+            spec = L2BASM.spec(item.opcode)
+            position += 1 + sum(kind.size(value) for kind, value in zip(spec.operands, item.operands, strict=True))
+    msg = f"No item boundary at record offset {offset:#x}."
+    raise ValueError(msg)
+
+
+ITEM_BOOST = 0x57
+"""``57 item item boost``: a spell hits harder when the caster wears a matching item. Capsules can't equip items."""
+FIREBIRD_ANIMATION = 0x82  # Inferno's animation byte
+VALOR_ANIMATION = 0x2D  # Healing aura's animation byte
+
+
+def _spell_effect(spell: Spell) -> list[ScriptInstruction]:
+    """The spell's effect instructions up to and including END, without item boosts."""
+    assert spell.code is not None
+    effect = [item for item in spell.code.body if isinstance(item, ScriptInstruction) and item.opcode != ITEM_BOOST]
+    return effect[: next(i for i, ins in enumerate(effect) if ins.opcode == 0x00) + 1]
+
+
+def foomy_s_firebird_valor() -> None:
+    """Give capsule Foomy S (index 0) a Firebird/Valor battle AI whose casts show their names.
+
+    Firebird and Valor become new capsule attacks (``structures.capsule_attacks``): a name, an animation, then the
+    spell's own effect script behind the target, the way native capsule magic like Inferno works. The AI runs them
+    with ``3E XX``, which shows the attack's name in battle (HER-177). Capsules have no MP pool, and capsule attacks
+    cost none.
+
+    The attack (per-turn AI) script keeps vanilla Foomy S's flee check: ``42 25 00`` puts the % of HP lost
+    in reg $80 and ``GUT * 25 / reg $82`` (reg $82 = 0x11 for Foomy S) in reg $81; if reg $80 >= reg $81
+    the capsule flees. Otherwise each turn it rolls:
+      - ~19% (0x30/255)                  -> Valor on all allies (support/revive)
+      - ~56% (69% of the remaining 81%)  -> Firebird on one foe (offense)
+      - ~25%                             -> physical attack on one foe
+
+    The reaction script stays vanilla ``42 11 00`` (status immunity): the reaction slot runs passive-protection
+    code in the attacker's damage calculation, so it cannot hold a spell cast.
+    """
+    iris.info("Giving Foomy S a Firebird/Valor AI with named capsule attacks.")
+    foomy = CapsuleMonster.from_index(0)
+    # Spell.from_index avoids the eager `lookups` import (which trips a pre-existing spell-name decode
+    # bug); with `lookups` fixed these are simply ``Spells.VALOR`` / ``Spells.FIREBIRD``.
+    valor = Spell.from_index(30)
+    firebird = Spell.from_index(5)
+    firebird_attack = append_capsule_attack(
+        "Firebird", FIREBIRD_ANIMATION, sequence(target(Target.ONE_FOE), _spell_effect(firebird)),
+    )
+    valor_attack = append_capsule_attack(
+        "Valor", VALOR_ANIMATION, sequence(target(Target.ALL_ALLIES), _spell_effect(valor)),
+    )
+    write_capsule_attacks()
+    foomy.set_scripts(
+        attack=sequence(
+            set_reg(0x82, 0x0011),          # GUT divisor used by subroutine 0x25
+            resist(0x25),                   # 42 25 00: reg $80 = % HP lost, reg $81 = GUT threshold
+            if_ge(0x80, 0x8081, "flee"),    # reg $80 >= reg $81 -> flee (0x8081 = register $81)
+            on_chance(0x30, "valor"),
+            on_chance(0xB0, "firebird"),
+            physical_attack(target=Target.ONE_FOE), end(),
+            label("firebird"), capsule_attack(firebird_attack), end(),
+            label("valor"), capsule_attack(valor_attack), end(),
+            label("flee"), flee(), end(),
+        ),
+        reaction=sequence(resist(0x11), end()),  # vanilla: full status immunity
+    )
+    foomy.write()

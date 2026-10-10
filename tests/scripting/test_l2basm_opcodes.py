@@ -2,8 +2,8 @@
 
 import pytest
 
-from scripting.core import Flow
-from scripting.l2basm.opcodes import CORRECTIONS, L2BASM, PARAM_COUNTS
+from iris.scripting.core import Flow
+from iris.scripting.l2basm.opcodes import CORRECTIONS, L2BASM, PARAM_COUNTS
 
 
 @pytest.mark.parametrize("opcode", sorted(L2BASM.opcodes))

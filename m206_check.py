@@ -15,17 +15,17 @@ EDIT = "--edits" in sys.argv
 if EDIT:
     sys.argv.remove("--edits")
 
-from args import parse_args  # noqa: E402
-from build import Options, build  # noqa: E402
+from iris.args import parse_args  # noqa: E402
+from iris.build import Options, build  # noqa: E402
 
 
 options = parse_args()
 build(Path(options.file), Options.from_args(options))  # type: ignore[arg-type]
 
-from helpers.addresses import address_to_lorom  # noqa: E402
-from helpers.files import save, session, write_file  # noqa: E402
-from structures.map_meta import MapMeta  # noqa: E402
-from structures.zone import ZONE_DATA_POINTER_TABLE  # noqa: E402
+from iris.helpers.addresses import address_to_lorom  # noqa: E402
+from iris.helpers.files import save, session, write_file  # noqa: E402
+from iris.structures.map_meta import MapMeta  # noqa: E402
+from iris.structures.zone import ZONE_DATA_POINTER_TABLE  # noqa: E402
 
 
 ELCID, INTERIORS, CAVE = 3, 4, 6

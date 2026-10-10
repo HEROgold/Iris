@@ -8,7 +8,7 @@ lands on the instruction we expect -- so the site cannot silently drift onto the
 
 import random
 
-from constants import (
+from iris.constants import (
     SCALE_ENCOUNTERS_CODE,
     SCALE_ENCOUNTERS_LOW,
     SCALE_ENCOUNTERS_RANGE,
@@ -17,8 +17,8 @@ from constants import (
     SCALE_ENCOUNTERS_TABLE,
     SCALE_ENCOUNTERS_TABLE_SIZE,
 )
-from helpers.files import original_file, output_bytes, read_file, write_file
-from patches.HEROgold.scale_encounters import (
+from iris.helpers.files import original_file, output_bytes, read_file, write_file
+from iris.patches.HEROgold.scale_encounters import (
     MAX_LEVEL,
     MIN_LEVEL,
     TIE_TOLERANCE,
@@ -28,9 +28,9 @@ from patches.HEROgold.scale_encounters import (
     _write_scale_data,
     scale_encounters,
 )
-from structures.formation import EMPTY_SLOT, BattleFormation
-from structures.monster import Monster
-from tables import FormationObject
+from iris.structures.formation import EMPTY_SLOT, BattleFormation
+from iris.structures.monster import Monster
+from iris.tables import FormationObject
 
 
 _SEED = 1234

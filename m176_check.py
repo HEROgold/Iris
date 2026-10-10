@@ -8,14 +8,15 @@ import shutil
 import sys
 from pathlib import Path
 
+
 NAME = sys.argv.pop(sys.argv.index("--name") + 1)
 sys.argv.remove("--name")
 
-import build as iris_build  # noqa: E402
-from args import parse_args  # noqa: E402
+from iris import build as iris_build  # noqa: E402
+from iris.args import parse_args  # noqa: E402
+from iris.helpers.addresses import address_from_lorom  # noqa: E402
+from iris.helpers.files import save, session, write_file  # noqa: E402
 
-from helpers.addresses import address_from_lorom  # noqa: E402
-from helpers.files import save, session, write_file  # noqa: E402
 
 HOOK = 0x1AD80  # $83:AD80, the new game's capsule check that start_capsule.asm hooks
 HOOK_BODY = 0x100

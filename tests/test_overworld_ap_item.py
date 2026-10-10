@@ -1,12 +1,12 @@
 """The overworld AP item lives in a free item slot (KEY30) and is never granted by vanilla content."""
 
-from enums.flags import MenuIcon
-from helpers.files import write_file
-from patches.archipelago.overworld.ap_item import AP_ITEM_INDEX, apply_ap_item
-from structures.chest import AddressChest, PointerChest
-from structures.event_script.containers import MapEvent
-from structures.item import Item
-from tables import AncientChest1Object, AncientChest2Object, BlueChestObject, ChestObject, MapEventObject
+from iris.enums.flags import MenuIcon
+from iris.helpers.files import write_file
+from iris.patches.archipelago.overworld.ap_item import AP_ITEM_INDEX, apply_ap_item
+from iris.structures.chest import AddressChest, PointerChest
+from iris.structures.event_script.containers import MapEvent
+from iris.structures.item import Item, reset_item_table
+from iris.tables import AncientChest1Object, AncientChest2Object, BlueChestObject, ChestObject, MapEventObject
 from tests.reset_file import reset_file
 
 
@@ -23,6 +23,7 @@ def test_ap_item_written() -> None:
         assert item.sprite_index == 0
     finally:
         reset_file()
+        reset_item_table()  # the cached item 458 still holds the AP item
 
 
 def test_candidate_slots_unused_in_vanilla() -> None:

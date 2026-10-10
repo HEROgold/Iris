@@ -50,12 +50,12 @@ Generated with: `python tools/dump_item_grants.py --file <vanilla-rom> --vanilla
 | 9F | Dragon Egg | 9F-B-50 | 063269 | 345 | S-ice ring | 1 | flagged | 193 (KILLED_EGG_DRAGON) |
 | 9F | Dragon Egg | 9F-B-50 | 063394 | 112 | Egg sword | 1 | flagged | 193 (KILLED_EGG_DRAGON) |
 | 9F | Dragon Egg | 9F-B-50 | 063397 | 360 | Egg ring | 1 | flagged | 193 (KILLED_EGG_DRAGON) |
-| BF |  | BF-B-2D | 06B111 | 448 | Mermaid jade | 1 | flagged | 145 (FREE_91) |
+| BF |  | BF-B-2D | 06B111 | 448 | Mermaid jade | 1 | flagged | 145 (RECEIVED_MERMAID_JADE) |
 | D6 |  | D6-C-02 | 06E444 | 449 | Engine | 1 | unflagged |  |
 | DC |  | DC-C-01 | 06F49A | 226 | Pearl armor | 1 | flagged | 102 (GADES_DEFEATED) |
 | E0 |  | E0-C-01 | 06F863 | 322 | Pearl helmet | 1 | flagged | 105 (AMON_DEFEATED) |
-| E4 |  | E4-C-01 | 06FA48 | 270 | Pearl shield | 1 | flagged | 191 (FREE_BF) |
-| E4 |  | E4-C-01 | 06FD62 | 54 | Dual blade | 1 | flagged | 191 (FREE_BF) |
+| E4 |  | E4-C-01 | 06FA48 | 270 | Pearl shield | 1 | flagged | 191 (DAOS_SHRINE_OPEN) |
+| E4 |  | E4-C-01 | 06FD62 | 54 | Dual blade | 1 | flagged | 191 (DAOS_SHRINE_OPEN) |
 | F0 | t | F0-B-52 | 0723E2 | 450 | Ancient key | 1 | unflagged |  |
-| F1 | t Final F | F1-C-01 | 0727E9 | 450 | Ancient key | 1 | flagged | 209 (IRIS_TREASURE_10), 195 (ANCIENT_CAVE_BOSS_KILLED), 250 (FREE_FA), 250 (FREE_FA) |
-| F1 | t Final F | F1-C-01 | 07289A | 45 | Providence | 1 | flagged | 209 (IRIS_TREASURE_10), 195 (ANCIENT_CAVE_BOSS_KILLED), 250 (FREE_FA), 250 (FREE_FA) |
+| F1 | t Final F | F1-C-01 | 0727E9 | 450 | Ancient key | 1 | flagged | 209 (IRIS_TREASURE_10), 195 (ANCIENT_CAVE_BOSS_KILLED), 250 (VANILLA_FA), 250 (VANILLA_FA) |
+| F1 | t Final F | F1-C-01 | 07289A | 45 | Providence | 1 | flagged | 209 (IRIS_TREASURE_10), 195 (ANCIENT_CAVE_BOSS_KILLED), 250 (VANILLA_FA), 250 (VANILLA_FA) |

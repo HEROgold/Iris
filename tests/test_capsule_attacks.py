@@ -8,13 +8,13 @@ from collections.abc import Iterator
 
 import pytest
 
-from helpers.files import original_file, write_file
-from patches.HEROgold import foomy_s_firebird_valor
-from rom_space.pool import reset_pool
-from scripting.l2basm.helpers import Target, end, magical_damage, sequence, target
-from structures.capsule import reset_capsule_table
-from structures.capsule_attack_names import capsule_attack_names
-from structures.capsule_attacks import append_capsule_attack, reset_capsule_attacks, write_capsule_attacks
+from iris.helpers.files import original_file, write_file
+from iris.patches.HEROgold import foomy_s_firebird_valor
+from iris.rom_space.pool import reset_pool
+from iris.scripting.l2basm.helpers import Target, end, magical_damage, sequence, target
+from iris.structures.capsule import reset_capsule_table
+from iris.structures.capsule_attack_names import capsule_attack_names
+from iris.structures.capsule_attacks import append_capsule_attack, reset_capsule_attacks, write_capsule_attacks
 from tests.reset_file import reset_file
 from tests.reset_file import test_equal as files_equal
 

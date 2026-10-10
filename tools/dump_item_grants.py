@@ -4,7 +4,7 @@ Run from the ``src`` directory with a vanilla ROM::
 
     python tools/dump_item_grants.py --file <vanilla-rom> --vanilla [--out docs/ap/item_grants.md]
 
-``--file`` / ``--vanilla`` are consumed by ``args``; ``--out`` is read from ``sys.argv`` here and
+``--file`` / ``--vanilla`` are parsed by ``iris.args.parse_args``; ``--out`` is read from ``sys.argv`` here and
 stripped before Iris parses its arguments. A grant is ``flagged`` when the same script contains a
 set-event-bit instruction (opcode 0x1A); the flag numbers are listed. The address is the headerless
 ROM address of the item operand byte, read back from the ROM to verify it.
@@ -12,6 +12,7 @@ ROM address of the item operand byte, read back from the ROM to verify it.
 
 import sys
 from pathlib import Path
+
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -21,12 +22,14 @@ if "--out" in sys.argv:
     OUT = sys.argv[i + 1]
     del sys.argv[i : i + 2]
 
-from enums.flags import EventFlag  # noqa: E402
-from helpers.files import read_file  # noqa: E402
-from structures.event_script import MapEvent  # noqa: E402
-from structures.event_script.dump import _signature  # noqa: E402
-from structures.item import Item  # noqa: E402
-from tables import MapEventObject  # noqa: E402
+from iris.args import parse_args  # noqa: E402
+from iris.enums.flags import EventFlag  # noqa: E402
+from iris.helpers.files import open_rom, read_file  # noqa: E402
+from iris.structures.event_script import MapEvent  # noqa: E402
+from iris.structures.event_script.dump import _signature  # noqa: E402
+from iris.structures.item import Item  # noqa: E402
+from iris.tables import MapEventObject, select  # noqa: E402
+
 
 SET_FLAG = 0x1A
 GRANT_OPS = {0x20: 0x000, 0x21: 0x100}
@@ -102,6 +105,9 @@ def render(rows: list[dict], mismatches: int, command: str) -> str:
 
 
 if __name__ == "__main__":
+    options = parse_args()
+    select(options.selected_patch)
+    open_rom(Path(options.file))
     rows, mismatches = collect()
     text = render(rows, mismatches, "python tools/dump_item_grants.py --file <vanilla-rom> --vanilla --out docs/ap/item_grants.md")
     if OUT:

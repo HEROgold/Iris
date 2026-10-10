@@ -11,7 +11,7 @@ there is however still plenty of time to review Pr's of fix some issues.
 
 Most of this project/toolkit is in a usable state.
 With Iris it should be quite quick to make custom (data related) patches.
-(see patches/custom.py for examples)
+(see iris/patches/custom.py for examples)
 
 ## Supported patches
 
@@ -40,7 +40,7 @@ So far, it's been tested on the vanilla Lufia 2 USA rom.
 
 For convenient, named access to game data there's a generator that dumps every
 structure from a vanilla ROM and writes helper namespaces (mirroring the
-hand-written `Players` in `characters.py`). The generated `lookups/` package is
+hand-written `Players` in `characters.py`). The generated `iris/lookups/` package is
 **not** committed — regenerate it locally whenever you need it.
 
 Run from the `src` directory, forcing the vanilla table set (the default
@@ -53,7 +53,7 @@ python -m tools.generate_lookups --file "roms/Lufia II - Rise of the Sinistrals 
 
 Note: this project requires Python 3.12 (`>=3.12`). It does **not** run on Python
 3.14, where the stdlib gained a `_types` module that shadows this repo's
-`src/_types/` package. With `uv` you can pin the interpreter without touching your
+`src/iris/_types/` package. With `uv` you can pin the interpreter without touching your
 environment:
 
 ```sh
@@ -61,7 +61,7 @@ cd src
 uv run --no-project --python 3.12 --with "bitstring>=4.2.3" python -m tools.generate_lookups --file "roms/Lufia II - Rise of the Sinistrals (USA).sfc" --vanilla
 ```
 
-This writes `src/lookups/` with one module per structure (`players.py`,
+This writes `src/iris/lookups/` with one module per structure (`players.py`,
 `items.py`, `monsters.py`, `spells.py`, `zones.py`, `capsules.py`, `shops.py`,
 `words.py`, `events.py`, `map_events.py`, `ip_attacks.py`, the formation and chest
 tables, `maidens.py`, …) plus an `__init__.py` that re-exports every namespace.
@@ -69,7 +69,7 @@ Each member is the live structure instance read from the ROM, so you can write
 e.g.:
 
 ```python
-from lookups import Items, Monsters, Spells
+from iris.lookups import Items, Monsters, Spells
 
 Items.POTION        # the Item instance
 Monsters.GOBLIN     # the Monster instance
@@ -80,7 +80,7 @@ Member names come from the in-game names (upper-snake-cased); duplicates get an
 index suffix, and structures without a name (shops, formations) are named by
 index, e.g. `Shops.SHOP_0`. Output is deterministic for a given ROM. To add or
 change what's generated, edit `tools/generate_lookups.py` (the `SPECS` table) and
-re-run — don't hand-edit files under `lookups/`.
+re-run — don't hand-edit files under `iris/lookups/`.
 
 ## Thanks
 

@@ -4,20 +4,20 @@ from collections.abc import Iterator
 
 import pytest
 
-from enums.patches import Patch
-from errors import TableNotMovable
-from helpers.files import original_file, write_file
-from patcher import apply_patch
-from rom_space.pool import pool, reset_pool
-from scripting.core import Data, Label, Script, assemble
-from scripting.l2basm import L2BASM
-from scripting.l2basm.edit import replace_entry
-from scripting.l2basm.helpers import block, end, physical_attack, sequence
-from scripting.l2basm.records import IP_EFFECT_COUNT, IP_EFFECT_TABLE
-from structures import ip_effect
-from structures.ip_attack import IPAttack
-from structures.ip_effect import IP_EFFECT_CODE_REFS, IPEffect, append_ip_effect, ip_effect_table, reset_ip_effect_table
-from tables import IPAttackObject
+from iris.enums.patches import Patch
+from iris.errors import TableNotMovable
+from iris.helpers.files import original_file, write_file
+from iris.patcher import apply_patch
+from iris.rom_space.pool import pool, reset_pool
+from iris.scripting.core import Data, Label, Script, assemble
+from iris.scripting.l2basm import L2BASM
+from iris.scripting.l2basm.edit import replace_entry
+from iris.scripting.l2basm.helpers import block, end, physical_attack, sequence
+from iris.scripting.l2basm.records import IP_EFFECT_COUNT, IP_EFFECT_TABLE
+from iris.structures import ip_effect
+from iris.structures.ip_attack import IPAttack
+from iris.structures.ip_effect import IP_EFFECT_CODE_REFS, IPEffect, append_ip_effect, ip_effect_table, reset_ip_effect_table
+from iris.tables import IPAttackObject
 from tests.reset_file import reset_file
 
 

@@ -10,9 +10,9 @@ from dataclasses import dataclass
 
 import pytest
 
-from errors import ScriptAssemblyError
-from scripting.core import Instruction, Label
-from scripting.l2basm.helpers import (
+from iris.errors import ScriptAssemblyError
+from iris.scripting.core import Instruction, Label
+from iris.scripting.l2basm.helpers import (
     Target,
     assemble_block,
     cast_spell,

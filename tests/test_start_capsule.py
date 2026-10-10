@@ -4,9 +4,9 @@ from collections.abc import Iterator
 
 import pytest
 
-from helpers.addresses import address_from_lorom
-from helpers.files import write_file
-from patches.HEROgold.start_capsule import start_capsule
+from iris.helpers.addresses import address_from_lorom
+from iris.helpers.files import write_file
+from iris.patches.HEROgold.start_capsule import start_capsule
 from tests.reset_file import reset_file
 
 

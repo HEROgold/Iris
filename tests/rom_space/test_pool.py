@@ -5,12 +5,12 @@ from collections.abc import Iterator
 
 import pytest
 
-from constants import EXPANDED_ROM_SIZE, RESERVED_REGIONS
-from enums.patches import Patch
-from errors import NoFreeSpace
-from helpers.files import write_file
-from patcher import apply_patch
-from rom_space.pool import BANK_SIZE, FreeSpace, bank_of, pool, reset_pool
+from iris.constants import EXPANDED_ROM_SIZE, RESERVED_REGIONS
+from iris.enums.patches import Patch
+from iris.errors import NoFreeSpace
+from iris.helpers.files import write_file
+from iris.patcher import apply_patch
+from iris.rom_space.pool import BANK_SIZE, FreeSpace, bank_of, pool, reset_pool
 from tests.reset_file import reset_file
 
 

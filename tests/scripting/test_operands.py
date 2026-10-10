@@ -2,8 +2,8 @@
 
 import pytest
 
-from errors import ScriptAssemblyError, ScriptDecodeError
-from scripting.core import U8, U16, DecodeContext, External, Jump, Label, Layout, label_name
+from iris.errors import ScriptAssemblyError, ScriptDecodeError
+from iris.scripting.core import U8, U16, DecodeContext, External, Jump, Label, Layout, label_name
 
 
 def test_u8_round_trip() -> None:

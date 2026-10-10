@@ -2,9 +2,9 @@ from pathlib import Path
 
 import pytest
 
-from args import parse_args
-from helpers.files import open_rom
-from tables import select
+from iris.args import parse_args
+from iris.helpers.files import open_rom
+from iris.tables import select
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:

@@ -4,12 +4,12 @@ from collections.abc import Iterator
 
 import pytest
 
-from helpers.bits import read_little_int
-from helpers.files import write_file
-from patches.HEROgold.debug_party import MAX_LEVEL, MAX_STAT, max_out_party
-from patches.HEROgold.party_toggle import _NOT_IN_PARTY, _toggle  # pyright: ignore[reportPrivateUsage]
-from structures.character import PlayableCharacter
-from tables import CharacterObject, CharLevelObject
+from iris.helpers.bits import read_little_int
+from iris.helpers.files import write_file
+from iris.patches.HEROgold.debug_party import MAX_LEVEL, MAX_STAT, max_out_party
+from iris.patches.HEROgold.party_toggle import _NOT_IN_PARTY, _toggle  # pyright: ignore[reportPrivateUsage]
+from iris.structures.character import PlayableCharacter
+from iris.tables import CharacterObject, CharLevelObject
 from tests.reset_file import reset_file
 
 

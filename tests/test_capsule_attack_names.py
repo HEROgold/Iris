@@ -4,10 +4,10 @@ from collections.abc import Iterator
 
 import pytest
 
-from enums.patches import Patch
-from helpers.files import original_file, write_file
-from patcher import apply_patch
-from structures.capsule_attack_names import CapsuleAttackNames
+from iris.enums.patches import Patch
+from iris.helpers.files import original_file, write_file
+from iris.patcher import apply_patch
+from iris.structures.capsule_attack_names import CapsuleAttackNames
 from tests.reset_file import reset_file
 
 

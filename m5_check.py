@@ -4,25 +4,28 @@ import shutil
 import sys
 from pathlib import Path
 
+
 EDIT = "--edits" in sys.argv
 if EDIT:
     sys.argv.remove("--edits")
 
 from dataclasses import replace  # noqa: E402
 
-from args import parse_args  # noqa: E402
-from build import Options, build  # noqa: E402
+from iris.args import parse_args  # noqa: E402
+from iris.build import Options, build  # noqa: E402
+
 
 options = parse_args()
 # Start with what the checks need: Potions and Speed potions (HER-192), and the Light knife, whose IP Light attack uses effect $09 (HER-194).
 build(Path(options.file), replace(Options.from_args(options), start_items=((2, 9), (20, 9), (64, 1))))  # type: ignore[arg-type]
 
-from enums.flags import Usability  # noqa: E402
-from helpers.files import save, session, write_file  # noqa: E402
-from scripting.core import Instruction, listing  # noqa: E402
-from structures.ip_effect import IPEffect  # noqa: E402
-from structures.item import Item  # noqa: E402
-from structures.spell import Spell  # noqa: E402
+from iris.enums.flags import Usability  # noqa: E402
+from iris.helpers.files import save, session, write_file  # noqa: E402
+from iris.scripting.core import Instruction, listing  # noqa: E402
+from iris.structures.ip_effect import IPEffect  # noqa: E402
+from iris.structures.item import Item  # noqa: E402
+from iris.structures.spell import Spell  # noqa: E402
+
 
 report = []
 if EDIT:

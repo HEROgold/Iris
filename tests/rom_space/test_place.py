@@ -4,8 +4,8 @@ import io
 
 import pytest
 
-from errors import NoFreeSpace
-from rom_space.place import (
+from iris.errors import NoFreeSpace
+from iris.rom_space.place import (
     BankExtended15,
     BytesBlock,
     CodeAbs16,
@@ -17,7 +17,7 @@ from rom_space.place import (
     U16Rel,
     place,
 )
-from rom_space.pool import BANK_SIZE, FreeSpace
+from iris.rom_space.pool import BANK_SIZE, FreeSpace
 
 
 OLD = 0x100

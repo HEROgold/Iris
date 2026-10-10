@@ -1,8 +1,8 @@
 """Layout checks for the Archipelago config block reservation (docs/ap/config_block.md)."""
 
-import constants
-from constants import AP_CONFIG_REGION, RESERVED_REGIONS
-from helpers.rom_expansion import assert_no_overlaps
+from iris import constants
+from iris.constants import AP_CONFIG_REGION, RESERVED_REGIONS
+from iris.helpers.rom_expansion import assert_no_overlaps
 
 
 def _option_fields() -> list[tuple[str, int, int]]:

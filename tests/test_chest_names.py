@@ -1,7 +1,7 @@
 """Every red chest has a unique, non-empty human-readable location name."""
 
-from structures.chest_location import ChestLocation
-from structures.chest_names import CHEST_NAMES
+from iris.structures.chest_location import ChestLocation
+from iris.structures.chest_names import CHEST_NAMES
 
 
 def test_every_chest_has_a_name() -> None:

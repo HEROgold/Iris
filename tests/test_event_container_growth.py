@@ -7,11 +7,11 @@ inside banks $80-$BF for a whole container, so growth raises instead of writing 
 
 import pytest
 
-from errors import EventFreeSpaceError
-from helpers.files import output_bytes, write_file
-from structures.event_script import MapEvent
-from structures.event_script.containers import EventScript
-from structures.event_script.instructions import Instruction
+from iris.errors import EventFreeSpaceError
+from iris.helpers.files import output_bytes, write_file
+from iris.structures.event_script import MapEvent
+from iris.structures.event_script.containers import EventScript
+from iris.structures.event_script.instructions import Instruction
 from tests.reset_file import reset_file
 
 

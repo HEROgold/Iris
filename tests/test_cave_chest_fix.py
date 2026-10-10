@@ -4,10 +4,10 @@ from collections.abc import Iterator
 
 import pytest
 
-from constants import CAVE_CHEST_FIX_REGION, EXPANDED_ROM_SIZE, RESERVED_REGIONS
-from helpers.files import write_file
-from patches.RealCritical import fix_cave_chest_table
-from rom_space.pool import pool, reset_pool
+from iris.constants import CAVE_CHEST_FIX_REGION, EXPANDED_ROM_SIZE, RESERVED_REGIONS
+from iris.helpers.files import write_file
+from iris.patches.RealCritical import fix_cave_chest_table
+from iris.rom_space.pool import pool, reset_pool
 from tests.reset_file import reset_file
 
 
