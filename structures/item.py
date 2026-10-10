@@ -183,15 +183,15 @@ class Item(TablePointer):
     @property
     def description(self) -> str:
         """
-        [0xB8200 -> 0xB85FF]:  pointers to item descriptions (2 bytes, little-endian)
-        [0xB87B4 -> 0xBB2A0]:  item/spell/IP descriptions
+        [0xB8000 -> 0xB83FF]:  pointers to item descriptions (2 bytes, little-endian, relative to 0xB8000)
+        [0xB85B4 -> 0xBB0A0]:  item/spell/IP descriptions (compressed with dictionary 2)
         """
         return ""
         # TODO: Figure out how descriptions are stored.
         # TODO: Figure out how to decompress the descriptions.
-        pointer_table = 0xB8200 # until 0xB85FF
-        description_table_start = 0xB87B4
-        description_table_end = 0xBB2A0
+        pointer_table = 0xB8000 # until 0xB83FF
+        description_table_start = 0xB85B4
+        description_table_end = 0xBB0A0
         pointer = find_table_pointer(pointer_table, self.index)
         # one pointer hit 0xC0000?
         assert description_table_start <= pointer <= description_table_end

@@ -254,7 +254,7 @@ _PARTY_FLAG_BY_INDEX = (
     EventFlag.LEXIS_IN_PARTY,   # index 6 -> flag 7
 )
 
-# The seven "found/unlocked" flags are index-ordered starting at FOUND_MAXIM (242), so found flag == 242 +
+# The seven "found/unlocked" flags are index-ordered starting at FOUND_MAXIM (220), so found flag == 220 +
 # index. These are new flags (no game-side swap), unlike the membership flags above.
 _FOUND_FLAG_BASE = int(EventFlag.FOUND_MAXIM)
 
@@ -285,7 +285,7 @@ class PlayableCharacter(TablePointer):
     def found_flag(self) -> int:
         """The event flag marking this character as "found/unlocked" (recruited in the story).
 
-        A new Iris flag (242 + index, i.e. ``EventFlag.FOUND_*``) used by the party-toggle patch to gate
+        A new Iris flag (220 + index, i.e. ``EventFlag.FOUND_*``) used by the party-toggle patch to gate
         joining. Unlike :attr:`party_flag`, these are index-ordered with no swap.
         """
         return _FOUND_FLAG_BASE + self.index

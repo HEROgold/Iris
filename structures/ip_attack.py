@@ -46,29 +46,14 @@ class IPAttack(Pointer):
 
     @property
     def description(self) -> str:
-        """
-        -----------------------------------------------------------------------
-        IP descriptions
-        -----------------------------------------------------------------------
-        [$0B8662, $0B87B3]:  pointers to IP descriptions (2 bytes, little-endian)
-        [$0B87B4, $0BB2A0]:  item / spell / IP descriptions
-        The IP descriptions are compressed.
-        -----------------------------------------------------------------------
-        IP effects
-        -----------------------------------------------------------------------
-        [$0AF3EF, $0AF508]:  pointers to data at [$0AF509] (2 bytes, little-endian)
-                            282 bytes => 141
-                            Add $0AF3EF to the pointers to find the offsets
-                            of the L2BASM scripts for IP effects.
-        [$0AF509, $0AFC5A]:  L2BASM scripts for IP effects.
-        Each L2BASM script is preceeded by $FF.
+        """Not decoded yet: the description text is compressed with dictionary 2.
+
+        Headerless offsets (info/L2_IPDataFormat.txt lists them headered, 0x200 higher):
+        0xB8462-0xB85B3: 169 IP description pointers, each relative to 0xB8000.
+        0xB85B4-0xBB0A0: item / spell / IP description text.
+        The IP effect scripts are a separate table at 0xAF1EF (structures/ip_effect.py).
         """
         # TODO: decompress the description. Same goes for item descriptions.
-        pointers = range(0xB8662, 0xB87B3, 2)
-        _data = [
-            0x0AF509 + pointer
-            for pointer in pointers
-        ]
         return ""
 
     def write(self) -> None:

@@ -1,7 +1,7 @@
 """Set each character's "found/unlocked" flag wherever the story recruits them.
 
 Companion to :mod:`patches.HEROgold.party_toggle`. The toggle gates joining on a per-character *found*
-flag (``EventFlag.FOUND_*``, 242-248 -- see :attr:`PlayableCharacter.found_flag`). For that gate to track
+flag (``EventFlag.FOUND_*``, 220-226 -- see :attr:`PlayableCharacter.found_flag`). For that gate to track
 normal progression, every event script that adds a party member (a ``2B`` "character joins" opcode) must
 also *set* that character's found flag. This patch scans every map's event scripts and, right after each
 ``2B(idx)`` for a playable character (index 0-6), inserts a ``1A(found_flag)``. The flag is never cleared,
@@ -46,7 +46,7 @@ _CHARACTER_INDICES = frozenset(range(7))
 
 _JOIN = 0x2B  # character joins the party
 _SET_FLAG = 0x1A  # set event bit
-_FOUND_BASE = int(EventFlag.FOUND_MAXIM)  # found flag == 242 + character index
+_FOUND_BASE = int(EventFlag.FOUND_MAXIM)  # found flag == 220 + character index
 
 
 def _found_flag(character_index: int) -> int:
