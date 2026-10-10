@@ -15,10 +15,10 @@ exec(compile(source, "__main__.py", "exec"), ns)  # noqa: S102
 from lookups.items import Items  # noqa: E402
 _hook = ns["apply_new_game_hook"]
 ns["apply_new_game_hook"] = lambda **kw: _hook(**kw, start_items=[(Items.POTION, 9), (Items.SPEED_POTION, 9), (Items.LIGHT_KNIFE, 1)])  # type: ignore[operator]
-ns["main"]()  # type: ignore[operator]
+options = ns["main"]()  # type: ignore[operator]
 
 from enums.flags import Usability  # noqa: E402
-from helpers.files import new_file, save, write_file  # noqa: E402
+from helpers.files import save, session, write_file  # noqa: E402
 from scripting.core import Instruction, listing  # noqa: E402
 from structures.ip_effect import IPEffect  # noqa: E402
 from structures.item import Item  # noqa: E402
@@ -58,7 +58,8 @@ if EDIT:
 
 write_file.flush()
 name = "m5-checks-v3" if EDIT else "m5-baseline-v3"
-target = new_file.with_name(f"{name}-{new_file.stem.rsplit('-', 1)[1]}.smc")
+target = session().source.with_name(  # type: ignore[union-attr]
+    f"{name}-{options.seed}.smc")
 save(target)
 Path("m5_check_report.txt").write_text("\n".join(report), encoding="utf-8")
 print(target)  # noqa: T201

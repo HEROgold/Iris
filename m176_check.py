@@ -16,7 +16,7 @@ ns: dict[str, object] = {"__name__": "iris_main"}
 exec(compile(source, "__main__.py", "exec"), ns)  # noqa: S102
 
 from helpers.addresses import address_from_lorom  # noqa: E402
-from helpers.files import new_file, save, write_file  # noqa: E402
+from helpers.files import save, session, write_file  # noqa: E402
 
 HOOK = 0x1AD80  # $83:AD80, the new game's capsule check that start_capsule.asm hooks
 HOOK_BODY = 0x100
@@ -36,7 +36,7 @@ def start_capsule_and_snapshot(*args: object, **kwargs: object) -> None:
 
 
 ns["start_capsule"] = start_capsule_and_snapshot
-ns["main"]()  # type: ignore[operator]
+options = ns["main"]()  # type: ignore[operator]
 
 write_file.flush()
 target = snapshot["target"]
@@ -46,6 +46,7 @@ final = write_file.read(HOOK_BODY)
 changed = [i for i, (a, b) in enumerate(zip(snapshot["body"], final, strict=True)) if a != b]  # type: ignore[arg-type]
 print(f"start_capsule hook body at {target:#x}: {'intact' if not changed else f'CHANGED at +{changed[:8]}'}")  # noqa: T201
 
-out = new_file.with_name(f"{NAME}-{new_file.stem.rsplit('-', 1)[1]}.smc")
+out = session().source.with_name(  # type: ignore[union-attr]
+    f"{NAME}-{options.seed}.smc")
 save(out)
 print(out)  # noqa: T201

@@ -12,8 +12,8 @@ force the vanilla table set (the default suggested patch is Frue)::
     cd src
     python tools/generate_lookups.py --file <path-to-vanilla-rom> --vanilla
 
-``--file`` / ``--vanilla`` are consumed by ``args`` (see ``src/args.py``); this
-script adds no CLI options of its own so it never clashes with that parser.
+``--file`` / ``--vanilla`` are parsed by ``args.parse_args`` (see ``src/args.py``), which picks the
+table set; this script adds no CLI options of its own.
 
 Output is written to ``src/lookups/`` (one module per enum, plus ``__init__``).
 The generated files are committed; regenerate them with this script rather than
@@ -29,14 +29,15 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
-# Importing anything from the project pulls in ``args`` (which requires --file)
-# and ``helpers.files`` (which opens the ROM). That is intentional: the enum
-# member *values* are live instances read from that ROM.
+# The enum member *values* are live instances read from the ROM, so the session is
+# opened before anything is generated (see ``__main__`` below).
 # Only structures whose *member name* is derived from an instance attribute are
 # imported here. Index-named structures (Event, Shop, BattleFormation) are still
 # generated, but their producers emit a literal expression string instead of
 # reading an attribute, so the generator never references the class itself — the
 # generated modules import it via each spec's ``imports`` list.
+from args import parse_args
+from helpers.files import open_rom
 from structures.capsule import CapsuleMonster
 from structures.character import PlayableCharacter
 from structures.chest import AddressChest, PointerChest
@@ -67,6 +68,7 @@ from tables import (
     SpellObject,
     WordObject,
     ZoneObject,
+    select,
 )
 
 
@@ -356,6 +358,9 @@ def write_init(exported: list[tuple[str, str]]) -> None:
 
 
 if __name__ == "__main__":
+    options = parse_args()
+    select(options.selected_patch)
+    open_rom(Path(options.file))
     print(f"Generating lookup enums into {LOOKUPS_DIR} ...")
     generate()
     print("Done.")

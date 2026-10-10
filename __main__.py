@@ -1,5 +1,9 @@
-from args import args
-from helpers.files import open_rom, save
+from collections.abc import Sequence
+from pathlib import Path
+
+from args import Args, parse_args
+from helpers import files
+from helpers.files import open_rom, output_path, save
 from logger import iris
 from patcher import (
     apply_absynnonym_patch,
@@ -40,24 +44,31 @@ from patches.RealCritical import (
     killer_names,
 )
 from patches.RealCritical.sprites import bunny_girls, fix_shrine_tile_set
+from structures.monster import Monster
+from structures.shop import Shop
 from structures.zone import Zone
+from tables import select
 from tests.read_write import read_write_all
 
 
-def main() -> None:
-
+def main(argv: Sequence[str] | None = None) -> Args:
+    """Build the ROM described by ``argv`` (default: the command line) in the ROM session. :func:`save` writes it."""
+    args = parse_args(argv)
     if args.debug:
         iris.setLevel("DEBUG")
 
     if not args.file:
         msg = "Pass the ROM to randomize with --file."
         raise SystemExit(msg)
+    select(args.selected_patch)
+    Shop.verify_pointers = args.debug or args.no_patch  # an unrandomized ROM keeps every shop's next pointer
+    Monster.easy_mode = args.easy_mode
     # One read of the ROM, with the base patch (FRUE, Spekkio, Kureji) applied before any structure reads it.
-    open_rom(base=args.selected_patch)
+    open_rom(Path(args.file), base=args.selected_patch)
 
     if args.no_patch:
         read_write_all()
-        return
+        return args
 
     set_rom_name(b"Lufia II (Iris patch)") # For identification purposes.
 
@@ -150,7 +161,7 @@ def main() -> None:
         start_capsule(args.start_capsule, args.start_capsule_name)
     if args.scale_encounters:
         # Runs with the other asm patches so asar assembles after every structure write.
-        scale_encounters(*args.scale_encounters)
+        scale_encounters(*args.scale_encounters, seed=args.seed)
 
     # Apply RealCritical patches
     fix_menu()
@@ -175,12 +186,12 @@ def main() -> None:
     # from patches.HEROgold.chest_randomizer import randomize_chest_contents, randomize_chest_locations
     # randomize_chest_contents()    # randomize WHAT each chest holds
     # randomize_chest_locations()   # shuffle WHERE chests sit, within each map
-
+    return args
 
 
 if __name__ == "__main__":
-    main()
-    save()  # the one disk write of the run
+    options = main()
+    save(output_path(files.original_file, options.seed))  # the one disk write of the run
 
 # TODO: Implement the following:
 # Create own rom extractor, which can and should extract data from the rom. > well on its way

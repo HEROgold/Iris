@@ -32,7 +32,6 @@ disassembly behind each of those four sites.
 import random
 from pathlib import Path
 
-from args import args
 from constants import (
     SCALE_ENCOUNTERS_LOW,
     SCALE_ENCOUNTERS_MAX_BAND,
@@ -124,8 +123,11 @@ def _write_scale_data(table: bytes, low: int, high: int) -> None:
     write_file.write((high - low + 1).to_bytes(1, "little"))
 
 
-def scale_encounters(low: int, high: int) -> None:
-    """Scale normal encounters to the party's average level, offset by a roll in ``[low, high]``."""
+def scale_encounters(low: int, high: int, seed: int) -> None:
+    """Scale normal encounters to the party's average level, offset by a roll in ``[low, high]``.
+
+    ``seed`` makes the baked level table reproducible.
+    """
     limit = SCALE_ENCOUNTERS_MAX_OFFSET
     if not (-limit <= low <= high <= limit):
         msg = f"Encounter scaling band must satisfy {-limit} <= low <= high <= {limit}, got {low}..{high}."
@@ -138,7 +140,7 @@ def scale_encounters(low: int, high: int) -> None:
     iris.info(f"Scaling normal encounters to party level, offset by [{low}, {high}].")
     # A dedicated Random keeps the table reproducible from the seed alone, independent of how much
     # of the global `random` stream earlier patches happened to consume.
-    table = _build_level_table(random.Random(args.seed))
+    table = _build_level_table(random.Random(seed))
     _write_scale_data(table, low, high)
     # asar runs last so its checksum fix covers the data written above.
     apply_asm_patch(_ASM)

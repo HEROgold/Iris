@@ -4,7 +4,6 @@ from typing import Literal, Self
 
 from _types.objects import Cache
 from abc_.pointers import TablePointer
-from args import args
 from enums.flags import EquipableCharacter, EquipTypes, ItemEffects, ItemTypes, MenuIcon, Targeting, Usability
 from helpers.bits import find_table_pointer
 from helpers.files import read_file, write_file
@@ -148,11 +147,6 @@ class Item(TablePointer):
         inst = cls(ItemName.from_index(index), index, record[4])  # sprite: 00 for no-chest items, and coins.
         TablePointer.__init__(inst, address, index)
         inst.pointer = rec.start
-
-        if args.equip_everyone:
-            inst.equipability = EquipableCharacter(EquipableCharacter.ALL)
-        if args.equip_anywhere:
-            inst.equip_types = EquipTypes(EquipTypes.ALL)
 
         inst.usability = Usability.from_byte(record[0:1])
         inst.item_types = ItemTypes.from_byte(record[1:2])

@@ -17,10 +17,10 @@ if EDIT:
 source = Path("__main__.py").read_text(encoding="utf-8").split('if __name__ == "__main__":')[0]
 ns: dict[str, object] = {"__name__": "iris_main"}
 exec(compile(source, "__main__.py", "exec"), ns)  # noqa: S102
-ns["main"]()  # type: ignore[operator]
+options = ns["main"]()  # type: ignore[operator]
 
 from helpers.addresses import address_to_lorom  # noqa: E402
-from helpers.files import new_file, save, write_file  # noqa: E402
+from helpers.files import save, session, write_file  # noqa: E402
 from structures.map_meta import MapMeta  # noqa: E402
 from structures.zone import ZONE_DATA_POINTER_TABLE  # noqa: E402
 
@@ -53,7 +53,8 @@ if EDIT:
 
 write_file.flush()
 name = "her206-checks" if EDIT else "her206-baseline"
-target = new_file.with_name(f"{name}-{new_file.stem.rsplit('-', 1)[1]}.smc")
+target = session().source.with_name(  # type: ignore[union-attr]
+    f"{name}-{options.seed}.smc")
 save(target)
 Path("m206_check_report.txt").write_text("\n".join(report), encoding="utf-8")
 print(target)  # noqa: T201

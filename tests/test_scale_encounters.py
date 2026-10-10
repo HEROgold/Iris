@@ -113,7 +113,7 @@ def test_bake_writes_the_reserved_region() -> None:
 
 def test_full_patch_assembles_over_the_baked_data() -> None:
     try:
-        scale_encounters(_LOW, _HIGH)
+        scale_encounters(_LOW, _HIGH, _SEED)
         write_file.flush()
         rom = output_bytes()
 
