@@ -58,7 +58,59 @@ EVENT_SCRIPT_FREESPACE = range(0x340000, 0x360000)
 # 71-byte hook body at headerless 0x30D820 (SNES $E1:D820); the patched code at 0x19176 jumps to $E1:D84A.
 CAVE_CHEST_FIX_REGION = range(0x30D820, 0x30D867)
 
-RESERVED_REGIONS = [SCALE_ENCOUNTERS_REGION, ZONE_DATA_FREESPACE, EVENT_SCRIPT_FREESPACE, CAVE_CHEST_FIX_REGION]
+# --- Reserved space: Archipelago config block (docs/ap/config_block.md) --------------------------
+# One bank-aligned 32KB bank at headerless 0x360000 (SNES $EC:8000). Read by the Archipelago SNI
+# client and by our asm; filled per seed by Archipelago tokens (offset + bytes) over a static base
+# patch, so every field has a fixed offset. Bump AP_CONFIG_VERSION whenever the layout changes.
+AP_CONFIG_REGION = range(0x360000, 0x368000)
+AP_CONFIG_VERSION = 1
+"""Layout version stored in the byte at AP_CONFIG_VERSION_OFFSET."""
+AP_CONFIG_MAGIC = b"IRISAP"
+AP_CONFIG_MAGIC_OFFSET = 0x360000
+AP_CONFIG_MAGIC_SIZE = 6
+AP_CONFIG_VERSION_OFFSET = 0x360006
+"""1 byte: the layout version (AP_CONFIG_VERSION)."""
+AP_CONFIG_VERSION_SIZE = 1
+AP_CONFIG_AUTH_OFFSET = 0x360008
+"""32 bytes: the seed/slot name the client authenticates with, zero-padded ASCII/UTF-8."""
+AP_CONFIG_AUTH_SIZE = 32
+
+AP_OPTIONS_OFFSET = 0x360040
+AP_OPTIONS_SIZE = 64
+"""Fixed 64-byte option area; unused bytes at the end are reserved (zero)."""
+AP_OPT_GOAL = 0x360040
+"""1 byte: goal id."""
+AP_OPT_GOAL_PARAM = 0x360041
+"""1 byte: goal parameter, e.g. Iris treasures required."""
+AP_OPT_START_MERMAID_JADE = 0x360042
+"""1 byte (0/1): start with Mermaid Jade."""
+AP_OPT_START_ENGINE = 0x360043
+"""1 byte (0/1): start with the Engine."""
+AP_OPT_SCALING_ENABLED = 0x360044
+"""1 byte (0/1): encounter scaling enabled."""
+AP_OPT_SCALING_LOW = 0x360045
+"""1 byte, two's complement: scaling band low end (same semantics as SCALE_ENCOUNTERS_LOW)."""
+AP_OPT_SCALING_RANGE = 0x360046
+"""1 byte: scaling band size (same semantics as SCALE_ENCOUNTERS_RANGE)."""
+AP_OPT_SCENARIO_ITEM_MODE = 0x360047
+"""1 byte: scenario-item removal mode."""
+AP_OPT_BLUE_CHESTS_ENABLED = 0x360048
+"""1 byte (0/1): Ancient Cave blue chests are checks."""
+AP_OPT_BLUE_CHEST_COUNT = 0x360049
+"""2 bytes, little-endian: number of blue chest checks N."""
+AP_OPT_DEATH_LINK = 0x36004B
+"""1 byte (0/1): death link."""
+AP_OPT_RESERVED = 0x36004C
+"""Reserved option bytes up to the end of the 64-byte option area."""
+
+AP_HINT_HEADER_OFFSET = 0x360080
+AP_HINT_HEADER_SIZE = 16
+"""Hint table header: u16 hint count, u16 arena bytes used, 12 reserved bytes."""
+AP_HINT_ARENA_OFFSET = 0x360090
+AP_HINT_ARENA_END = 0x368000
+"""Reserved hint text arena: AP_HINT_ARENA_OFFSET up to the end of AP_CONFIG_REGION."""
+
+RESERVED_REGIONS = [SCALE_ENCOUNTERS_REGION, ZONE_DATA_FREESPACE, EVENT_SCRIPT_FREESPACE, CAVE_CHEST_FIX_REGION, AP_CONFIG_REGION]
 """Every fixed ROM-expansion reservation, checked for overlaps by helpers.rom_expansion.assert_no_overlaps."""
 
 
