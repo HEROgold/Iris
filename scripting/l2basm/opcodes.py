@@ -229,7 +229,9 @@ CRASH_CODES = frozenset({0x02, 0x31, 0x33, 0x34, 0x38, 0x39, 0x3A, 0x3B})
 CORRECTIONS: dict[int, int] = {
     0x11: 1,  # RAND reg: one register byte (info/L2_Subroutines$42XX.txt, "11 81 / RAND reg($81)")
     0x2C: 1,  # cast spell: spell index (missing from older op_codes tables)
-    0x46: 1,  # not in L2_Effects.txt; item armor scripts 252-322 read `46 xx` then a clean stream to END
+    0x3D: 1,  # not in L2_Effects.txt; RAN-RAN step's weapon script lists `3D XX` after `4C 03`
+    0x46: 3,  # not in L2_Effects.txt; item armor scripts: condition byte + record-relative jump (see _TYPED)
+    0x4C: 1,  # not in L2_Effects.txt; RAN-RAN step's weapon script (`4C 03`)
 }
 
 PARAM_COUNTS: dict[int, int] = {**_OLD_PARAMS, **CORRECTIONS}
@@ -323,6 +325,9 @@ _TYPED: dict[int, tuple[str, tuple[OperandKind, ...], Flow]] = {
     0x32: ("target", (U8("target"),), Flow.CONTINUE),
     0x3E: ("display_name", (U8("name"),), Flow.CONTINUE),
     0x3F: ("learnable", (U8("slot"), Jump()), Flow.BRANCH),
+    # Item armor scripts: `46 XX JJJJ` falls through to the full protection and jumps to the partial one
+    # (Water gaunt: `0C 81 04 00 42 19 00 00` or, at the jump, `42 08 00 00`).
+    0x46: ("branch_46", (U8("condition"), Jump()), Flow.BRANCH),
     0x42: ("call", (SubroutineRef("subroutine"), U8("zero")), Flow.CONTINUE),
     0x43: ("return", (), Flow.END),
     0x5A: ("battle_anim", (U8("anim"),), Flow.CONTINUE),

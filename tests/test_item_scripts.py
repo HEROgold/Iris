@@ -10,7 +10,7 @@ from enums.patches import Patch
 from helpers.files import original_file, write_file
 from patcher import apply_patch
 from rom_space.pool import reset_pool
-from scripting.core import Label, assemble
+from scripting.core import Data, Label, assemble
 from scripting.l2basm.helpers import physical_attack, sequence
 from scripting.l2basm.records import ITEM_WORDS
 from structures import subroutine
@@ -54,6 +54,13 @@ def test_every_item_builds_its_vanilla_record() -> None:
     for record, start in zip(table.records, table.starts(), strict=True):
         data = record.build()  # type: ignore[attr-defined]
         assert rom[start : start + len(data)] == data, record
+
+
+def test_scripts_with_opcodes_46_3d_4c_parse_to_their_end() -> None:
+    # Armor scripts start with `46 XX JJJJ` (a branch); RAN-RAN step (464) uses `4C 03` and `3D XX`.
+    for index in (257, 258, 263, 268, 269, 315, 316, 317, 318, 464):
+        code = Item.from_index(index).code
+        assert not any(isinstance(node, Data) for node in code.body), index
 
 
 def test_item_effects_bit_0_is_the_menu_script() -> None:
