@@ -20,7 +20,7 @@ One bank-aligned 32KB bank at headerless `0x360000` (SNES `$EC:8000`), `AP_CONFI
 | Blue chests enabled | 0x360048 | $EC:8048 | 1 | 0/1, Ancient Cave blue chests are checks | per-seed token |
 | Blue chest check count N | 0x360049 | $EC:8049 | 2 | Little-endian | per-seed token |
 | Death link | 0x36004B | $EC:804B | 1 | 0/1 | per-seed token |
-| Reserved options | 0x36004C | $EC:804C | 20 | Zero, pads options to 64 bytes (0x40-0x7F) | - |
+| Reserved options | 0x36004C | $EC:804C | 52 | Zero, pads options to 64 bytes (0x40-0x7F) | - |
 | Hint table header | 0x360080 | $EC:8080 | 16 | u16 hint count, u16 arena bytes used, 12 reserved | per-seed token |
 | Hint text arena | 0x360090 | $EC:8090 | 32624 | Hint text, to the end of the bank | per-seed token |
 
