@@ -12,6 +12,7 @@ from . import data
 from .items import BASE_ID, GAME, ITEM_NAMES
 from .logic import EXCLUDED_GRANTS, EXCLUDED_MAPS
 
+
 GRANT_BASE = BASE_ID + 0x1000
 
 
@@ -29,11 +30,11 @@ MAP_NAME_FALLBACK = {
     **{0xD2: "Gratze Castle B1", 0xD3: "Gratze Castle B2", 0xD4: "Gratze Castle B3", 0xD5: "Gratze Castle B4"},
     **{0xD6: "Gratze Kingdom", 0xD7: "Gratze Kingdom", 0xDC: "Shuman Tower", 0xE0: "Strahda Tower", 0xE4: "Kamirno Tower"},
 }
-"""Maps whose own name doesn't decode (or is blank in the ROM)."""
+"""Maps whose own name doesn't decode fully (Phantom Tree Mountain reads "Phant") or is blank in the ROM."""
 
 
 def place(map_index: int) -> str:
-    return data.MAP_NAMES.get(map_index) or MAP_NAME_FALLBACK.get(map_index, f"Map {map_index:#04x}")
+    return MAP_NAME_FALLBACK.get(map_index) or data.MAP_NAMES.get(map_index) or f"Map {map_index:#04x}"
 
 
 def _grant_name(map_index: int, item: int) -> str:

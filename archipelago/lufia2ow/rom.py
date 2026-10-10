@@ -52,6 +52,10 @@ class L2OWProcedurePatch(APProcedurePatch, APTokenMixin):
         for offset, value in data.NO_STARTING_ARROW:
             self.write_token(APTokenTypes.WRITE, offset, value)
 
+    def write_hint_npc(self, offset: int, script: bytes) -> None:
+        """Overwrite a hint NPC's talk script in place (hints.py builds it at its old size)."""
+        self.write_token(APTokenTypes.WRITE, offset, script)
+
     def write_auth(self, auth: bytes) -> None:
         self.write_token(APTokenTypes.WRITE, data.CONFIG["AP_CONFIG_AUTH_OFFSET"], auth.ljust(AUTH_SIZE, b"\0"))
 

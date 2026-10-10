@@ -242,10 +242,18 @@ EXCLUDED_GRANTS = frozenset(("9F-B-50",))
 @dataclass(frozen=True)
 class GoalInfo:
     stage: str
-    """The stage whose event is the goal; later stages are left out."""
-    flag: int
+    """The stage whose event is the goal, or that holds the goal; later stages are left out."""
+    flag: int | None
     """The event flag the client reads as the goal. Each one is set by a script on the goal's map (checked in the ROM)."""
 
+
+EGG_SHRINE_STAGE = "Agurio to the Divine Shrine"
+"""The Small Shrine to Dragon Egg (map 0x9F) opens with this stage."""
+EGG_WISH_VARIABLE = 8
+"""Event variable the Egg Dragon's script (9F-B-50) adds 1 to per wish; at 4 it gives its last reward."""
+EGGS_PER_WISH = 8
+MERIX_EGGS = 1
+"""Merix's Dragon egg comes from a script grant without a flag, so it stays where it is (not a location)."""
 
 GOALS = {
     "daos": GoalInfo("Shrine of Daos", data.EVENT_FLAGS["DAOS_DEFEATED"]),
@@ -254,8 +262,9 @@ GOALS = {
     "amon_divine_shrine": GoalInfo("Agurio to the Divine Shrine", data.EVENT_FLAGS["AMON_DEFEATED_DIVINE"]),
     "idura": GoalInfo("Gruberik, Narcysus and the Tower of Sacrifice", data.EVENT_FLAGS["IDURA_DEFEATED_SACRIFICE"]),
     "gades_ancient_tower": GoalInfo("Ancient Tower", data.EVENT_FLAGS["DEFEATED_GADES_ANCIENT_TOWER"]),
+    "dragon_eggs": GoalInfo(EGG_SHRINE_STAGE, None),
 }
-"""Goal option name -> its stage and flag."""
+"""Goal option name -> its stage and flag. The dragon_eggs goal is read from EGG_WISH_VARIABLE instead."""
 
 
 def stage_of_map(map_index: int) -> Stage | None:

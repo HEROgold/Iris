@@ -7,6 +7,7 @@ through the base patch's RX (Iris-Dev#20); other worlds' items in this world's c
 
 import base64
 import os
+import re
 from collections.abc import Callable
 from typing import Any, ClassVar
 
@@ -15,7 +16,7 @@ from BaseClasses import CollectionState, Item, ItemClassification, Location, Mul
 from Fill import fill_restrictive
 from worlds.AutoWorld import WebWorld, World
 
-from . import data
+from . import data, hints
 from .client import L2OWSNIClient  # noqa: F401 - importing it registers the SNI client
 from .items import (
     BASE_ID,
@@ -32,8 +33,20 @@ from .items import (
     item_name_to_id,
 )
 from .locations import LOCATIONS, L2OWLocation, LocationInfo, location_name_to_id
-from .logic import GOALS, GRANT_STAGE, STAGES, Requirement, Stage, stage_of_map, without
-from .options import Arrows, FillerItems, L2OWOptions, Placement, ShipUpgrades, StoryRewards
+from .logic import (
+    EGG_SHRINE_STAGE,
+    EGG_WISH_VARIABLE,
+    EGGS_PER_WISH,
+    GOALS,
+    GRANT_STAGE,
+    MERIX_EGGS,
+    STAGES,
+    Requirement,
+    Stage,
+    stage_of_map,
+    without,
+)
+from .options import Arrows, FillerItems, Goal, L2OWOptions, Placement, ShipUpgrades, StoryRewards
 from .rom import AUTH_SIZE, US_MD5, L2OWProcedurePatch, base_patch, get_base_rom_path
 
 
@@ -87,6 +100,8 @@ class L2OWWorld(World):
     """The own_stage keys and tools, kept out of the pool and placed first, in ``pre_fill``."""
     held_stage: dict[int, str]
     """id() of a held item -> the stage it has to stay in."""
+    npc_hints: list[tuple[int, int, int, list[str]]]
+    """(row in data.HINT_NPCS, location's player, location id, texts from longest to shortest), chosen in post_fill."""
 
     @classmethod
     def stage_assert_generate(cls, multiworld: MultiWorld) -> None:
@@ -108,6 +123,7 @@ class L2OWWorld(World):
                 self.options.local_items.value |= {self._item_name(index) for index in kind}
         self.held = []
         self.held_stage = {}
+        self.npc_hints = []
 
     def _counts(self) -> dict[str, tuple[str, int] | None]:
         start = bool(self.options.start_with_arrow)
@@ -187,7 +203,17 @@ class L2OWWorld(World):
 
     def create_item(self, name: str) -> Item:
         code = item_name_to_id[name]
-        return L2OWItem(name, ITEM_CLASSIFICATION[code - BASE_ID], code, self.player)
+        classification = ITEM_CLASSIFICATION[code - BASE_ID]
+        if code == BASE_ID + DRAGON_EGG and self._egg_goal():
+            classification = ItemClassification.progression
+        return L2OWItem(name, classification, code, self.player)
+
+    def _egg_goal(self) -> bool:
+        return self.options.goal == Goal.option_dragon_eggs
+
+    def _eggs_needed(self) -> int:
+        """Dragon eggs from the pool the wishes need; Merix's egg isn't in the pool."""
+        return EGGS_PER_WISH * self.options.egg_wishes.value - MERIX_EGGS
 
     def create_event(self, name: str) -> Item:
         return L2OWItem(name, ItemClassification.progression, None, self.player)
@@ -231,6 +257,9 @@ class L2OWWorld(World):
         if not self.options.start_with_arrow:
             name = "Progressive Arrow" if self.options.arrows == Arrows.option_progressive else "Arrow"
             extra.append((name, self.options.tool_placement.value))
+        if self._egg_goal():
+            in_pool = sum(info.vanilla_item == DRAGON_EGG for info in self.location_infos)
+            extra += [("Dragon egg", Placement.option_anywhere)] * max(0, self._eggs_needed() - in_pool)
         return extra
 
     def _hold(self, item: Item, stage: str) -> None:
@@ -297,12 +326,59 @@ class L2OWWorld(World):
         return lambda item: held_stage.get(id(item), stage) == stage
 
     def set_rules(self) -> None:
+        player = self.player
+        if self._egg_goal():
+            eggs = self._eggs_needed()
+            self.multiworld.completion_condition[player] = lambda state: (
+                state.can_reach_region(EGG_SHRINE_STAGE, player) and state.has("Dragon egg", player, eggs)
+            )
+            return
         goal = self.stages[-1].event
-        self.multiworld.completion_condition[self.player] = lambda state: state.has(goal, self.player)
+        self.multiworld.completion_condition[player] = lambda state: state.has(goal, player)
+
+    def post_fill(self) -> None:
+        """Pick the hint NPCs and what each one tells: a different progression item of this world each."""
+        count = min(self.options.hint_npcs.value, len(data.HINT_FLAGS), len(data.HINT_NPCS))
+        spots = [
+            location for location in self.multiworld.get_locations()
+            if location.item is not None and location.address is not None and location.item.player == self.player
+            and location.item.advancement and location.item.code is not None
+        ]
+        spots.sort(key=lambda location: (location.player, location.address))
+        chosen = self.random.sample(spots, min(count, len(spots)))
+        npcs = self.random.sample(range(len(data.HINT_NPCS)), len(chosen))
+        self.npc_hints = [
+            (npc, location.player, location.address, self._hint_texts(location))
+            for npc, location in zip(npcs, chosen, strict=True)
+        ]
+
+    def _hint_texts(self, location: Location) -> list[str]:
+        item = location.item.name if location.item else "?"
+        if location.player == self.player:
+            spot = re.sub(r" \[map [^]]*\]", "", location.name)  # drop the duplicate-name marker
+            spot = re.sub(r" \([^)]*\)$", "", spot)  # and the vanilla item, which would mislead
+            spot = re.sub(r": .* reward$", ", a reward", spot)
+            place = spot.split(", ", 1)[0]
+            return [f"Your {item} is here, in {spot}.", f"{item}: {spot}.", f"{item}: {place}.", f"{item} is here."]
+        owner = self.multiworld.get_player_name(location.player)
+        game = self.multiworld.game[location.player]
+        return [
+            f"Your {item} is in {owner}'s world ({game}): {location.name}.",
+            f"Your {item} is with {owner}: {location.name}.",
+            f"Your {item} is in {owner}'s world.",
+            f"{item}: {owner}.",
+        ]
 
     def fill_slot_data(self) -> dict[str, Any]:
         goal = self.options.goal.current_key
-        return {"goal": goal, "goal_flag": GOALS[goal].flag}
+        return {
+            "goal": goal,
+            "goal_flag": GOALS[goal].flag,
+            "goal_wishes": self.options.egg_wishes.value if self._egg_goal() else 0,
+            "goal_wish_variable": EGG_WISH_VARIABLE,
+            "hint_unlock": bool(self.options.hint_unlock),
+            "npc_hints": {data.HINT_FLAGS[n]: [player, address] for n, (_, player, address, _) in enumerate(self.npc_hints)},
+        }
 
     def get_filler_item_name(self) -> str:
         return "Potion"
@@ -323,6 +399,9 @@ class L2OWWorld(World):
                 patch.write_chest(location.address - BASE_ID, index)
         if not self.options.start_with_arrow:
             patch.write_no_starting_arrow()
+        for n, (npc, _, _, texts) in enumerate(self.npc_hints):
+            _, _, offset, size = data.HINT_NPCS[npc]
+            patch.write_hint_npc(offset, hints.fitted(data.HINT_FLAGS[n], texts, size))
         patch.write_auth(self.auth)
         patch.write_file("tokens.bin", patch.get_token_binary())
         out_name = f"{self.multiworld.get_out_file_name_base(self.player)}{patch.patch_file_ending}"

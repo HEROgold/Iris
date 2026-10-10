@@ -14,14 +14,18 @@ import sys
 from pathlib import Path
 from pprint import pformat
 
+import bsdiff4
+
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from iris import constants
+from iris.api.rom import CART_SIZE_20MBIT
 from iris.enums.flags import GOAL_FLAG, EventFlag, Usability
 from iris.enums.patches import Patch
 from iris.helpers.files import open_rom, read_file
 from iris.patches.archipelago.overworld.ap_item import AP_ITEM_INDEX
+from iris.patches.archipelago.overworld.hint_npcs import HINT_FLAGS, hint_npc_candidates
 from iris.patches.archipelago.overworld.key_items import KEY_ITEM_NAMES, NO_STARTING_ARROW
 from iris.structures.chest import PointerChest
 from iris.structures.chest_location import CHEST_MAP
@@ -31,6 +35,7 @@ from iris.structures.key_doors import key_doors
 from iris.structures.zone import Zone
 from iris.structures.zone_data_pointers import zone_data_pointers
 from iris.tables import ChestObject, ItemObject, select
+from tools.build_ap_basepatch import PATCH_FILE as BASEPATCH_FILE
 from tools.dump_item_grants import collect
 
 
@@ -102,6 +107,14 @@ def _no_starting_arrow() -> tuple[tuple[int, bytes], ...]:
     return tuple((offset, data) for offset, _, data in NO_STARTING_ARROW)
 
 
+def _hint_npcs() -> list[tuple[int, str, int, int]]:
+    """(map, signature, script offset, script size) of every talk script a hint can replace (hint_npcs.py)."""
+    read_file.seek(0)
+    vanilla = read_file.read(CART_SIZE_20MBIT)
+    patched = bsdiff4.patch(vanilla, BASEPATCH_FILE.read_bytes())
+    return [(npc.map_index, npc.signature, npc.pointer, npc.size) for npc in hint_npc_candidates(patched)]
+
+
 def render() -> str:
     """The module's text, from the active ROM session (a vanilla ROM with the vanilla tables selected)."""
     ap_constants = {name: getattr(constants, name) for name in dir(constants) if name.startswith("AP_")}
@@ -128,6 +141,10 @@ def render() -> str:
         "# Locked doors: (map, map object, key item). A door opens when the party holds the key.",
         f"KEY_DOORS = {pformat([(d.map_index, d.map_object, d.item) for d in key_doors()], width=120)}\n",
         f"MAP_NAMES = {pformat(_map_names(), width=120)}\n",
+        "# Talk scripts that only show text, which a hint can overwrite in place: (map, signature, offset, size).",
+        "# Hint NPC n sets HINT_FLAGS[n] when talked to.",
+        f"HINT_NPCS = {pformat(_hint_npcs(), width=120)}",
+        f"HINT_FLAGS = {HINT_FLAGS!r}\n",
         f"EVENT_FLAGS = {pformat({flag.name: int(flag) for flag in EventFlag}, width=120, sort_dicts=False)}",
         f"GOAL_FLAG = {int(GOAL_FLAG)}\n",
         "# The config block (docs/ap/config_block.md).",

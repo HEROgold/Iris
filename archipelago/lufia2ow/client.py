@@ -2,7 +2,8 @@
 
 Chests are read from the opened-chest bits (confirmed in a real run); a script grant is reported once the event flag its
 script sets is on, and the goal once the goal option's flag (from the slot data) is. Received items go into the SRAM list
-that the base patch's rx.asm hands out in the field. Not here yet: death link. There is no "a save is loaded" flag;
+that the base patch's rx.asm hands out in the field. Talking to a hint NPC sets its flag; with Hint Unlock
+on, the client then creates that hint on the server. Not here yet: death link. There is no "a save is loaded" flag;
 ``looks_uninitialised`` only rejects the fill pattern some emulators put in WRAM at power-on.
 """
 
@@ -36,6 +37,8 @@ RX_ADDRESS = 0xE00000 + 0x2800
 """SNI's address of SRAM $F0:2800: u16 received count, u16 processed count, then the u16 item list (rx.asm)."""
 GOAL_FLAG = data.GOAL_FLAG
 """Defeat Daos: the goal flag until the server's slot data says otherwise."""
+EVENT_VARIABLES = WRAM_START + 0x079E
+"""Event-script variables, one byte each (the add-to-variable opcode at $80:A1EF does ADC $079E,X)."""
 
 
 def is_set(flags: bytes, flag: int) -> bool:
@@ -55,11 +58,28 @@ def looks_uninitialised(bits: bytes) -> bool:
 class L2OWSNIClient(SNIClient):
     game = GAME
     patch_suffix = ".apl2ow"
-    goal_flag = GOAL_FLAG
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.goal_flag: int | None = GOAL_FLAG
+        self.goal_wishes = 0
+        """With the dragon_eggs goal: the wishes to make, read from ``goal_wish_variable``."""
+        self.goal_wish_variable = 0
+        self.hint_unlock = False
+        self.npc_hints: dict[int, tuple[int, int]] = {}
+        """Hint NPC flag -> (player, location) to hint when the flag is set."""
+        self.hinted: set[int] = set()
+        """Hint NPC flags already sent this session."""
 
     def on_package(self, ctx: "SNIContext", cmd: str, args: dict[str, Any]) -> None:
         if cmd == "Connected":
-            self.goal_flag = args.get("slot_data", {}).get("goal_flag", GOAL_FLAG)
+            slot_data = args.get("slot_data", {})
+            self.goal_flag = slot_data.get("goal_flag", GOAL_FLAG)
+            self.goal_wishes = slot_data.get("goal_wishes", 0)
+            self.goal_wish_variable = slot_data.get("goal_wish_variable", 0)
+            self.hint_unlock = slot_data.get("hint_unlock", False)
+            self.npc_hints = {int(flag): (spot[0], spot[1]) for flag, spot in slot_data.get("npc_hints", {}).items()}
+            self.hinted = set()
 
     async def validate_rom(self, ctx: "SNIContext") -> bool:
         from SNIClient import snes_read
@@ -98,11 +118,31 @@ class L2OWSNIClient(SNIClient):
 
         await self._deliver(ctx)
 
-        if not ctx.finished_game and flags is not None and not looks_uninitialised(flags):
-            if is_set(flags, self.goal_flag):
-                await ctx.send_msgs([{"cmd": "StatusUpdate", "status": ClientStatus.CLIENT_GOAL}])
-                ctx.finished_game = True
-                logger.info("Goal complete.")
+        if flags is None or looks_uninitialised(flags):
+            return
+        await self._unlock_hints(ctx, flags)
+        if not ctx.finished_game and await self._goal_reached(ctx, flags):
+            await ctx.send_msgs([{"cmd": "StatusUpdate", "status": ClientStatus.CLIENT_GOAL}])
+            ctx.finished_game = True
+            logger.info("Goal complete.")
+
+    async def _goal_reached(self, ctx: "SNIContext", flags: bytes) -> bool:
+        from SNIClient import snes_read
+
+        if self.goal_wishes:
+            wishes = await snes_read(ctx, EVENT_VARIABLES + self.goal_wish_variable, 1)
+            return wishes is not None and wishes[0] >= self.goal_wishes
+        return self.goal_flag is not None and is_set(flags, self.goal_flag)
+
+    async def _unlock_hints(self, ctx: "SNIContext", flags: bytes) -> None:
+        """A hint NPC talked to: create its hint on the server (CreateHints, for our own item)."""
+        if not self.hint_unlock:
+            return
+        for flag, (player, location) in self.npc_hints.items():
+            if flag in self.hinted or not is_set(flags, flag):
+                continue
+            self.hinted.add(flag)
+            await ctx.send_msgs([{"cmd": "CreateHints", "player": player, "locations": [location]}])
 
     @staticmethod
     async def _deliver(ctx: "SNIContext") -> None:

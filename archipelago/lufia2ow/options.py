@@ -5,6 +5,8 @@ from dataclasses import dataclass
 
 from Options import Choice, DefaultOnToggle, PerGameCommonOptions, Range
 
+from . import data
+
 
 class Placement(Choice):
     """anywhere: any location in any world. own_world: any location in this world. own_stage: a location in the story
@@ -47,11 +49,13 @@ class StoryRewards(Choice):
 
 
 class Goal(Choice):
-    """The story event that completes your game. Locations after it are left out.
+    """What completes your game. Locations after it are left out.
 
-    daos: defeat Daos. shrine_of_daos_open: finish the three sealed towers. chaed: see Chaed destroyed, after the
-    Submarine Shrine. amon_divine_shrine: defeat Amon in the Divine Shrine. idura: defeat Idura in the Tower of Sacrifice.
-    gades_ancient_tower: defeat Gades in the Ancient Tower."""
+    daos: beat the game: defeat Daos in the Shrine of Daos (the goal counts before the ending plays).
+    shrine_of_daos_open: finish the three sealed towers, which opens the Shrine of Daos. chaed: see Chaed destroyed,
+    after the Submarine Shrine. amon_divine_shrine: defeat Amon in the Divine Shrine. idura: defeat Idura in the Tower of
+    Sacrifice. gades_ancient_tower: defeat Gades in the Ancient Tower.
+    dragon_eggs: bring 8 Dragon eggs per wish to the Egg Dragon's shrine and make Egg Wishes wishes."""
 
     display_name = "Goal"
     option_daos = 0
@@ -60,7 +64,18 @@ class Goal(Choice):
     option_amon_divine_shrine = 3
     option_idura = 4
     option_gades_ancient_tower = 5
+    option_dragon_eggs = 6
     default = option_daos
+
+
+class EggWishes(Range):
+    """With the dragon_eggs goal: how many wishes to make. Each takes 8 Dragon eggs; the multiworld holds 8 per wish
+    (one of them is Merix's, which stays where it is). The Egg Dragon grants at most 4."""
+
+    display_name = "Egg Wishes"
+    range_start = 1
+    range_end = 4
+    default = 1
 
 
 class FillerItems(Choice):
@@ -114,14 +129,33 @@ class StartWithArrow(DefaultOnToggle):
     display_name = "Start With Arrow"
 
 
+class HintNpcs(Range):
+    """How many townspeople tell you where one of your progression items is: in your world, or which player's world
+    and where. Each picks a different item."""
+
+    display_name = "Hint NPCs"
+    range_start = 0
+    range_end = len(data.HINT_FLAGS)
+    default = 8
+
+
+class HintUnlock(DefaultOnToggle):
+    """Talking to a hint NPC also unlocks that hint on the server, as if you had used a hint."""
+
+    display_name = "Hint Unlock"
+
+
 @dataclass
 class L2OWOptions(PerGameCommonOptions):
     key_placement: KeyPlacement
     tool_placement: ToolPlacement
     story_rewards: StoryRewards
     goal: Goal
+    egg_wishes: EggWishes
     filler_items: FillerItems
     useful_items: UsefulItems
     ship_upgrades: ShipUpgrades
     arrows: Arrows
     start_with_arrow: StartWithArrow
+    hint_npcs: HintNpcs
+    hint_unlock: HintUnlock
