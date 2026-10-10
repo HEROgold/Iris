@@ -118,10 +118,14 @@ class Rom:
     @classmethod
     def open(cls, path: Path) -> "Rom":
         """Read ``path`` once, dropping a copier header. Nothing on disk changes."""
-        data = path.read_bytes()
+        return cls.from_bytes(path.read_bytes(), path)
+
+    @classmethod
+    def from_bytes(cls, data: bytes, source: Path | None = None) -> "Rom":
+        """A session over a copy of ``data``, dropping a copier header."""
         if len(data) % 0x400 == HEADER_SIZE:
             data = data[HEADER_SIZE:]
-        return cls(data, path)
+        return cls(data, source)
 
     def save(self, path: Path) -> None:
         """Write the image to ``path``. The one disk write of a run."""

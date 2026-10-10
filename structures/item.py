@@ -6,7 +6,7 @@ from _types.objects import Cache
 from abc_.pointers import TablePointer
 from enums.flags import EquipableCharacter, EquipTypes, ItemEffects, ItemTypes, MenuIcon, Targeting, Usability
 from helpers.bits import find_table_pointer
-from helpers.files import read_file, write_file
+from helpers.files import on_new_session, read_file, write_file
 from logger import iris
 from rom_space.table import Table
 from scripting.core import Data, Label, Script, assemble
@@ -336,6 +336,7 @@ def item_table() -> Table:
     )
 
 
+@on_new_session
 def reset_item_table() -> None:
     item_table.cache_clear()
     _item_sources.cache_clear()

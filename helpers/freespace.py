@@ -18,7 +18,7 @@ from collections.abc import Callable
 
 from constants import EVENT_SCRIPT_FREESPACE, ZONE_DATA_FREESPACE
 from errors import EventFreeSpaceError
-from helpers.files import write_file
+from helpers.files import on_new_session, write_file
 
 
 BANK_MASK = 0xFF8000
@@ -36,8 +36,13 @@ class FreeSpaceAllocator:
     """
 
     def __init__(self, region: range, *, bank_local: bool = False) -> None:
+        self._region = region
         self._regions: list[list[int]] = [[region.start, region.stop]]
         self._bank_local = bank_local
+
+    def reset(self) -> None:
+        """Free the whole region again (a new ROM session starts with nothing allocated)."""
+        self._regions = [[self._region.start, self._region.stop]]
 
     def allocate(self, length: int, *, near: list[int] | None = None) -> int:
         """Reserve ``length`` bytes and return the chosen start offset.
@@ -133,3 +138,5 @@ def relocate_pointer_table_entry(
 # independently from constants.EMPTY_BYTES, which is also just plain wrong; see that constant).
 zone_data_allocator = FreeSpaceAllocator(ZONE_DATA_FREESPACE)
 event_script_allocator = FreeSpaceAllocator(EVENT_SCRIPT_FREESPACE, bank_local=True)
+on_new_session(zone_data_allocator.reset)
+on_new_session(event_script_allocator.reset)

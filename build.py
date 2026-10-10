@@ -1,0 +1,248 @@
+"""Build a ROM in memory from a source ROM and typed options, with no command line and no disk write (Iris-Dev#5).
+
+The CLI (``__main__``), the Archipelago world and the check-ROM scripts all build through :func:`build`. Each call opens
+its own ROM session, which drops every cache of the previous one, so builds in one process don't share state.
+"""
+
+from dataclasses import KW_ONLY, dataclass, fields
+from pathlib import Path
+from typing import Self
+
+from args import Args
+from constants import SUGGESTED_PATCH
+from enums.patches import Patch
+from helpers.files import open_rom, output_bytes
+from patcher import (
+    apply_absynnonym_patch,
+    apply_game_genie_codes,
+    set_spawn_location,
+    start_engine,
+)
+from patches.genie_codes import (
+    AIRSHIP_ANYWHERE,
+    CAPSULE_ALWAYS_LOVE_FOOD,
+    DEBUG_MODE,
+    ELCID_REPORT,
+    MASTER_ONE_SHOT,
+    NO_SCENARIO_ITEMS,
+)
+from patches.HEROgold import (
+    apply_new_game_hook,
+    arty_to_artea,
+    ax_to_axe,
+    everyone_learns_reset,
+    fix_boltfish,
+    foomy_s_firebird_valor,
+    gorem_to_golem,
+    guy_the_mage,
+    max_out_party,
+    party_toggle_in_elcid,
+    scale_encounters,
+    set_found_flags_on_story_joins,
+    set_rom_name,
+    swap_pierre_danielle_sprites,
+)
+from patches.HEROgold.start_capsule import start_capsule
+from patches.RealCritical import (
+    ac_more_enemies,
+    fix_cave_chest_table,
+    fix_menu,
+    jelly_damage_display,
+    killer_names,
+)
+from patches.RealCritical.sprites import bunny_girls, fix_shrine_tile_set
+from structures.item import Item
+from structures.monster import Monster
+from structures.shop import Shop
+from structures.zone import Zone
+from tables import select
+from tests.read_write import read_write_all
+
+
+# Absynnonym patches, in the order they're applied: (option, patch name).
+_RANDOMIZER_PATCHES = (
+    ("capsule_feeding_bonus", "capsule_feeding_bonus"),
+    ("clear_initial_spells", "clear_initial_spells"),
+    ("eat_dragon_eggs", "eat_dragon_eggs"),
+    ("no_boat_encounters", "no_boat_encounters"),
+    ("secondary_tool", "secondary_tool"),
+    ("unlock_gift_mode", "unlock_gift_mode"),
+)
+_FIX_PATCHES = (
+    ("capsule_master_select", "capsule_master_select"),
+    ("capsule_tag", "capsule_tag"),
+    ("ancient_cave_items", "fix_ac_items"),
+    ("no_maxim_boat", "maximless_boat_fix"),
+    ("no_maxim_warp", "maximless_warp_animation_fix"),
+    ("no_submarine", "no_submarine"),
+    ("spell_target_limit", "spell_target_limit"),
+    ("zero_capsule_command", "zero_capsule_command"),
+    ("zero_gold_command", "zero_gold_command"),
+)
+
+
+@dataclass(frozen=True)
+class Options:
+    """What a build does. Field names match :class:`args.Args`, so :meth:`from_args` copies them over."""
+
+    seed: int
+    _: KW_ONLY
+    selected_patch: Patch = SUGGESTED_PATCH
+    debug: bool = False
+    no_patch: bool = False
+    debug_party: bool = False
+    easy_mode: bool = False
+    fix_softlocks: bool = False
+    foomy_firebird: bool = False
+    skip_tutorial: bool = False
+    game_genie_codes: tuple[str, ...] = ()
+    scale_encounters: tuple[int, int] | None = None
+    start_capsule: int | None = None
+    start_capsule_name: str | None = None
+    start_items: tuple[tuple[int, int], ...] = ()
+    """``(item index, quantity)`` pairs in the inventory at new game."""
+    custom_spawn_city: bool = False
+    start_engine: bool = False
+    capsule_feeding_bonus: bool = False
+    clear_initial_spells: bool = False
+    eat_dragon_eggs: bool = False
+    no_boat_encounters: bool = False
+    secondary_tool: bool = False
+    unlock_gift_mode: bool = False
+    capsule_master_select: bool = False
+    capsule_tag: bool = False
+    ancient_cave_items: bool = False
+    no_maxim_boat: bool = False
+    no_maxim_warp: bool = False
+    no_submarine: bool = False
+    spell_target_limit: bool = False
+    zero_capsule_command: bool = False
+    zero_gold_command: bool = False
+
+    @classmethod
+    def from_args(cls, args: Args) -> Self:
+        """The options of a parsed command line (see :func:`args.parse_args`)."""
+        values = {field.name: getattr(args, field.name) for field in fields(cls) if hasattr(args, field.name)}
+        values["game_genie_codes"] = tuple(values["game_genie_codes"])
+        if values["scale_encounters"] is not None:
+            low, high = values["scale_encounters"]
+            values["scale_encounters"] = (low, high)
+        return cls(**values)
+
+
+def build(source: Path | bytes, options: Options) -> bytes:
+    """Build the ROM ``options`` describe from ``source`` and return it. It stays the active session until the next build."""
+    select(options.selected_patch)
+    Shop.verify_pointers = options.debug or options.no_patch  # an unrandomized ROM keeps every shop's next pointer
+    Monster.easy_mode = options.easy_mode
+    # One read of the ROM, with the base patch (FRUE, Spekkio, Kureji) applied before any structure reads it.
+    open_rom(source, base=options.selected_patch)
+
+    if options.no_patch:
+        read_write_all()
+        return output_bytes()
+
+    set_rom_name(b"Lufia II (Iris patch)") # For identification purposes.
+
+    party_toggle_in_elcid(require_found=not options.debug_party)  # event-script demo: Elcid townspeople toggle party join/leave
+    set_found_flags_on_story_joins()  # story joins also set each character's "found/unlocked" flag
+
+    everyone_learns_reset()  # the party toggle can remove Maxim, who alone learned Reset in vanilla
+    if options.fix_softlocks:
+        fix_boltfish()
+    if options.foomy_firebird:
+        foomy_s_firebird_valor()
+
+    if options.debug:
+        _apply_debug_codes()
+    apply_game_genie_codes(*options.game_genie_codes)
+
+    # Apply Event patches
+    # TODO: Implement EventParser
+    # if options.max_world_clock:
+    #     max_world_clock()
+    # if options.open_world_base:
+    #     open_world_base()
+    # if options.treadool_warp:
+    #     treadool_warp()
+
+    _apply_randomizer_patches(options)
+
+    # TODO: Implement a route finder, which will place required items (arrow, hook, scenario items.)
+
+    # Apply custom patches
+    ax_to_axe()
+    arty_to_artea()
+    gorem_to_golem()
+    swap_pierre_danielle_sprites()
+    guy_the_mage()
+    # Dev/debug patches (not intended for release):
+    # maxim_starts_with_warp()  # dev fix: Maxim begins every game knowing Warp (field teleport)
+    _apply_new_game(options)
+
+    # Apply RealCritical patches
+    fix_menu()
+    killer_names() # Could be done with Iris. (Would also allow for moving item table if required later.)
+    # gift_mode() # Already done by absynnonym. (unlock_gift_mode)
+    ac_more_enemies()
+    fix_cave_chest_table()
+    jelly_damage_display() # Should be done with Iris.  (When a more capable script parser is implemented.)
+    bunny_girls()
+    fix_shrine_tile_set()
+
+    # Randomize the game
+    # randomize_all_spells()
+    # randomize_all_items() # Causes issues bc random bits are set (works in theory, crashes in practice.)
+    # shuffle_items()
+    # randomize_all_monsters() # Causes issues bc random bits are set (works in theory, crashes in practice.)
+    # shuffle_monsters()
+    # shuffle_chest_items()
+    # randomize_chest_items()
+
+    # Chest randomizers -- two independent options (see docs/guides/chests.md). Enable either:
+    # from patches.HEROgold.chest_randomizer import randomize_chest_contents, randomize_chest_locations
+    # randomize_chest_contents()    # randomize WHAT each chest holds
+    # randomize_chest_locations()   # shuffle WHERE chests sit, within each map
+
+    return output_bytes()
+
+
+def _apply_debug_codes() -> None:
+    apply_game_genie_codes(DEBUG_MODE)
+    apply_game_genie_codes(*MASTER_ONE_SHOT)
+    apply_game_genie_codes(NO_SCENARIO_ITEMS)
+    apply_game_genie_codes(*AIRSHIP_ANYWHERE)
+    # ALWAYS_DROP_33 is left out: it turns `CMP $09FB` at $81:FB55 into `BRA $FB52`, which loops forever
+    # inside the item-drop roll, so the game freezes when a defeated enemy rolls for its drop.
+    apply_game_genie_codes(CAPSULE_ALWAYS_LOVE_FOOD)
+    apply_game_genie_codes(ELCID_REPORT)
+    # UNLOCK_WARP and "7E0C4324" (Maxim knows Warp) are Pro Action Replay RAM codes. They can't be baked
+    # into the ROM; decoding them as Game Genie codes wrote 0x3F into random ROM bytes, so
+    # apply_game_genie_codes now rejects them. Warps are unlocked by apply_new_game_hook().
+
+
+def _apply_randomizer_patches(options: Options) -> None:
+    for option, patch in _RANDOMIZER_PATCHES:
+        if getattr(options, option):
+            apply_absynnonym_patch(patch)
+    if options.custom_spawn_city:
+        set_spawn_location(Zone.from_name("Elcid"), entrance_cutscene=0x02) # TODO: Investigate and fix (event) script loading.
+        # set_spawn_location(Zone.from_name(options.spawn_location))
+    if options.start_engine:
+        start_engine()
+    for option, patch in _FIX_PATCHES:
+        if getattr(options, option):
+            apply_absynnonym_patch(patch)
+
+
+def _apply_new_game(options: Options) -> None:
+    # One asar hook at the new-game handoff: every Warp destination unlocked (dev fix), and --skip-tutorial.
+    start_items = [(Item.from_index(index), quantity) for index, quantity in options.start_items]
+    apply_new_game_hook(unlock_warps=True, skip_tutorial=options.skip_tutorial, start_items=start_items)
+    if options.debug_party:
+        max_out_party()
+    if options.start_capsule is not None:
+        start_capsule(options.start_capsule, options.start_capsule_name)
+    if options.scale_encounters:
+        # Runs with the other asm patches so asar assembles after every structure write.
+        scale_encounters(*options.scale_encounters, seed=options.seed)

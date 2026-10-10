@@ -9,7 +9,7 @@ inside the bank.
 
 from dataclasses import dataclass
 
-from helpers.files import write_file
+from helpers.files import on_new_session, write_file
 from helpers.free_space import MARGIN, free_runs
 from tables import CapAttackNameObject
 
@@ -38,17 +38,16 @@ class CapsuleAttackNames:
     """
 
     def __init__(self) -> None:
-        self.address = CapAttackNameObject.address
-        self.bank_end = CapAttackNameObject.bank_end
-        self.dirty = False
         self._names: list[bytes] = []
-        self._footprint_end = self.address
         self._overflow: list[_Span] = []
-        self._loaded = False
+        self.unload()
 
     def unload(self) -> None:
         """Forget the table (and any unsaved change); the next use reads it from the output again."""
+        self.address = CapAttackNameObject.address
+        self.bank_end = CapAttackNameObject.bank_end
         self._names = []
+        self._footprint_end = self.address
         self._overflow = []
         self._loaded = False
         self.dirty = False
@@ -183,5 +182,6 @@ class CapsuleAttackNames:
 
 
 capsule_attack_names = CapsuleAttackNames()
+on_new_session(capsule_attack_names.unload)
 """The table instance patches edit. ``CapsuleMonster.write()`` calls its ``write()``, which only writes when
 something was added since it was loaded."""

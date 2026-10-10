@@ -5,7 +5,7 @@ from _types.objects import Cache
 from abc_.pointers import TablePointer
 from abc_.stats import ScalableRpgStats
 from helpers.bits import find_table_pointer, read_little_int
-from helpers.files import read_file, restore_pointer, write_file
+from helpers.files import on_new_session, read_file, restore_pointer, write_file
 from logger import iris
 from enums.patches import Patch
 from rom_space.table import Table
@@ -397,6 +397,7 @@ def monster_table() -> Table:
     )
 
 
+@on_new_session
 def reset_monster_table() -> None:
     monster_table.cache_clear()
     _record_sources.cache_clear()

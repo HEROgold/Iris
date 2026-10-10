@@ -10,19 +10,23 @@ import shutil
 import sys
 from pathlib import Path
 
+
 EDIT = "--edits" in sys.argv
 if EDIT:
     sys.argv.remove("--edits")
 
-source = Path("__main__.py").read_text(encoding="utf-8").split('if __name__ == "__main__":')[0]
-ns: dict[str, object] = {"__name__": "iris_main"}
-exec(compile(source, "__main__.py", "exec"), ns)  # noqa: S102
-options = ns["main"]()  # type: ignore[operator]
+from args import parse_args  # noqa: E402
+from build import Options, build  # noqa: E402
+
+
+options = parse_args()
+build(Path(options.file), Options.from_args(options))  # type: ignore[arg-type]
 
 from helpers.addresses import address_to_lorom  # noqa: E402
 from helpers.files import save, session, write_file  # noqa: E402
 from structures.map_meta import MapMeta  # noqa: E402
 from structures.zone import ZONE_DATA_POINTER_TABLE  # noqa: E402
+
 
 ELCID, INTERIORS, CAVE = 3, 4, 6
 WORLD_MAP = 0

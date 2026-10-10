@@ -15,7 +15,7 @@ from _types.objects import Cache
 from enums.event_scripts import EventClass
 from helpers.addresses import address_to_lorom
 from helpers.bits import read_little_int
-from helpers.files import read_file, restore_pointer, write_file
+from helpers.files import on_new_session, read_file, restore_pointer, write_file
 from helpers.freespace import relocate_pointer_table_entry, zone_data_allocator
 from helpers.name import compress_name, read_as_decompressed_name
 from logger import iris
@@ -695,6 +695,12 @@ class Zone:
             if name.endswith(b"\x00"):
                 break
         return name
+
+@on_new_session
+def reset_zones() -> None:
+    ZoneData._cache.clear()  # noqa: SLF001
+    Zone._cache.clear()  # noqa: SLF001
+
 
 # Zones are now generated lazily on-demand via Zone.from_index()
 # Call Zone._generate_zones() explicitly if you need to pre-load all zones

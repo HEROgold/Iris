@@ -5,7 +5,7 @@ from abc_.pointers import TablePointer
 from abc_.stats import RpgStats
 from enums.flags import Alignment
 from helpers.bits import find_table_pointer, read_little_int
-from helpers.files import read_file, write_file
+from helpers.files import on_new_session, read_file, write_file
 from rom_space.table import Table
 from scripting.core import Item, Script, assemble
 from scripting.l2basm import parse_record
@@ -291,6 +291,7 @@ def capsule_table() -> Table:
     return Table("capsules", address, records, SHOP_TABLE, pinned=_shop_targets())  # type: ignore[arg-type]
 
 
+@on_new_session
 def reset_capsule_table() -> None:
     capsule_table.cache_clear()
     CapsuleMonster._cache.clear()  # noqa: SLF001

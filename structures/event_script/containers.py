@@ -20,7 +20,7 @@ from typing import Self
 from _types.objects import Cache
 from enums.event_scripts import EventClass
 from errors import EventFreeSpaceError
-from helpers.files import read_file, restore_pointer, write_file
+from helpers.files import on_new_session, read_file, restore_pointer, write_file
 from helpers.name import read_as_decompressed_name
 from logger import iris
 from structures.event_script.script import EventScript
@@ -44,6 +44,14 @@ END_NPC_POINTER = 0x3AE4D
 END_EVENT_POINTER = 0x7289E
 
 _all_pointers: list[int] | None = None
+
+
+@on_new_session
+def reset_map_events() -> None:
+    """Forget every parsed map and the script-pointer index."""
+    global _all_pointers  # noqa: PLW0603
+    _all_pointers = None
+    MapEvent._cache.clear()  # noqa: SLF001
 
 
 class EventList:

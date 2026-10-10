@@ -11,7 +11,7 @@ to the body start, so a body's bytes don't depend on where it sits.
 from functools import cache
 
 from helpers.addresses import address_from_lorom
-from helpers.files import write_file
+from helpers.files import on_new_session, write_file
 from rom_space.place import CodeAbs16, CodeBank, CodeLong, PointerSite
 from rom_space.pool import bank_of
 from rom_space.table import Table
@@ -97,6 +97,7 @@ def reread_table() -> Table:
     return subroutine_table()
 
 
+@on_new_session
 def reset() -> None:
     global _count  # noqa: PLW0603
     _count = SUBROUTINE_COUNT
