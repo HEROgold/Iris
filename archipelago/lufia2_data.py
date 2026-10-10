@@ -476,6 +476,8 @@ AP_ITEM_INDEX = 458
 
 # Red chests: (chest index, map, guide name, record offset, vanilla misc1 byte, vanilla item).
 # A chest's item is 9 bits: the low byte at record offset + 2, the high bit in misc1 bit 6.
+# Chest n is opened when bit n & 7 of CHEST_OPENED_BITS + (n >> 3) is set (docs/ap/chest_opened_bits.md).
+CHEST_OPENED_BITS = 0x7e093b
 CHESTS = [(0, 6, 'Cave to Sundletan B1, north-east chest (Escape)', 572091, 0, 41),
  (1, 6, 'Cave to Sundletan B1, south-west chest (Antidote)', 572094, 1, 10),
  (2, 6, 'Cave to Sundletan B1, north-west chest (Life potion)', 572097, 2, 17),
