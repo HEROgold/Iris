@@ -203,7 +203,29 @@ class MapEvent:
         pointers = get_all_pointers()
         for event_list in self.event_lists:
             event_list.read(pointers)
+        self._mark_jump_targets()
         self._read = True
+
+    def _scripts(self) -> list[EventScript]:
+        return [event for event_list in self.event_lists for event in event_list.events]
+
+    def _check_relocatable(self) -> None:
+        if any(script.external_jumps for script in self._scripts()):
+            msg = (
+                f"Map {self.index:#04x}: a script jumps into another script's bytes (FRUE shared code), and "
+                "relocating the container would re-lay those bytes out; it can only be edited in place."
+            )
+            raise ValueError(msg)
+
+    def _mark_jump_targets(self) -> None:
+        """Flag every script that another script's non-local jump lands in (see ``EventScript.jumped_into``)."""
+        scripts = self._scripts()
+        for script in scripts:
+            for jump in script.external_jumps:
+                target = script.base_pointer + jump.offset
+                for owner in scripts:
+                    if owner.pointer <= target < owner.pointer + len(owner.raw):
+                        owner.jumped_into = True
 
     @property
     def npc_script(self) -> EventScript:
@@ -305,6 +327,8 @@ class MapEvent:
         """
         from iris.helpers.freespace import event_script_allocator  # noqa: PLC0415
         from iris.structures.event_script.compiler import compile_script  # noqa: PLC0415
+
+        self._check_relocatable()
 
         class_lists = self.event_lists[1:]  # index 0 is NPC_SCRIPT; these are EventClass(0..5)
         npc_script = self.npc_script

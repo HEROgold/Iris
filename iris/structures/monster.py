@@ -36,7 +36,7 @@ class MonsterSprite:
 
     @classmethod
     def from_index(cls, index: int) -> Self:
-        if index > MonsterObject.count:
+        if index > MonsterObject.count or index >= len(MONSTER_SPRITES):  # Spekkio adds monsters past vanilla's 224
             index = 0xA4 # Red JElly
         name, sprite = MONSTER_SPRITES[index]
         if selected() is Patch.SPEKKIO and "Lady Spider" in name:

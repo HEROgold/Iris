@@ -19,25 +19,26 @@ from dataclasses import dataclass, field
 
 @dataclass
 class Address:
-    """A local jump target: an offset within the same script. Rendered ``@XXXX`` in dumps.
+    """A jump target. Rendered ``@XXXX`` (local) or ``$XXXX`` (non-local) in dumps.
 
-    Only local addresses are supported (mirroring terrorwave's ``Script.Address``); a non-local
-    target raises on construction.
+    A local target is an offset within the same script, so the compiler can move it with the script's lines. A
+    non-local one jumps out of the script: ``offset`` is then the raw operand, relative to the map's base pointer.
+    Vanilla has none; FRUE has three, each into shared code a few bytes inside the neighbouring talk script. They
+    are written back unchanged, which is only right while the target stays where it is (see
+    ``EventScript.jumped_into`` and ``MapEvent.write_relocated``).
     """
 
     offset: int
     is_local: bool = True
 
     def __post_init__(self) -> None:
-        if not self.is_local:
-            msg = f"Non-local address: {self.offset:#x}"
-            raise NotImplementedError(msg)
-        if not 0 <= self.offset <= 0x7FFF:
+        limit = 0x7FFF if self.is_local else 0xFFFF
+        if not 0 <= self.offset <= limit:
             msg = f"Address offset out of range: {self.offset:#x}"
             raise ValueError(msg)
 
     def __repr__(self) -> str:
-        return f"@{self.offset:X}"
+        return f"@{self.offset:X}" if self.is_local else f"${self.offset:X}"
 
 
 @dataclass

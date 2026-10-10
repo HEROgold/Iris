@@ -290,9 +290,21 @@ def apply_absynnonym_patch(name: str) -> None:
     iris.debug(f"Patching {file.name}")
 
     patch, validation = parser(file)
+    if _already_applied(patch):
+        # The base patch ships it: FRUE has fix_ac_items, Spekkio and Kureji also unlock_gift_mode.
+        iris.info(f"Skipping {name}: the ROM already has it.")
+        return
     verify_patch(patch, validation)
     write_patch(patch, validation, no_verify=True)
     verify_after_patch(patch)
+
+
+def _already_applied(patch: PatchData) -> bool:
+    for (address, _), code in patch.items():
+        write_file.seek(address)
+        if write_file.read(len(code)) != code:
+            return False
+    return True
 
 
 def verify_patch(patch: PatchData, validation: PatchData) -> None:

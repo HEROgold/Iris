@@ -44,6 +44,8 @@ class EventScript:
         self.instructions: list[Instruction] = []
         self.raw = b""
         self.dirty = False
+        self.jumped_into = False
+        """Another script jumps into this one's bytes (FRUE shares code this way), so its layout must not change."""
         self._read = False
         self._pre = b""
         # The true physical room at `pointer` before the next known script, fixed at parse time.
@@ -100,8 +102,17 @@ class EventScript:
         is_local = self.pointer <= pointer < self.pointer + len(self.raw)
         if is_local:
             return Address(offset - self.script_offset, is_local=True)
-        # terrorwave only supports local addresses; surface non-local as a parse failure.
-        return Address(pointer, is_local=False)
+        return Address(offset, is_local=False)
+
+    @property
+    def external_jumps(self) -> list[Address]:
+        """The jumps that leave this script (non-local addresses)."""
+        return [
+            operand
+            for instruction in self.instructions
+            for operand in instruction.operands
+            if isinstance(operand, Address) and not operand.is_local
+        ]
 
     def _parse(self, data: bytes) -> list[Instruction]:  # noqa: C901, PLR0912
         full = data
@@ -186,6 +197,12 @@ class EventScript:
         """
         if not self.dirty:
             return
+        if self.jumped_into:
+            msg = (
+                f"Event script {self.pointer:#07x} (class {self.event_class.name}, index {self.index}) can't be "
+                "rewritten: another script jumps into its bytes, and recompiling may move the target."
+            )
+            raise ValueError(msg)
         from iris.structures.event_script.compiler import compile_script  # noqa: PLC0415
 
         data = compile_script(self, script_pointer=self.pointer)
