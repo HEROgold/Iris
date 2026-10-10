@@ -1,13 +1,13 @@
 """SNI client: authenticates against the config block, reports checks and the goal, delivers items (Iris-Dev#36, #20).
 
 Chests are read from the opened-chest bits (confirmed in a real run); a script grant is reported once the event flag its
-script sets is on. Received items go into the SRAM list that the base patch's rx.asm hands out in the field. Not here
-yet: death link. There is no "a save is loaded" flag; ``looks_uninitialised`` only rejects the fill pattern some
-emulators put in WRAM at power-on.
+script sets is on, and the goal once the goal option's flag (from the slot data) is. Received items go into the SRAM list
+that the base patch's rx.asm hands out in the field. Not here yet: death link. There is no "a save is loaded" flag;
+``looks_uninitialised`` only rejects the fill pattern some emulators put in WRAM at power-on.
 """
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from NetUtils import ClientStatus
 from worlds.AutoSNIClient import SNIClient
@@ -15,6 +15,7 @@ from worlds.AutoSNIClient import SNIClient
 from . import data
 from .items import BASE_ID, GAME
 from .locations import GRANT_FLAGS
+
 
 if TYPE_CHECKING:
     from SNIClient import SNIContext
@@ -34,6 +35,7 @@ EVENT_FLAG_BYTES = 32
 RX_ADDRESS = 0xE00000 + 0x2800
 """SNI's address of SRAM $F0:2800: u16 received count, u16 processed count, then the u16 item list (rx.asm)."""
 GOAL_FLAG = data.GOAL_FLAG
+"""Defeat Daos: the goal flag until the server's slot data says otherwise."""
 
 
 def is_set(flags: bytes, flag: int) -> bool:
@@ -53,6 +55,11 @@ def looks_uninitialised(bits: bytes) -> bool:
 class L2OWSNIClient(SNIClient):
     game = GAME
     patch_suffix = ".apl2ow"
+    goal_flag = GOAL_FLAG
+
+    def on_package(self, ctx: "SNIContext", cmd: str, args: dict[str, Any]) -> None:
+        if cmd == "Connected":
+            self.goal_flag = args.get("slot_data", {}).get("goal_flag", GOAL_FLAG)
 
     async def validate_rom(self, ctx: "SNIContext") -> bool:
         from SNIClient import snes_read
@@ -92,10 +99,10 @@ class L2OWSNIClient(SNIClient):
         await self._deliver(ctx)
 
         if not ctx.finished_game and flags is not None and not looks_uninitialised(flags):
-            if is_set(flags, GOAL_FLAG):
+            if is_set(flags, self.goal_flag):
                 await ctx.send_msgs([{"cmd": "StatusUpdate", "status": ClientStatus.CLIENT_GOAL}])
                 ctx.finished_game = True
-                logger.info("Daos is defeated: goal complete.")
+                logger.info("Goal complete.")
 
     @staticmethod
     async def _deliver(ctx: "SNIContext") -> None:

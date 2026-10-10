@@ -15,6 +15,9 @@ seed unbeatable. Maxim starts with the Arrow (no chest or script gives it), so n
 
 from dataclasses import dataclass, field
 
+from . import data
+
+
 Requirement = tuple[tuple[str, ...], ...]
 """Alternatives: the location is reachable when any one tuple of items is held."""
 
@@ -29,6 +32,11 @@ def all_of(*items: str) -> Requirement:
 def both(first: Requirement, second: Requirement) -> Requirement:
     """Every combination of one alternative from each."""
     return tuple(tuple(dict.fromkeys(a + b)) for a in first for b in second)
+
+
+def without(requirement: Requirement, item: str) -> Requirement:
+    """``requirement`` with ``item`` dropped from every alternative."""
+    return tuple(tuple(name for name in alternative if name != item) for alternative in requirement)
 
 
 @dataclass(frozen=True)
@@ -224,6 +232,25 @@ EXCLUDED_MAPS = frozenset((0xEF, 0xF0, 0xF1))
 """The Ancient Cave: its chests sit 99 floors down."""
 EXCLUDED_GRANTS = frozenset(("9F-B-50",))
 """The Dragon Egg shrine's wishes need eight Dragon eggs and give one of 26 items."""
+
+
+@dataclass(frozen=True)
+class GoalInfo:
+    stage: str
+    """The stage whose event is the goal; later stages are left out."""
+    flag: int
+    """The event flag the client reads as the goal. Each one is set by a script on the goal's map (checked in the ROM)."""
+
+
+GOALS = {
+    "daos": GoalInfo("Shrine of Daos", data.EVENT_FLAGS["DAOS_DEFEATED"]),
+    "shrine_of_daos_open": GoalInfo("Narvick and the sealed towers", data.EVENT_FLAGS["DAOS_SHRINE_OPEN"]),
+    "chaed": GoalInfo("Preamarl and the Submarine Shrine", data.EVENT_FLAGS["CHAED_DESTROYED"]),
+    "amon_divine_shrine": GoalInfo("Agurio to the Divine Shrine", data.EVENT_FLAGS["AMON_DEFEATED_DIVINE"]),
+    "idura": GoalInfo("Gruberik, Narcysus and the Tower of Sacrifice", data.EVENT_FLAGS["IDURA_DEFEATED_SACRIFICE"]),
+    "gades_ancient_tower": GoalInfo("Ancient Tower", data.EVENT_FLAGS["DEFEATED_GADES_ANCIENT_TOWER"]),
+}
+"""Goal option name -> its stage and flag."""
 
 
 def stage_of_map(map_index: int) -> Stage | None:
