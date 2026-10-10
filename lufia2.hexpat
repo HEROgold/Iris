@@ -91,51 +91,39 @@ fn file_to_lorom(u32 off) {
     return ((0x80 | (off >> 15)) << 16) | 0x8000 | (off & 0x7FFF);
 };
 
-fn fmt_lorom(u24 v) {
-    return std::format("${:02X}:{:04X} (file 0x{:06X})", v >> 16, v & 0xFFFF, lorom_to_file(v));
+// REFERENCES. A field that refers to another place in the ROM is a small sealed struct whose value
+// reads "-> 0x0B0780  $96:8780" (file offset, SNES address): Ctrl+G that offset in ImHex. Whatever it
+// points at is placed next to it as a named child (click that row to jump there); code and jump
+// destinations only get the "->" value, so no byte is described twice.
+fn fmt_dest(u32 target) {
+    u32 s = file_to_lorom(target);
+    return std::format("-> 0x{:06X}  ${:02X}:{:04X}", target, s >> 16, s & 0xFFFF);
 };
+fn fmt_ref(ref auto r) { return fmt_dest(r.target); };
 
-// POINTERS. Every reference in this file is a real ImHex pointer: double-click it (or use "Jump to")
-// to follow it. A pointer's target is base + value, where the base comes from one of these
-// [[pointer_base]] functions:
-fn base_lorom(u128 v)    { return lorom_to_file(v) - v; };   // 24-bit LoROM address ($BB:AAAA)
-fn base_zero(u128 v)     { return 0; };                      // value is a file offset, or a bank-$81 address
-fn base_bank80(u128 v)   { return 0x000000 - 0x8000; };      // 16-bit address in bank $80
-fn base_bank84(u128 v)   { return 0x020000 - 0x8000; };      // 16-bit address in bank $84
-fn base_bank85(u128 v)   { return 0x028000 - 0x8000; };      // 16-bit address in bank $85
-fn base_bank8E(u128 v)   { return 0x070000 - 0x8000; };      // 16-bit address in bank $8E
-fn base_bank9B(u128 v)   { return 0x0D8000 - 0x8000; };      // 16-bit address in bank $9B
-fn base_bankCF(u128 v)   { return 0x278000 - 0x8000; };      // 16-bit address in bank $CF
-fn base_mapnames(u128 v) { return 0x38000; };                // map-name offset from $87:8000
-// Self-relative tables: target = table address + value.
-fn base_t_08B8B5(u128 v) { return 0x08B8B5; };
-fn base_t_076A00(u128 v) { return 0x076A00; };
-fn base_t_078000(u128 v) { return 0x078000; };
-fn base_t_0AF1EF(u128 v) { return 0x0AF1EF; };
-fn base_t_0AFA5B(u128 v) { return 0x0AFA5B; };
-fn base_t_0B05C0(u128 v) { return 0x0B05C0; };
-fn base_t_0B4F69(u128 v) { return 0x0B4F69; };
-fn base_t_0B7ADD(u128 v) { return 0x0B7ADD; };
-fn base_t_0B8000(u128 v) { return 0x0B8000; };
-fn base_t_0BB9AC(u128 v) { return 0x0BB9AC; };
-fn base_t_0BC53D(u128 v) { return 0x0BC53D; };
-fn base_t_0BDCB8(u128 v) { return 0x0BDCB8; };
-fn base_t_0BEE9F(u128 v) { return 0x0BEE9F; };
-fn base_t_0BF63B(u128 v) { return 0x0BF63B; };
-fn base_t_0F5DCC(u128 v) { return 0x0F5DCC; };
-fn base_t_12DF00(u128 v) { return 0x12DF00; };
-fn base_t_138000(u128 v) { return 0x138000; };
-// Script jumps: the base is the jump origin stored in the enclosing instruction.
-fn base_jump(u128 v)     { return parent.jump_origin; };
+// 16-bit offset from `base` (a table, a record start, a jump origin, ...).
+struct Ref16<auto base> {
+    u16 value;
+    u32 target = base + value;
+} [[format("fmt_ref"), sealed]];
 
-// Zero-size pointer target: lets a pointer be followed without adding a pattern on top of the
-// target's own bytes (used for code, jump destinations and data that isn't modelled).
-struct Here {};
+// 24-bit offset from `base`.
+struct Ref24<auto base> {
+    u24 value;
+    u32 target = base + value;
+} [[format("fmt_ref"), sealed]];
 
-// A 3-byte LoROM pointer.
+// 16-bit address inside SNES bank `bank` ($8000-$FFFF).
+struct BankRef<auto bank> {
+    u16 value;
+    u32 target = (bank & 0x7F) * 0x8000 + (value & 0x7FFF);
+} [[format("fmt_ref"), sealed]];
+
+// 24-bit LoROM address ($BB:AAAA).
 struct LoRomRef {
-    Here *target : u24 [[pointer_base("base_lorom")]];
-};
+    u24 value;
+    u32 target = lorom_to_file(value);
+} [[format("fmt_ref"), sealed]];
 
 // End of a variable-length record that lives behind a u16 pointer table: the smallest target that is
 // greater than `cur`, else `limit`. `base + ptr[j]` is the target of entry j (base is the table address
@@ -170,7 +158,7 @@ fn first_with_value(u32 table, u32 stride, u32 width, u32 index) {
 struct CString {
     char text[while(std::mem::read_unsigned($, 1) != 0x00)];
     u8 terminator;
-} [[format("fmt_cstring"), color("81C784")]];
+} [[format("fmt_cstring"), color("81C784"), sealed]];
 
 fn fmt_cstring(ref CString s) { return s.text; };
 
@@ -2756,9 +2744,9 @@ struct BattleInstruction<auto origin> {
     u32 jump_origin = origin;
     u8 opcode [[format("fmt_l2basm_op")]];
     match (opcode) {
-        (0x03 | 0x04): { Here *jump_target : u16 [[pointer_base("base_jump")]]; }
-        (0x05):        { u8 chance; Here *jump_target : u16 [[pointer_base("base_jump"), comment("taken with probability chance/256 (?)")]]; }
-        (0x06 | 0x07 | 0x08 | 0x09 | 0x0A | 0x0B): { u8 reg; u16 value; Here *jump_target : u16 [[pointer_base("base_jump")]]; }
+        (0x03 | 0x04): { Ref16<jump_origin> jump_target; }
+        (0x05):        { u8 chance; Ref16<jump_origin> jump_target [[comment("taken with probability chance/256 (?)")]]; }
+        (0x06 | 0x07 | 0x08 | 0x09 | 0x0A | 0x0B): { u8 reg; u16 value; Ref16<jump_origin> jump_target; }
         (0x0C | 0x0D | 0x0E | 0x0F | 0x10 | 0x16 | 0x17 | 0x18): { u8 reg; u16 value; }
         (0x11):        { u8 reg [[comment("reg = RAND(reg)")]]; }
         (0x13 | 0x14 | 0x15 | 0x4E): { u8 reg; StatRegister stat; }
@@ -2774,8 +2762,8 @@ struct BattleInstruction<auto origin> {
         (0x2D):        { MonsterId monster; }
         (0x32):        { BattleTarget target; }
         (0x35):        { u8 special_type; }
-        (0x3F):        { u8 slot; Here *jump_target : u16 [[pointer_base("base_jump"), comment("learnable (capsule) attack slot; jump if not learned (?)")]]; }
-        (0x46):        { u8 condition; Here *jump_target : u16 [[pointer_base("base_jump"), comment("conditional branch in item armor scripts: falls through to the 'full' protection, jumps to the partial one (e.g. Water gaunt -> 42 08)")]]; }
+        (0x3F):        { u8 slot; Ref16<jump_origin> jump_target [[comment("learnable (capsule) attack slot; jump if not learned (?)")]]; }
+        (0x46):        { u8 condition; Ref16<jump_origin> jump_target [[comment("conditional branch in item armor scripts: falls through to the 'full' protection, jumps to the partial one (e.g. Water gaunt -> 42 08)")]]; }
         (0x42):        { u8 subroutine [[format("fmt_subroutine")]]; u8 zero; }
         (0x5A):        { u8 animation; }
         (_):           { u8 operands[l2basm_param_count(opcode)]; }
@@ -3044,7 +3032,7 @@ struct EventText {
 // A 16-bit event address: an offset from the map's event-list block (`base`).
 struct EventAddr<auto base> {
     u32 jump_origin = base;
-    Here *target : u16 [[pointer_base("base_jump")]];
+    Ref16<jump_origin> target;
 };
 
 struct EventPointers<auto base> {
@@ -3073,8 +3061,8 @@ struct EventInstruction<auto base> {
         (0x10):        { EventPointers<base> replies; }
         (0x12):        { u8 variable; EventPointers<base> targets; }
         (0x14):        { EventVariableChain condition; }
-        (0x15 | 0x6A): { EventFlag flag; Here *jump_target : u16 [[pointer_base("base_jump")]]; }
-        (0x1C):        { Here *jump_target : u16 [[pointer_base("base_jump")]]; }
+        (0x15 | 0x6A): { EventFlag flag; Ref16<jump_origin> jump_target; }
+        (0x1C):        { Ref16<jump_origin> jump_target; }
         (0x1A | 0x1B): { EventFlag flag; }
         (0x20):        { u8 item [[comment("item index 0x000-0x0FF")]]; u8 count; }
         (0x21):        { u8 item [[comment("item index 0x100-0x1FF")]]; u8 count; }
@@ -3117,7 +3105,7 @@ struct EventListEntry<auto base, auto list> {
     if (!first_in_event_list(list, entry)) {
         u16 shared_offset [[comment("same script as an earlier entry of this list")]];
     } else if (offset >= 14 && (base + offset) < 0x7289E) {
-        EventScript<base> *script : u16 [[pointer_base("base_jump")]];
+        Ref16<jump_origin> script_ref; EventScript<base> script @ script_ref.target;
     } else {
         u16 script_offset;
     }
@@ -3187,7 +3175,7 @@ SnesHeader snes_header @ 0x7FB0;
 struct EventOpHandler {
     u16 address [[no_unique_address, hidden]];
     u8 opcode = ($ - 0x4A14) / 2;
-    Here *handler : u16 [[pointer_base("base_bank80")]];
+    BankRef<0x80> handler;
 } [[format("fmt_event_handler")]];
 fn fmt_event_handler(ref EventOpHandler h) {
     return std::format("$80:{:04X}  {}", h.address, event_op_name(h.opcode));
@@ -3199,7 +3187,7 @@ EventOpHandler event_opcode_handlers[205] @ 0x4A14;
 // Battle action dispatcher: $81:A85C does JMP ($A867,X) on ($7F:F454 & $1F). [reli] + capsule-ram.md
 struct BattleActionHandler {
     u16 address [[no_unique_address, hidden]];
-    Here *handler : u16 [[pointer_base("base_zero")]];   // bank $81: file offset == SNES address
+    Ref16<0> handler;   // bank $81: file offset == SNES address
 } [[format("fmt_action_handler")]];
 fn fmt_action_handler(ref BattleActionHandler h) { return std::format("$81:{:04X}", h.address); };
 BattleActionHandler battle_action_handlers[32] @ 0xA867 [[comment("index = action type: $0B = capsule attack (3E XX, capsule only), ...")]];
@@ -3244,7 +3232,7 @@ struct IPRecord {
     CString name;
 };
 struct IPEntry {
-    IPRecord *record : u16 [[pointer_base("base_bank84")]];
+    BankRef<0x84> record_ref; IPRecord record @ record_ref.target;
 };
 IPEntry ip_compendium[168] @ 0x20F10;
 
@@ -3272,7 +3260,7 @@ CharacterTemplate character_templates[7] @ 0x2B2B0;
 struct L2basmOpHandler {
     u16 address [[no_unique_address, hidden]];
     u8 opcode = ($ - 0x2B483) / 2;
-    Here *handler : u16 [[pointer_base("base_bank85")]];
+    BankRef<0x85> handler;
 } [[format("fmt_l2basm_handler")]];
 fn fmt_l2basm_handler(ref L2basmOpHandler h) {
     return std::format("$85:{:04X}  {}", h.address, l2basm_op_name(h.opcode));
@@ -3282,7 +3270,7 @@ L2basmOpHandler l2basm_opcode_handlers[93] @ 0x2B483;
 // Battle messages (" cured.", " wakes up.", ...) and enemy attack names (L2BASM 1E XX; the leading
 // 0xE0 byte of each name is a control code). Entries are bank-$85 addresses.
 struct BankStringPtr85 {
-    CString *text : u16 [[pointer_base("base_bank85")]];
+    BankRef<0x85> text_ref; CString text @ text_ref.target;
 };
 BankStringPtr85 battle_messages[7]      @ 0x2EFD3;
 BankStringPtr85 enemy_attack_names[138] @ 0x2F2D7;
@@ -3302,7 +3290,7 @@ struct MapScriptSet {
     u8  eventlist_highbyte;
     u16 npc_lowbytes;
     u8  npc_highbyte;
-    if (first_with_value(0x38016, 8, 2, index)) { MapName *name : u16 [[pointer_base("base_mapnames")]]; }
+    if (first_with_value(0x38016, 8, 2, index)) { Ref16<0x38000> name_ref; MapName name @ name_ref.target; }
     else                                        { u16 name_offset [[comment("same name as an earlier map")]]; }
     u64 evPtr  = 0x38000 + (eventlist_lowbytes | (eventlist_highbyte << 15));
     u64 npcPtr = 0x38000 + (npc_lowbytes | (npc_highbyte << 15));
@@ -3341,7 +3329,7 @@ struct WarpDestination {
     CString name;
 };
 struct WarpPtr {
-    WarpDestination *dest : u16 [[pointer_base("base_bank8E")]];
+    BankRef<0x8E> dest_ref; WarpDestination dest @ dest_ref.target;
 };
 WarpPtr warp_destinations[28] @ 0x7506E;
 
@@ -3352,7 +3340,7 @@ LoRomRef hero_battle_sprites[7] @ 0x765C2 [[comment("Maxim, Selan, Guy, Artea, T
 
 // Dictionary 1 (event text and descriptions): 640 words, entries relative to the table.
 struct WordPtr {
-    CString *word : u16 [[pointer_base("base_t_076A00")]];
+    Ref16<0x076A00> word_ref; CString word @ word_ref.target;
 };
 WordPtr dictionary1[640] @ 0x76A00;
 
@@ -3362,7 +3350,7 @@ WordPtr dictionary1[640] @ 0x76A00;
 struct PuzzlePtr {
     u24 value [[no_unique_address, hidden]];
     if (value == 0xFFFFFF) { u24 none; }
-    else                   { Here *data : u24 [[pointer_base("base_t_078000")]]; }
+    else                   { Ref24<0x078000> data; }
 };
 PuzzlePtr puzzle_data[242] @ 0x78000;
 
@@ -3390,7 +3378,7 @@ struct ChestMapPtr {
     if (offset == 0xFFFF)                    { u16 unused [[comment("slots 242-255 are 0xFFFF filler")]]; }
     else if ((0x8B8B5 + offset) < 0x8BAB5)   { u16 unused [[comment("points into the table itself: never read (map 0)")]]; }
     else if (!first_with_value(0x8B8B5, 2, 2, index)) { u16 shared_offset [[comment("same list as an earlier map")]]; }
-    else                                     { ChestList *list : u16 [[pointer_base("base_t_08B8B5")]]; }
+    else                                     { Ref16<0x08B8B5> list_ref; ChestList list @ list_ref.target; }
 };
 ChestMapPtr chests_by_map[256] @ 0x8B8B5;
 
@@ -3413,7 +3401,7 @@ struct IPEffect<auto end> {
 };
 struct IPEffectPtr {
     u16 offset [[no_unique_address, hidden]];
-    IPEffect<next_target(0xAF1EF, 141, 0xAF1EF, 0xAF1EF + offset, 0xAFA5B)> *effect : u16 [[pointer_base("base_t_0AF1EF")]];
+    Ref16<0x0AF1EF> effect_ref; IPEffect<next_target(0xAF1EF, 141, 0xAF1EF, 0xAF1EF + offset, 0xAFA5B)> effect @ effect_ref.target;
 };
 IPEffectPtr ip_effects[141] @ 0xAF1EF;
 
@@ -3433,7 +3421,7 @@ struct SpellRecord<auto end> {
 };
 struct SpellPtr {
     u16 offset [[no_unique_address, hidden]];
-    SpellRecord<next_target(0xAFA5B, 40, 0xAFA5B, 0xAFA5B + offset, 0xAFF16)> *spell : u16 [[pointer_base("base_t_0AFA5B")]];
+    Ref16<0x0AFA5B> spell_ref; SpellRecord<next_target(0xAFA5B, 40, 0xAFA5B, 0xAFA5B + offset, 0xAFF16)> spell @ spell_ref.target;
 };
 SpellPtr spells[40] @ 0xAFA5B;
 
@@ -3450,7 +3438,7 @@ struct MonsterMarker<auto origin> {
     u32 jump_origin = origin;
     u8 marker [[comment("03 = drop, 07 = attack script, 08 = defense script")]];
     if (marker == 0x03) { MonsterDrop drop; }
-    else                { Here *script : u16 [[pointer_base("base_jump"), comment("record-relative")]]; }
+    else                { Ref16<jump_origin> script [[comment("record-relative")]]; }
 };
 struct MonsterRecord<auto end> {
     u64 recStart = $;
@@ -3468,7 +3456,7 @@ struct MonsterRecord<auto end> {
 };
 struct MonsterPtr {
     u16 offset [[no_unique_address, hidden]];
-    MonsterRecord<next_target(0xB05C0, 224, 0xB05C0, 0xB05C0 + offset, 0xB4F69)> *monster : u16 [[pointer_base("base_t_0B05C0")]];
+    Ref16<0x0B05C0> monster_ref; MonsterRecord<next_target(0xB05C0, 224, 0xB05C0, 0xB05C0 + offset, 0xB4F69)> monster @ monster_ref.target;
 };
 MonsterPtr monsters[224] @ 0xB05C0;
 
@@ -3524,10 +3512,10 @@ struct ItemRecord<auto end> {
     ItemProperties properties;
     u16 zero;
     u16 f = std::mem::read_unsigned(recStart + 9, 2);
-    if (f & 0x0001) { Here *menu_script   : u16 [[pointer_base("base_jump")]]; }
-    if (f & 0x0002) { Here *battle_script : u16 [[pointer_base("base_jump")]]; }
-    if (f & 0x0004) { Here *weapon_script : u16 [[pointer_base("base_jump")]]; }
-    if (f & 0x0008) { Here *armor_script  : u16 [[pointer_base("base_jump")]]; }
+    if (f & 0x0001) { Ref16<jump_origin> menu_script; }
+    if (f & 0x0002) { Ref16<jump_origin> battle_script; }
+    if (f & 0x0004) { Ref16<jump_origin> weapon_script; }
+    if (f & 0x0008) { Ref16<jump_origin> armor_script; }
     if (f & 0x0010) { s16 atp_bonus; }
     if (f & 0x0020) { s16 dfp_bonus; }
     if (f & 0x0040) { s16 str_bonus; }
@@ -3544,7 +3532,7 @@ struct ItemRecord<auto end> {
 };
 struct ItemPtr {
     u16 offset [[no_unique_address, hidden]];
-    ItemRecord<next_target(0xB4F69, 467, 0xB4F69, 0xB4F69 + offset, 0xB7ADD)> *item : u16 [[pointer_base("base_t_0B4F69")]];
+    Ref16<0x0B4F69> item_ref; ItemRecord<next_target(0xB4F69, 467, 0xB4F69, 0xB4F69 + offset, 0xB7ADD)> item @ item_ref.target;
 };
 ItemPtr items[467] @ 0xB4F69;
 
@@ -3557,7 +3545,7 @@ struct Subroutine<auto end> {
 struct SubroutinePtr {
     u16 offset [[no_unique_address, hidden]];
     u8 index = ($ - 0xB7ADD) / 2;
-    Subroutine<next_target(0xB7ADD, 41, 0xB7ADD, 0xB7ADD + offset, 0xB7E3A)> *subroutine : u16 [[pointer_base("base_t_0B7ADD")]];
+    Ref16<0x0B7ADD> subroutine_ref; Subroutine<next_target(0xB7ADD, 41, 0xB7ADD, 0xB7ADD + offset, 0xB7E3A)> subroutine @ subroutine_ref.target;
 } [[format("fmt_subroutine_ptr")]];
 fn fmt_subroutine_ptr(ref SubroutinePtr p) { return subroutine_name(p.index); };
 SubroutinePtr subroutines_42[41] @ 0xB7ADD;
@@ -3568,7 +3556,7 @@ u16 colors_after_subroutines[128] @ 0xB7E3A [[comment("15-bit colours (0x0422, 0
 // Item / spell / IP descriptions. Pointers are relative to 0xB8000; the text (0xB85B4-0xBB0A0) is
 // compressed with dictionary 2 and is not decoded here.
 struct DescPtr {
-    Here *text : u16 [[pointer_base("base_t_0B8000")]];
+    Ref16<0x0B8000> text;
 };
 DescPtr item_descriptions[512]  @ 0xB8000 [[comment("467 used; the rest point at the empty text")]];
 DescPtr spell_descriptions[49]  @ 0xB8400;
@@ -3592,7 +3580,7 @@ struct MapFormationPtr {
     u32 index = ($ - 0xBB9AC) / 2;
     u16 offset [[no_unique_address, hidden]];
     if (!first_with_value(0xBB9AC, 2, 2, index)) { u16 shared_offset [[comment("same body as an earlier map")]]; }
-    else { MapFormationBody<next_target(0xBB9AC, 248, 0xBB9AC, 0xBB9AC + offset, 0xBBE93)> *body : u16 [[pointer_base("base_t_0BB9AC")]]; }
+    else { Ref16<0x0BB9AC> body_ref; MapFormationBody<next_target(0xBB9AC, 248, 0xBB9AC, 0xBB9AC + offset, 0xBBE93)> body @ body_ref.target; }
 };
 MapFormationPtr map_formations[248] @ 0xBB9AC;
 
@@ -3609,7 +3597,7 @@ struct BossFormationPtr {
     u32 index = ($ - 0xBC53D) / 2;
     u16 offset [[no_unique_address, hidden]];
     if (!first_with_value(0xBC53D, 2, 2, index)) { u16 shared_offset [[comment("same party as an earlier entry")]]; }
-    else { BossFormationBody<next_target(0xBC53D, 39, 0xBC53D, 0xBC53D + offset, 0xBCA1D)> *body : u16 [[pointer_base("base_t_0BC53D")]]; }
+    else { Ref16<0x0BC53D> body_ref; BossFormationBody<next_target(0xBC53D, 39, 0xBC53D, 0xBC53D + offset, 0xBCA1D)> body @ body_ref.target; }
 };
 BossFormationPtr boss_formations[39] @ 0xBC53D;
 
@@ -3645,7 +3633,7 @@ struct CapsuleRecord<auto end> {
 };
 struct CapsulePtr {
     u16 offset [[no_unique_address, hidden]];
-    CapsuleRecord<next_target(0xBDCB8, 35, 0xBDCB8, 0xBDCB8 + offset, 0xBEE9F)> *capsule : u16 [[pointer_base("base_t_0BDCB8")]];
+    Ref16<0x0BDCB8> capsule_ref; CapsuleRecord<next_target(0xBDCB8, 35, 0xBDCB8, 0xBDCB8 + offset, 0xBEE9F)> capsule @ capsule_ref.target;
 };
 CapsulePtr capsules[35] @ 0xBDCB8;
 
@@ -3669,7 +3657,7 @@ struct ShopDef<auto stop> {
 struct ShopPtr {
     u16 offset [[no_unique_address, hidden]];
     if (offset != 0) {
-        ShopDef<next_target(0xBEE9F, 63, 0xBEE9F, 0xBEE9F + offset, 0xBF63B)> *shop : u16 [[pointer_base("base_t_0BEE9F")]];
+        Ref16<0x0BEE9F> shop_ref; ShopDef<next_target(0xBEE9F, 63, 0xBEE9F, 0xBEE9F + offset, 0xBF63B)> shop @ shop_ref.target;
     } else {
         u16 unused_shop;
     }
@@ -3687,7 +3675,7 @@ struct CapAttackRecord<auto end> {
 };
 struct CapAttackPtr {
     u16 offset [[no_unique_address, hidden]];
-    CapAttackRecord<next_target(0xBF63B, 84, 0xBF63B, 0xBF63B + offset, 0xBFC40)> *attack : u16 [[pointer_base("base_t_0BF63B")]];
+    Ref16<0x0BF63B> attack_ref; CapAttackRecord<next_target(0xBF63B, 84, 0xBF63B, 0xBF63B + offset, 0xBFC40)> attack @ attack_ref.target;
 };
 CapAttackPtr capsule_attacks[84] @ 0xBF63B;
 
@@ -3709,13 +3697,13 @@ ScenarioItems scenario_items @ 0xBFDA0;
 
 // ---------------------------------------------------------------------------------- bank $9E (0x0F0000)
 
-struct ItemName { char name[12]; } [[format("fmt_item_name")]];
+struct ItemName { char name[12]; } [[format("fmt_item_name"), sealed]];
 fn fmt_item_name(ref ItemName n) { return n.name; };
 ItemName item_names[467] @ 0xF47E8;
 
 // Dictionary 2 (item / spell / IP descriptions): 624 words relative to the table.
 struct Word2Ptr {
-    CString *word : u16 [[pointer_base("base_t_0F5DCC")]];
+    Ref16<0x0F5DCC> word_ref; CString word @ word_ref.target;
 };
 Word2Ptr dictionary2[624] @ 0xF5DCC;
 
@@ -3723,7 +3711,7 @@ Word2Ptr dictionary2[624] @ 0xF5DCC;
 
 // Capsule attack names (SP list / CapAttack name numbers): 78 entries relative to the table.
 struct CapAttackNamePtr {
-    CString *name : u16 [[pointer_base("base_t_12DF00")]];
+    Ref16<0x12DF00> name_ref; CString name @ name_ref.target;
 };
 CapAttackNamePtr capsule_attack_names[78] @ 0x12DF00;
 
@@ -3733,7 +3721,7 @@ CapAttackNamePtr capsule_attack_names[78] @ 0x12DF00;
 // Covers SPC data, title/credits graphics, per-map bg data / TSA / tiles, battle backgrounds,
 // capsule and enemy battle sprites, battle animations, intro and Mode-7 graphics. [reli] + [iris]
 struct Resource {
-    Here *data : u24 [[pointer_base("base_t_138000")]];
+    Ref24<0x138000> data;
 };
 Resource res_spc[0x3F]                  @ 0x138000 [[comment("0x000-0x03E: SPC (music / sound)")]];
 Resource res_title_screens              @ 0x1380BD [[comment("0x03F: bg data and tiles of the title screens")]];
@@ -3763,7 +3751,9 @@ struct MapSprite {
     LoRomRef first_tile;
 };
 struct MapSpritePtr {
-    MapSprite *sprite : u16 [[pointer_base("base_bankCF")]];
+    u32 index = ($ - 0x27F000) / 2;
+    BankRef<0xCF> sprite_ref;
+    if (first_with_value(0x27F000, 2, 2, index)) { MapSprite sprite @ sprite_ref.target; }
 };
 MapSpritePtr map_sprites[251] @ 0x27F000;
 
@@ -3773,7 +3763,7 @@ u8 map_tile_numbers[240]    @ 0x27F820 [[comment("bg tiles number per map 0x02-0
 u8 map_layer_bytes[240]     @ 0x27F910 [[comment("bg layers data byte per map 0x02-0xF1")]];
 u8 map_palette_numbers[240] @ 0x27FA0A [[comment("palette number per map 0x02-0xF1")]];
 struct MapPalettePtr {
-    Here *palette : u16 [[pointer_base("base_bank9B")]];
+    BankRef<0x9B> palette;
 };
 MapPalettePtr map_palette_ptrs[87] @ 0x27FAFA [[comment("palettes of dungeons and towns in bank $9B")]];
 u8 map_anim_palette_numbers[240] @ 0x27FBA8 [[comment("per map 0x02-0xF1: number of a pointer at 0x27FC98 (animated tile palettes?)")]];
@@ -3822,7 +3812,7 @@ struct ZoneData {
     if (peek8(base + section_offsets[19]) != 0xFF) { ZoneRaw<zone_section_end(base, 19)> s19_dungeon_objects @ (base + section_offsets[19]); }
 };
 struct ZonePtr {
-    ZoneData *zone : u24 [[pointer_base("base_lorom")]];
+    LoRomRef zone_ref; ZoneData zone @ zone_ref.target;
 };
 ZonePtr zone_data[242] @ 0x27FCBC;
 
@@ -4547,11 +4537,9 @@ struct Bank81Map {
     Code sub_DD11 @ 0x00DD11 [[comment("$81:DD11 AP hook: DB=$81, x=0, m=1 | JSL HandleInactiveExp ; overwrites LDA $0A8A : CLC [ap] (end unknown)")]];
     Data data_F1E4 @ 0x00F1E4 [[comment("$81:F1E4 (no description) [reli] (end unknown)")]];
     Code sub_F2E3 @ 0x00F2E3 [[comment("$81:F2E3 AP hook: equipment text fix | DB=$9E, x=0, m=1 | NOP #2 ; overwrites BPL $81F2D6 [ap] (end unknown)")]];
-    Code sub_F446[0xB] @ 0x00F446 [[comment("$81:F446 Subroutine: $7E:0A0B = spell number -> $7E:0A0D = 2 lower bytes of spell data address [reli] || spell number $0A0B -> record address: LDA $95FA5B,X : ADC #$FA5B [iris]")]];
-    Code sub_F446_2[0xA] @ 0x00F454 [[comment("$81:F454 (continued from $81:F446) Subroutine: $7E:0A0B = spell number -> $7E:0A0D = 2 lower bytes of spell data address [reli] || spell number $0A0B -> record address: LDA $95FA5B,X : ADC #$FA5B [iris]")]];
+    Code sub_F446[0x18] @ 0x00F446 [[comment("$81:F446 Subroutine: $7E:0A0B = spell number -> $7E:0A0D = 2 lower bytes of spell data address [reli] || spell number $0A0B -> record address: LDA $95FA5B,X : ADC #$FA5B [iris]")]];
     Code sub_F46B @ 0x00F46B [[comment("$81:F46B IP effect accessor: LDA $95F1EF,X : CLC : ADC #$F1EF [iris] (end unknown)")]];
-    Code sub_F476[0x3] @ 0x00F476 [[comment("$81:F476 CapAttack index -> address: ASL : TAX : LDA $97F63B,X : CLC : ADC #$F63B : RTL [iris]")]];
-    Code sub_F476_2[0x5] @ 0x00F47C [[comment("$81:F47C (continued from $81:F476) CapAttack index -> address: ASL : TAX : LDA $97F63B,X : CLC : ADC #$F63B : RTL [iris]")]];
+    Code sub_F476[0xB] @ 0x00F476 [[comment("$81:F476 CapAttack index -> address: ASL : TAX : LDA $97F63B,X : CLC : ADC #$F63B : RTL [iris]")]];
     Code sub_F4D5[0x14] @ 0x00F4D5 [[comment("$81:F4D5 Subroutine: Push CPU registers, call sub at $81:F4ED, pull registers. Called by: sub at $80:A4CB (?) sub at $81:ED8E (?) ... [reli]")]];
     Code sub_F4E9[0x4] @ 0x00F4E9 [[comment("$81:F4E9 Subroutine: 81/F4E9: 20 ED F4 JSR $F4ED [$81:F4ED] 81/F4EC: 6B RTL [reli]")]];
     Code sub_F4ED[0x8A] @ 0x00F4ED [[comment("$81:F4ED Subroutine: Calculate stats (from base stats) (for characters, Capsule Monsters and enemies). [reli]")]];
@@ -4568,9 +4556,8 @@ struct Bank81Map {
     Code sub_F9E9[0xE0] @ 0x00F9E9 [[comment("$81:F9E9 Subroutine: [reli]")]];
     Code sub_FAC9[0x2C] @ 0x00FAC9 [[comment("$81:FAC9 Subroutine: [reli] || runs a capsule attack's battle script [iris]")]];
     Code sub_FAF5[0x25] @ 0x00FAF5 [[comment("$81:FAF5 Subroutine: [reli]")]];
-    Code sub_FB1A[0xE] @ 0x00FB1A [[comment("$81:FB1A Subroutine: Monster-related sub: parse Gift Bytes Called by sub at $85:D0CD [reli]")]];
-    Code sub_FB1A_2[0x2A] @ 0x00FB2B [[comment("$81:FB2B (continued from $81:FB1A) Subroutine: Monster-related sub: parse Gift Bytes Called by sub at $85:D0CD [reli]")]];
-    Code sub_FB1A_3[0x23] @ 0x00FB56 [[comment("$81:FB56 (continued from $81:FB1A) Subroutine: Monster-related sub: parse Gift Bytes Called by sub at $85:D0CD [reli]")]];
+    Code sub_FB1A[0x3B] @ 0x00FB1A [[comment("$81:FB1A Subroutine: Monster-related sub: parse Gift Bytes Called by sub at $85:D0CD [reli]")]];
+    Code sub_FB1A_2[0x23] @ 0x00FB56 [[comment("$81:FB56 (continued from $81:FB1A) Subroutine: Monster-related sub: parse Gift Bytes Called by sub at $85:D0CD [reli]")]];
     Code sub_FB55 @ 0x00FB55 [[comment("$81:FB55 item-drop roll: CMP $09FB (Game Genie ALWAYS_DROP_33 breaks this into an endless loop) [iris] (end unknown)")]];
     Code sub_FB79[0x15] @ 0x00FB79 [[comment("$81:FB79 Subroutine: A = monster number -> A = monster data byte $0E (value: $32 or $36) [reli]")]];
     Code sub_FB8E[0x14] @ 0x00FB8E [[comment("$81:FB8E Subroutine: Before: low A = enemy battle sprite number After: A = (data bytes for enemy battle sprite from ($97:CA64)) AND (#$1F1F) low A = corresponding enemy battle sprite number high A = corresponding enemy battle sprite palette number [reli]")]];
@@ -4595,8 +4582,7 @@ struct Bank82Map {
     Code sub_C352 @ 0x014352 [[comment("$82:C352 RTL: set all 7 owned capsule flags to A, species 0 form 1, rebuild (special new-game start) [iris] (end unknown)")]];
     Code sub_C36A @ 0x01436A [[comment("$82:C36A AP hook: TODO: remove this section, not used for Overworld set starting capsule monster | DB=$83, x=0, m=1 | JSL StartingCapsule ; overwrites STZ $11A3 : LDA.b #$01 [ap] (end unknown)")]];
     Code sub_C37B @ 0x01437B [[comment("$82:C37B RTS: clears $11A5 and $11C2-$11D5 [iris] (end unknown)")]];
-    Code sub_C38B[0x18] @ 0x01438B [[comment("$82:C38B Subroutine: Related to CM? [reli] || RTS: capsule record lookup $97:DCB8 + table[species*5 + form-1] -> $09C4 [iris]")]];
-    Code sub_C38B_2[0xB] @ 0x0143A6 [[comment("$82:C3A6 (continued from $82:C38B) Subroutine: Related to CM? [reli] || RTS: capsule record lookup $97:DCB8 + table[species*5 + form-1] -> $09C4 [iris]")]];
+    Code sub_C38B[0x26] @ 0x01438B [[comment("$82:C38B Subroutine: Related to CM? [reli] || RTS: capsule record lookup $97:DCB8 + table[species*5 + form-1] -> $09C4 [iris]")]];
     Code sub_C3D3 @ 0x0143D3 [[comment("$82:C3D3 RTS: scratch species, species*3, species*5 -> $09D9/$09DB/$09DD [iris] (end unknown)")]];
     Code sub_C3F8 @ 0x0143F8 [[comment("$82:C3F8 RTS: load member 7 name, level, EXP from the per-species tables [iris] (end unknown)")]];
     Code sub_C443 @ 0x014443 [[comment("$82:C443 RTS: save member 7 level, EXP, name back to the per-species tables [iris] (end unknown)")]];
@@ -4662,7 +4648,9 @@ struct Bank83Map {
     Code sub_9E31_2[0xB7] @ 0x019E88 [[comment("$83:9E88 (continued from $83:9E31) Subroutine: [reli]")]];
     Code sub_9E87 @ 0x019E87 [[comment("$83:9E87 AP hook: report final floor goal completion | JSL FinalFloor ; overwrites STA $0005B0 [ap] (end unknown)")]];
     Data data_9F3F[0xA] @ 0x019F3F [[comment("$83:9F3F Data? [reli]")]];
+    Data data_9F73[0xC] @ 0x019F73 [[comment("$83:9F73 Pointers (3 bytes long => 4 pointers) to ??? [reli]")]];
     Data data_9F7F[0x6] @ 0x019F7F [[comment("$83:9F7F Related to the palettes [reli] || related to the Ancient Cave palettes [reli]")]];
+    Gfx gfx_9F85[0x24] @ 0x019F85 [[comment("$83:9F85 Pointers (3 bytes long => 12 pointers) to palettes in bank $9B. Palettes used for the Ancient Cave. [reli]")]];
     Code sub_9FA9[0x38] @ 0x019FA9 [[comment("$83:9FA9 Subroutine: [reli]")]];
     Code sub_AB4F @ 0x01AB4F [[comment("$83:AB4F Subroutine: [reli] (end unknown)")]];
     Code sub_ACEF @ 0x01ACEF [[comment("$83:ACEF Subroutine: [reli] (end unknown)")]];
@@ -4997,6 +4985,8 @@ struct Bank85Map {
     Code sub_EEA1[0x7F] @ 0x02EEA1 [[comment("$85:EEA1 ? Subroutine: [reli]")]];
     Unknown unk_EF20[0x33] @ 0x02EF20 [[comment("$85:EF20 ? Some L2BASM subroutines [reli]")]];
     Unknown unk_EF53[0x80] @ 0x02EF53 [[comment("$85:EF53 ? EFC9: number of the pointer (in bank $A7) to the 'cast spell' animation of heroes [reli]")]];
+    Text text_EFE1[0x2F6] @ 0x02EFE1 [[comment("$85:EFE1 Text: 'battle messages' [reli]")]];
+    Text text_F3EB[0x6CB] @ 0x02F3EB [[comment("$85:F3EB Text: enemy attacks names [reli]")]];
     Unknown unk_FE24 @ 0x02FE24 [[comment("$85:FE24 ? Data? [reli] (end unknown)")]];
     Free free_FEB1[0x14F] @ 0x02FEB1 [[comment("$85:FEB1 Free space [reli]")]];
 };
@@ -5120,6 +5110,13 @@ struct Bank8EMap {
     Data data_D9A9[0x2F4] @ 0x0759A9 [[comment("$8E:D9A9 Some data? (378 * 2 bytes) (see sub at $86:8CDA) [reli] || 378 u16 values (see sub $86:8CDA) [reli]")]];
     Data data_DC9D[0x10F] @ 0x075C9D [[comment("$8E:DC9D ... [reli]")]];
     Data data_E5A0[0x22] @ 0x0765A0 [[comment("$8E:E5A0 Pointers to data at $0... entries (add $0...) [reli]")]];
+    Gfx gfx_E5C2[0x3] @ 0x0765C2 [[comment("$8E:E5C2 Pointers to the battle sprites of the seven heroes: [reli] || - Maxim's battle sprites [reli]")]];
+    Gfx gfx_E5C5[0x3] @ 0x0765C5 [[comment("$8E:E5C5 - Selan's battle sprites [reli]")]];
+    Gfx gfx_E5C8[0x3] @ 0x0765C8 [[comment("$8E:E5C8 - Guy's battle sprites [reli]")]];
+    Gfx gfx_E5CB[0x3] @ 0x0765CB [[comment("$8E:E5CB - Artea's battle sprites [reli]")]];
+    Gfx gfx_E5CE[0x3] @ 0x0765CE [[comment("$8E:E5CE - Tia's battle sprites [reli]")]];
+    Gfx gfx_E5D1[0x3] @ 0x0765D1 [[comment("$8E:E5D1 - Dekar's battle sprites [reli]")]];
+    Gfx gfx_E5D4[0x3] @ 0x0765D4 [[comment("$8E:E5D4 - Lexis' battle sprites [reli]")]];
     Data data_E5D7[0x18] @ 0x0765D7 [[comment("$8E:E5D7 Pointers (see sub at $8E:E710) [reli]")]];
     Code sub_E5EF @ 0x0765EF [[comment("$8E:E5EF Subroutine: [reli] (end unknown)")]];
     Code sub_E642 @ 0x076642 [[comment("$8E:E642 Subroutine: [reli] (end unknown)")]];
@@ -5130,6 +5127,7 @@ struct Bank8EMap {
     Code sub_E710[0x41] @ 0x076710 [[comment("$8E:E710 Subroutine: [reli]")]];
     Code sub_E751[0x6F] @ 0x076751 [[comment("$8E:E751 Subroutine: [reli]")]];
     Free free_E7C0[0x240] @ 0x0767C0 [[comment("$8E:E7C0 Free space [reli]")]];
+    Text text_EF00[0xE2E] @ 0x076F00 [[comment("$8E:EF00 Text: Dictionary 1 (for script and item/spell/IP descriptions) (words and syllables; sorted by decreasing length) [reli]")]];
     Code sub_FD2E[0x2D2] @ 0x077D2E [[comment("$8E:FD2E Free space [reli] || AP hook: unused region at the end of bank $8E | TODO: start items at $01D2 (index 466) | DB $1E,$0B,$01,$2B,$01,$1A,$02,$00 ; add selan | DB $1E,$0B,$01,$2B,$02,$1A,$03,$00 ; add guy | DB $1E,$0B,$01,$2B,$03,$1A,$04,$00 ; add arty [ap]")]];
 };
 Bank8EMap bank_8E @ 0x070000 [[comment("bank $8E: file 0x070000-0x077FFF")]];
@@ -5230,6 +5228,14 @@ Bank9DMap bank_9D @ 0x0E8000 [[comment("bank $9D: file 0x0E8000-0x0EFFFF")]];
 struct Bank9EMap {
     Gfx gfx_8000_3[0x2FFF] @ 0x0F0001 [[comment("$9E:8001 (continued from $9E:8000) Graphics: sprites [reli]")]];
     Gfx gfx_8000 @ 0x0F0000 [[comment("$9E:8000 Graphics: Artea battle sprites [reli] (end unknown)")]];
+    Text text_C7E8[0x1458] @ 0x0F47E8 [[comment("$9E:C7E8 Text: items/weapons/armor/... names [reli]")]];
+    Text text_C7E8_2[0x47] @ 0x0F5C41 [[comment("$9E:DC41 (continued from $9E:C7E8) Text: items/weapons/armor/... names [reli]")]];
+    Text text_C7E8_3[0xD7] @ 0x0F5C89 [[comment("$9E:DC89 (continued from $9E:C7E8) Text: items/weapons/armor/... names [reli]")]];
+    Text text_C7E8_4[0x6B] @ 0x0F5D61 [[comment("$9E:DD61 (continued from $9E:C7E8) Text: items/weapons/armor/... names [reli]")]];
+    Code sub_DC40 @ 0x0F5C40 [[comment("$9E:DC40 AP hook: names | DB 'Selan       ' ; overwrites 'Wind key    ' ; TODO instead use 'PURIFIA     ' | DB 'Guy         ' ; overwrites 'Cloud key   ' ; TODO instead use 'Tag ring    ' | DB 'Arty        ' ; overwrites 'Light key   ' ; TODO instead use 'Tag ring    ' | DB 'Dekar       ' ; overwrites 'Sword key   ' ; TODO instead use 'RAN-RAN step' [ap] (end unknown)")]];
+    Code sub_DC88 @ 0x0F5C88 [[comment("$9E:DC88 AP hook: names | DB 'JELZE       ' ; overwrites 'Magma key   ' | DB 'FLASH       ' ; overwrites 'Heart key   ' | DB 'GUSTO       ' ; overwrites 'Ghost key   ' | DB 'ZEPPY       ' ; overwrites 'Trial key   ' [ap] (end unknown)")]];
+    Code sub_DD60 @ 0x0F5D60 [[comment("$9E:DD60 AP hook: name | DB 'AP item     ' ; overwrites 'Key30       ' [ap] (end unknown)")]];
+    Text text_E2AC[0x10CF] @ 0x0F62AC [[comment("$9E:E2AC Text: Dictionary 2 (for item/spell/IP descriptions) [reli]")]];
     Gfx gfx_F37B[0x200] @ 0x0F737B [[comment("$9E:F37B Graphics: sprites (4x4) Enemy map sprites [reli] || - Faces South [reli]")]];
     Gfx gfx_F37B_2[0x1FF] @ 0x0F757C [[comment("$9E:F57C (continued from $9E:F37B) Graphics: sprites (4x4) Enemy map sprites [reli] || - Faces South [reli]")]];
     Gfx gfx_F37B_3[0x1FF] @ 0x0F777C [[comment("$9E:F77C (continued from $9E:F37B) Graphics: sprites (4x4) Enemy map sprites [reli] || - Faces South [reli]")]];
@@ -5287,6 +5293,7 @@ BankA4Map bank_A4 @ 0x120000 [[comment("bank $A4: file 0x120000-0x127FFF")]];
 struct BankA5Map {
     Gfx gfx_8000 @ 0x128000 [[comment("$A5:8000 Graphics: map sprites [reli] (end unknown)")]];
     Gfx gfx_BF00[0x400] @ 0x12BF00 [[comment("$A5:BF00 Arek sprites [reli]")]];
+    Text text_DF9C[0x360] @ 0x12DF9C [[comment("$A5:DF9C Text: Capsule Monsters attacks names [reli]")]];
     Gfx gfx_E2FC[0x300] @ 0x12E2FC [[comment("$A5:E2FC Graphics: Text windows ('Game Boy format' with Tile Layer Pro) see sub ~ $83:B03B [reli]")]];
     Gfx gfx_E5FC[0x1800] @ 0x12E5FC [[comment("$A5:E5FC Graphics: sprites (2x2) [reli]")]];
     Gfx gfx_FDFC[0x200] @ 0x12FDFC [[comment("$A5:FDFC Graphics: 1 'dead people' sprite (4x4) [reli]")]];
