@@ -47,13 +47,19 @@ def apply_new_game_hook(
     unlock_warps: bool = True,
     skip_tutorial: bool = False,
     start_items: Sequence[tuple[Item, int]] = (),
+    clear_ap_rx: bool = False,
 ) -> None:
     """Install the new-game hook with the chosen features. Call once per build: a second call replaces the first.
 
-    ``start_items`` are ``(item, quantity)`` pairs added to the inventory at new game.
+    ``start_items`` are ``(item, quantity)`` pairs added to the inventory at new game. ``clear_ap_rx`` zeroes the
+    Archipelago receive counters (Iris-Dev#20) so a new game starts with nothing received.
     """
     iris.info(f"New-game hook: unlock_warps={unlock_warps}, skip_tutorial={skip_tutorial}, start_items={len(start_items)}.")
-    defines = {"unlock_warps": str(int(unlock_warps)), "skip_tutorial": str(int(skip_tutorial))}
+    defines = {
+        "unlock_warps": str(int(unlock_warps)),
+        "skip_tutorial": str(int(skip_tutorial)),
+        "clear_ap_rx": str(int(clear_ap_rx)),
+    }
     if start_items:
         for item, quantity in start_items:
             if not 1 <= quantity <= MAX_ITEM_QUANTITY:

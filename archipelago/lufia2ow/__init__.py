@@ -1,8 +1,8 @@
 """Lufia II: Rise of the Sinistrals, the overworld, as an Archipelago world built on Iris (Iris-Dev#2).
 
 Routing follows the vanilla story (see ``logic``): every progression item can land in any chest or flagged script grant
-that it doesn't itself gate. Until the ROM can receive items (Iris-Dev#20), this world's items stay in this world;
-other worlds' items in its chests and grants show as the AP item.
+that it doesn't itself gate, in this world or another. Items from other worlds arrive through the base patch's RX
+(Iris-Dev#20); other worlds' items in this world's chests and grants show as the AP item.
 """
 
 import base64
@@ -69,7 +69,6 @@ class L2OWWorld(World):
 
     def generate_early(self) -> None:
         self.auth = f"IRIS{self.player}_{self.multiworld.seed}".encode()[:AUTH_SIZE]
-        self.options.local_items.value |= set(item_name_to_id)
 
     def create_regions(self) -> None:
         menu = Region("Menu", self.player, self.multiworld)

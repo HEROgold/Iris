@@ -1,8 +1,9 @@
-"""SNI client: authenticates against the config block, reports opened chests, script grants and the goal (Iris-Dev#36).
+"""SNI client: authenticates against the config block, reports checks and the goal, delivers items (Iris-Dev#36, #20).
 
 Chests are read from the opened-chest bits (confirmed in a real run); a script grant is reported once the event flag its
-script sets is on. Not here yet: receiving items (needs the ROM's RX buffer, Iris-Dev#20), death link. There is no
-"a save is loaded" flag; ``looks_uninitialised`` only rejects the fill pattern some emulators put in WRAM at power-on.
+script sets is on. Received items go into the SRAM list that the base patch's rx.asm hands out in the field. Not here
+yet: death link. There is no "a save is loaded" flag; ``looks_uninitialised`` only rejects the fill pattern some
+emulators put in WRAM at power-on.
 """
 
 import logging
@@ -30,6 +31,8 @@ CHEST_BITS = WRAM_START + (data.CHEST_OPENED_BITS & 0xFFFF)
 CHEST_BYTES = max(data.CHESTS)[0] // 8 + 1
 EVENT_FLAGS = WRAM_START + 0x077E
 EVENT_FLAG_BYTES = 32
+RX_ADDRESS = 0xE00000 + 0x2800
+"""SNI's address of SRAM $F0:2800: u16 received count, u16 processed count, then the u16 item list (rx.asm)."""
 GOAL_FLAG = data.GOAL_FLAG
 
 
@@ -61,7 +64,7 @@ class L2OWSNIClient(SNIClient):
         if auth is None:
             return False
         ctx.game = self.game
-        ctx.items_handling = 0b000  # every item of this world sits in its own chests
+        ctx.items_handling = 0b101  # other worlds' items and the starting inventory; our own sit in our chests
         ctx.rom = auth
         return True
 
@@ -86,8 +89,28 @@ class L2OWSNIClient(SNIClient):
             ctx.locations_checked.update(new)
             await ctx.send_msgs([{"cmd": "LocationChecks", "locations": new}])
 
+        await self._deliver(ctx)
+
         if not ctx.finished_game and flags is not None and not looks_uninitialised(flags):
             if is_set(flags, GOAL_FLAG):
                 await ctx.send_msgs([{"cmd": "StatusUpdate", "status": ClientStatus.CLIENT_GOAL}])
                 ctx.finished_game = True
                 logger.info("Daos is defeated: goal complete.")
+
+    @staticmethod
+    async def _deliver(ctx: "SNIContext") -> None:
+        """Append the next received item to the SRAM list; the game hands it out and catches up one per frame."""
+        from SNIClient import snes_buffered_write, snes_flush_writes, snes_read
+
+        counter = await snes_read(ctx, RX_ADDRESS, 2)
+        if counter is None:
+            return
+        received = int.from_bytes(counter, "little")
+        if received >= len(ctx.items_received):
+            return
+        item = ctx.items_received[received]
+        received += 1
+        snes_buffered_write(ctx, RX_ADDRESS + 2 * (received + 1), (item.item - BASE_ID).to_bytes(2, "little"))
+        snes_buffered_write(ctx, RX_ADDRESS, received.to_bytes(2, "little"))
+        await snes_flush_writes(ctx)
+        logger.info(f"Received {ctx.item_names.lookup_in_game(item.item)} ({received}/{len(ctx.items_received)}).")

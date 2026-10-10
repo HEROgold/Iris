@@ -19,6 +19,7 @@ lorom
 !skip_tutorial ?= 0
 !start_item_count ?= 0      ; number of (item, quantity) pairs in !start_items
 !start_items ?= 0           ; "item,quantity,item,quantity,..." as dw values
+!clear_ap_rx ?= 0           ; zero the Archipelago RX counters (archipelago/overworld/rx.asm)
 
 ; Event flag n is bit n % 8 (low bit first) of $7E:077E + n / 8, as the game's own helper at $80:BE30 computes it.
 macro set_event_flag(n)
@@ -112,7 +113,15 @@ if !start_item_count
     plb
     plp
 endif
-if !skip_tutorial || !unlock_warps == 0 || !start_item_count
+if !clear_ap_rx
+    php
+    rep #$20
+    lda.w #$0000
+    sta.l $F02800           ; received
+    sta.l $F02802           ; processed
+    plp
+endif
+if !skip_tutorial || !unlock_warps == 0 || !start_item_count || !clear_ap_rx
     lda #$FF                ; A is still $FF after the warp stores unless something since changed it
 endif
     sta.l $7E099D           ; the original displaced write (LDA #$FF : STA $099D)

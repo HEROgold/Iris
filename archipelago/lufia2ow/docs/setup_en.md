@@ -14,6 +14,9 @@
 
 ## What works so far
 
-Red chests are the checks. Progression items (tools and keys) stay in their vanilla chests; everything else in the
-chests is shuffled across the multiworld. Your own items aren't sent to other worlds yet, and receiving items isn't
-supported. The goal is defeating Daos.
+Red chests and the story rewards whose script sets a flag are checks. Tools, keys and story items are shuffled too,
+following the vanilla story order: each dungeon still opens at its usual story moment, and the logic makes sure you
+can get the keys and tools it needs before you need them. Items from other worlds arrive in the field with the usual
+"found" message. The goal is defeating Daos.
+
+Not yet: the four story rewards without a flag, the Ancient Cave, the Dragon Egg shrine's wishes, death link.

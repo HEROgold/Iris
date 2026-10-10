@@ -246,7 +246,12 @@ def _apply_new_game(options: Options) -> None:
     # One asar hook at the new-game handoff: every Warp destination unlocked (dev fix, unless unlock_warps is off),
     # --skip-tutorial and the start items.
     start_items = [(Item.from_index(index), quantity) for index, quantity in options.start_items]
-    apply_new_game_hook(unlock_warps=options.unlock_warps, skip_tutorial=options.skip_tutorial, start_items=start_items)
+    apply_new_game_hook(
+        unlock_warps=options.unlock_warps,
+        skip_tutorial=options.skip_tutorial,
+        start_items=start_items,
+        clear_ap_rx=options.archipelago,
+    )
     if options.debug_party:
         max_out_party()
     if options.start_capsule is not None:
