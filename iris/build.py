@@ -50,6 +50,7 @@ from iris.patches.RealCritical import (
     jelly_damage_display,
     killer_names,
 )
+from iris.patches.archipelago.overworld.basepatch import apply_overworld_basepatch
 from iris.patches.RealCritical.sprites import bunny_girls, fix_shrine_tile_set
 from iris.structures.item import Item
 from iris.structures.monster import Monster
@@ -118,6 +119,10 @@ class Options:
     spell_target_limit: bool = False
     zero_capsule_command: bool = False
     zero_gold_command: bool = False
+    unlock_warps: bool = True
+    """Dev fix: every Warp destination is open from the start. Off for Archipelago, whose logic tracks travel."""
+    archipelago: bool = False
+    """Add the overworld Archipelago base patch (config block, AP item); see tools/build_ap_basepatch.py."""
 
     @classmethod
     def from_args(cls, args: Args) -> Self:
@@ -204,6 +209,8 @@ def build(source: Path | bytes, options: Options) -> bytes:
     # randomize_chest_contents()    # randomize WHAT each chest holds
     # randomize_chest_locations()   # shuffle WHERE chests sit, within each map
 
+    if options.archipelago:
+        apply_overworld_basepatch()
     return output_bytes()
 
 
@@ -236,9 +243,10 @@ def _apply_randomizer_patches(options: Options) -> None:
 
 
 def _apply_new_game(options: Options) -> None:
-    # One asar hook at the new-game handoff: every Warp destination unlocked (dev fix), and --skip-tutorial.
+    # One asar hook at the new-game handoff: every Warp destination unlocked (dev fix, unless unlock_warps is off),
+    # --skip-tutorial and the start items.
     start_items = [(Item.from_index(index), quantity) for index, quantity in options.start_items]
-    apply_new_game_hook(unlock_warps=True, skip_tutorial=options.skip_tutorial, start_items=start_items)
+    apply_new_game_hook(unlock_warps=options.unlock_warps, skip_tutorial=options.skip_tutorial, start_items=start_items)
     if options.debug_party:
         max_out_party()
     if options.start_capsule is not None:
