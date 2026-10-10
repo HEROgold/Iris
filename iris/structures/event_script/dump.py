@@ -136,6 +136,8 @@ def _parse_instruction_line(line: int, opcode: int, body: str, *, is_text: bool)
             # Forward and backward local jumps are both legal; the compiler validates/relocates the
             # target against the script's real line numbers (see compiler._snap).
             operands.append(Address(int(token[1:], 16)))
+        elif token.startswith("$"):
+            operands.append(Address(int(token[1:], 16), is_local=False))
         else:
             operands.append(int(token, 16))
     return Instruction(line, opcode, operands)  # type: ignore[arg-type]

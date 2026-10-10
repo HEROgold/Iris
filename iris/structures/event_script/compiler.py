@@ -173,8 +173,8 @@ def _compile(
                 if ignore_pointers:
                     out.extend((0, 0))
                     continue
-                target = _snap(conversions, tok.offset)
-                value = target + script_offset
+                # A non-local jump keeps its raw operand: its target lies outside this script.
+                value = _snap(conversions, tok.offset) + script_offset if tok.is_local else tok.offset
                 if not 0 <= value <= 0xFFFF:
                     msg = f"Resolved address out of range: {value:#x}"
                     raise ValueError(msg)

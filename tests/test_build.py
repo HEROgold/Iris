@@ -60,3 +60,9 @@ def test_build_matches_the_cli(source: bytes, tmp_path: Path) -> None:
     cli = (tmp_path / "rom-2.smc").read_bytes()
 
     assert build(source, Options.from_args(parse_args(argv))) == cli
+
+
+@pytest.mark.parametrize("base", ["--frue", "--spekkio", "--kureji"])
+def test_every_base_patch_builds_with_debug(source: bytes, base: str) -> None:
+    """FRUE-based ROMs ship some Absynnonym fixes already, and Kureji has no Pierre/Daniele: neither may fail a build."""
+    build(source, Options.from_args(parse_args(["--file", "rom.smc", base, "--debug", "--debug-party"])))

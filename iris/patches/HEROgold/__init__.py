@@ -259,8 +259,11 @@ def swap_pierre_danielle_sprites() -> None:
     """Swap the sprites of Piere and Danielle.
     Reflects their damage type with their colors, rather than weakness type."""
     iris.info("Swapping sprites for Pierre and Danielle.")
-    pierre = Monster.from_index(191)
-    danielle = Monster.from_index(192)
+    by_name = {monster.name.replace(chr(0), "").strip(): monster for monster in get_monsters()}
+    if "Pierre" not in by_name or "Daniele" not in by_name:
+        iris.info("Pierre and Danielle aren't in this ROM's monster table (Kureji); not swapping.")
+        return
+    pierre, danielle = by_name["Pierre"], by_name["Daniele"]
 
     pierre.sprite_index, danielle.sprite_index = danielle.sprite_index, pierre.sprite_index
     pierre.write()
