@@ -9,6 +9,10 @@ dungeon that needs it.
 The options choose how far keys and tools travel (anywhere, your own world, their own story stage or their vanilla
 spot), whether story rewards keep their own item, and whether the other items are the vanilla ones or random ones.
 
+The Ship, the Submarine and the airship can also be found as items, as three Progressive Ships or as a Ship, a
+Submarine and an Engine; the story still gives them too. The Arrow and Fire arrow can be progressive, and Maxim can
+start without the Arrow.
+
 ## What is the goal?
 
 Defeat Daos by default. The Goal option can end the game earlier instead: opening the Shrine of Daos, the destruction

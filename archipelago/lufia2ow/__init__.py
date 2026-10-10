@@ -20,6 +20,7 @@ from .client import L2OWSNIClient  # noqa: F401 - importing it registers the SNI
 from .items import (
     BASE_ID,
     DRAGON_EGG,
+    FIRE_ARROW,
     GAME,
     ITEM_CLASSIFICATION,
     ITEM_NAMES,
@@ -32,8 +33,12 @@ from .items import (
 )
 from .locations import LOCATIONS, L2OWLocation, LocationInfo, location_name_to_id
 from .logic import GOALS, GRANT_STAGE, STAGES, Requirement, Stage, stage_of_map, without
-from .options import FillerItems, L2OWOptions, Placement, StoryRewards
+from .options import Arrows, FillerItems, L2OWOptions, Placement, ShipUpgrades, StoryRewards
 from .rom import AUTH_SIZE, US_MD5, L2OWProcedurePatch, base_patch, get_base_rom_path
+
+
+Resolved = tuple[tuple[tuple[str, int], ...], ...]
+"""A requirement in items and counts: alternatives of (item, count) pairs."""
 
 
 class L2OWSettings(settings.Group):
@@ -76,10 +81,12 @@ class L2OWWorld(World):
     """The stages up to and including the goal's."""
     location_infos: list[LocationInfo]
     """The locations in ``stages``."""
-    item_stage: dict[str, str]
-    """own_stage key or tool -> the stage it has to stay in (its vanilla location's)."""
+    counts: dict[str, tuple[str, int] | None]
+    """A requirement's name -> the item and count that give it under the options; None when it is always held."""
     held: list[Item]
     """The own_stage keys and tools, kept out of the pool and placed first, in ``pre_fill``."""
+    held_stage: dict[int, str]
+    """id() of a held item -> the stage it has to stay in."""
 
     @classmethod
     def stage_assert_generate(cls, multiworld: MultiWorld) -> None:
@@ -95,15 +102,35 @@ class L2OWWorld(World):
         self.stages = STAGES[: last + 1]
         names = {stage.name for stage in self.stages}
         self.location_infos = [info for info in LOCATIONS if self._stage_of(info.map_index, info.grant).name in names]
-        self.item_stage = {
-            ITEM_NAMES[info.vanilla_item]: self._stage_of(info.map_index, info.grant).name
-            for info in self.location_infos
-            if self._placement(info) == Placement.option_own_stage
-        }
+        self.counts = self._counts()
         for kind, placement in ((KEYS, self.options.key_placement), (TOOLS, self.options.tool_placement)):
             if placement == Placement.option_own_world:
-                self.options.local_items.value |= {ITEM_NAMES[index] for index in kind}
+                self.options.local_items.value |= {self._item_name(index) for index in kind}
         self.held = []
+        self.held_stage = {}
+
+    def _counts(self) -> dict[str, tuple[str, int] | None]:
+        start = bool(self.options.start_with_arrow)
+        if self.options.arrows == Arrows.option_progressive:
+            arrows = {
+                "Arrow": None if start else ("Progressive Arrow", 1),
+                "Fire arrow": ("Progressive Arrow", 1 if start else 2),
+            }
+        else:
+            arrows = {"Arrow": None if start else ("Arrow", 1), "Fire arrow": ("Fire arrow", 1)}
+        if self.options.ship_upgrades == ShipUpgrades.option_progressive:
+            ships = {"Ship": ("Progressive Ship", 1), "Submarine": ("Progressive Ship", 2), "Airship": ("Progressive Ship", 3)}
+        elif self.options.ship_upgrades == ShipUpgrades.option_separate:
+            ships = {"Ship": ("Ship", 1), "Submarine": ("Submarine", 1), "Airship": ("Engine", 1)}
+        else:
+            ships = dict.fromkeys(("Ship", "Submarine", "Airship"))  # the story gives them
+        return arrows | ships
+
+    def _item_name(self, index: int) -> str:
+        """The pool item that stands for game item ``index``: the Fire arrow is a Progressive Arrow when those are on."""
+        if index == FIRE_ARROW and self.options.arrows == Arrows.option_progressive:
+            return "Progressive Arrow"
+        return ITEM_NAMES[index]
 
     def create_regions(self) -> None:
         menu = Region("Menu", self.player, self.multiworld)
@@ -139,9 +166,17 @@ class L2OWWorld(World):
             raise ValueError(msg)
         return stage
 
+    def _resolve(self, requirement: Requirement) -> Resolved:
+        """Names to (item, count) pairs; names that are always held drop out."""
+        out = []
+        for alternative in requirement:
+            pairs = (self.counts.get(name, (name, 1)) for name in alternative)
+            out.append(tuple(pair for pair in pairs if pair is not None))
+        return tuple(out)
+
     def _rule(self, requirement: Requirement) -> Callable[[CollectionState], bool]:
-        player = self.player
-        return lambda state: any(state.has_all(items, player) for items in requirement)
+        player, alternatives = self.player, self._resolve(requirement)
+        return lambda state: any(all(state.has(item, player, count) for item, count in alt) for alt in alternatives)
 
     def _entry_rule(self, stage: Stage, previous_event: str | None) -> Callable[[CollectionState], bool]:
         entry = self._rule(stage.entry)
@@ -158,16 +193,57 @@ class L2OWWorld(World):
         return L2OWItem(name, ItemClassification.progression, None, self.player)
 
     def create_items(self) -> None:
-        """Lock what stays vanilla, hold back own_stage keys and tools for ``pre_fill``, and pool the rest."""
+        """Lock what stays vanilla, hold back own_stage keys and tools for ``pre_fill``, and pool the rest.
+
+        Items without a vanilla location (ship upgrades, the Arrow when Maxim doesn't start with it) take the place of
+        filler, so the pool stays the size of the locations.
+        """
+        pool: list[Item] = []
         for info in self.location_infos:
-            item = self.create_item(ITEM_NAMES[info.vanilla_item])
+            item = self.create_item(self._item_name(info.vanilla_item))
+            stage = self._stage_of(info.map_index, info.grant).name
             placement = self._placement(info)
             if placement == Placement.option_vanilla:
                 self.get_location(info.name).place_locked_item(item)
             elif placement == Placement.option_own_stage:
-                self.held.append(item)
+                self._hold(item, stage)
             else:
-                self.multiworld.itempool.append(self._filler_swap(item))
+                pool.append(item)
+        for name, placement in self._extra_items():
+            item = self.create_item(name)
+            if placement == Placement.option_vanilla:
+                self.multiworld.push_precollected(item)
+                continue
+            self._drop_filler(pool)
+            if placement == Placement.option_own_stage:
+                self._hold(item, self._first_stage_with_locations())
+            else:
+                pool.append(item)
+        self.multiworld.itempool += [self._filler_swap(item) for item in pool]
+
+    def _extra_items(self) -> list[tuple[str, int]]:
+        """(item, placement) of the items that have no vanilla location."""
+        extra: list[tuple[str, int]] = []
+        if self.options.ship_upgrades == ShipUpgrades.option_progressive:
+            extra += [("Progressive Ship", Placement.option_anywhere)] * 3
+        elif self.options.ship_upgrades == ShipUpgrades.option_separate:
+            extra += [(name, Placement.option_anywhere) for name in ("Ship", "Submarine", "Engine")]
+        if not self.options.start_with_arrow:
+            name = "Progressive Arrow" if self.options.arrows == Arrows.option_progressive else "Arrow"
+            extra.append((name, self.options.tool_placement.value))
+        return extra
+
+    def _hold(self, item: Item, stage: str) -> None:
+        self.held.append(item)
+        self.held_stage[id(item)] = stage
+
+    def _drop_filler(self, pool: list[Item]) -> None:
+        """Remove one non-progression item (not a Dragon egg) from ``pool`` to make room."""
+        candidates = [item for item in pool if not item.advancement and item.code != BASE_ID + DRAGON_EGG]
+        pool.remove(self.random.choice(candidates))
+
+    def _first_stage_with_locations(self) -> str:
+        return self._stage_of(self.location_infos[0].map_index, self.location_infos[0].grant).name
 
     def _placement(self, info: LocationInfo) -> int:
         """How the vanilla item of ``info`` is placed. Vanilla story rewards win over the key and tool options."""
@@ -202,7 +278,7 @@ class L2OWWorld(World):
         state = CollectionState(self.multiworld)
         for item in self.multiworld.itempool:
             state.collect(item, prevent_sweep=True)
-        stages = set(self.item_stage.values())
+        stages = set(self.held_stage.values())
         locations: list[Location] = [
             location
             for location in self.get_locations()
@@ -217,8 +293,8 @@ class L2OWWorld(World):
 
     def _stage_item_rule(self, stage: str) -> Callable[[Item], bool]:
         """Keep the own_stage keys and tools of other stages out of a location in ``stage``."""
-        player, others = self.player, {name for name, own in self.item_stage.items() if own != stage}
-        return lambda item: not (item.player == player and item.name in others)
+        held_stage = self.held_stage
+        return lambda item: held_stage.get(id(item), stage) == stage
 
     def set_rules(self) -> None:
         goal = self.stages[-1].event
@@ -245,6 +321,8 @@ class L2OWWorld(World):
                 patch.write_grant(location.address, index)
             else:
                 patch.write_chest(location.address - BASE_ID, index)
+        if not self.options.start_with_arrow:
+            patch.write_no_starting_arrow()
         patch.write_auth(self.auth)
         patch.write_file("tokens.bin", patch.get_token_binary())
         out_name = f"{self.multiworld.get_out_file_name_base(self.player)}{patch.patch_file_ending}"

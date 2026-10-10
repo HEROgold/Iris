@@ -12,6 +12,7 @@ from . import data
 from .items import GAME
 from .locations import GRANT_BASE
 
+
 US_MD5 = "6efc477d6203ed2b3b9133c1cd9e9c5d"
 """The headerless US ROM (No-Intro, 2.5MB): what the base patch is built against."""
 AUTH_SIZE = data.CONFIG["AP_CONFIG_AUTH_SIZE"]
@@ -45,6 +46,11 @@ class L2OWProcedurePatch(APProcedurePatch, APTokenMixin):
         _, _, offset, _, _, _ = data.GRANTS[location - GRANT_BASE]
         opcode = 0x21 if item_index & 0x100 else 0x20
         self.write_token(APTokenTypes.WRITE, offset - 1, bytes([opcode, item_index & 0xFF]))
+
+    def write_no_starting_arrow(self) -> None:
+        """Maxim starts without the Arrow: empty the new-game tool slot and his starting tool (key_items.py)."""
+        for offset, value in data.NO_STARTING_ARROW:
+            self.write_token(APTokenTypes.WRITE, offset, value)
 
     def write_auth(self, auth: bytes) -> None:
         self.write_token(APTokenTypes.WRITE, data.CONFIG["AP_CONFIG_AUTH_OFFSET"], auth.ljust(AUTH_SIZE, b"\0"))

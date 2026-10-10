@@ -22,6 +22,7 @@ from iris.enums.flags import GOAL_FLAG, EventFlag, Usability
 from iris.enums.patches import Patch
 from iris.helpers.files import open_rom, read_file
 from iris.patches.archipelago.overworld.ap_item import AP_ITEM_INDEX
+from iris.patches.archipelago.overworld.key_items import KEY_ITEM_NAMES, NO_STARTING_ARROW
 from iris.structures.chest import PointerChest
 from iris.structures.chest_location import CHEST_MAP
 from iris.structures.chest_names import CHEST_NAMES
@@ -90,6 +91,17 @@ def _map_names() -> dict[int, str]:
     return names
 
 
+def _no_starting_arrow() -> tuple[tuple[int, bytes], ...]:
+    """The writes that drop the starting Arrow, after checking the vanilla bytes they replace."""
+    for offset, vanilla, _ in NO_STARTING_ARROW:
+        read_file.seek(offset)
+        found = read_file.read(len(vanilla))
+        if found != vanilla:
+            msg = f"Expected {vanilla.hex()} at {offset:#x}, found {found.hex()}."
+            raise ValueError(msg)
+    return tuple((offset, data) for offset, _, data in NO_STARTING_ARROW)
+
+
 def render() -> str:
     """The module's text, from the active ROM session (a vanilla ROM with the vanilla tables selected)."""
     ap_constants = {name: getattr(constants, name) for name in dir(constants) if name.startswith("AP_")}
@@ -100,7 +112,11 @@ def render() -> str:
         f"ITEMS = {pformat(_items(), width=120)}\n",
         f"TOOLS = {tuple(TOOLS)!r}",
         f"SCENARIO_ITEMS = {tuple(i for i in SCENARIO_ITEMS if i not in UNUSED_ITEM_SLOTS and i != AP_ITEM_INDEX)!r}",
-        f"AP_ITEM_INDEX = {AP_ITEM_INDEX}\n",
+        f"AP_ITEM_INDEX = {AP_ITEM_INDEX}",
+        "# Free scenario slots the base patch names (key_items.py): Ship, Submarine and the two progressive tokens.",
+        f"KEY_ITEMS = {KEY_ITEM_NAMES!r}",
+        "# (offset, bytes) that make Maxim start without the Arrow.",
+        f"NO_STARTING_ARROW = {_no_starting_arrow()!r}\n",
         "# Red chests: (chest index, map, guide name, record offset, vanilla misc1 byte, vanilla item).",
         "# A chest's item is 9 bits: the low byte at record offset + 2, the high bit in misc1 bit 6.",
         "# Chest n is opened when bit n & 7 of CHEST_OPENED_BITS + (n >> 3) is set (docs/ap/chest_opened_bits.md).",

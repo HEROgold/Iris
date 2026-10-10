@@ -10,7 +10,10 @@ from the previous one once that stage's closing story event happened, and every 
 - **Story items** (Crown, Ruby apple, Treasure sword, ...) are needed by the story event that takes them.
 
 When a rule isn't certain it asks for more, never less: extra requirements narrow where items can go, but can't make a
-seed unbeatable. Maxim starts with the Arrow (no chest or script gives it), so no rule needs it.
+seed unbeatable.
+
+Names in a requirement are the game's: "Arrow", "Fire arrow" (and later "Ship", "Submarine", "Airship"). The world turns
+each into the item and count that give it under the options (progressive items, the starting Arrow).
 """
 
 from dataclasses import dataclass, field
@@ -23,6 +26,8 @@ Requirement = tuple[tuple[str, ...], ...]
 
 NOTHING: Requirement = ((),)
 BOMB_OR_HAMMER: Requirement = (("Bomb",), ("Hammer",))
+ARROWLIKE: Requirement = (("Arrow",), ("Hook",), ("Fire arrow",))
+"""Hitting a far switch: terrorwave's ``arrowlike``. Needed in the Lake Cave and the Gratze basement."""
 
 
 def all_of(*items: str) -> Requirement:
@@ -67,8 +72,8 @@ STAGES: list[Stage] = [
     Stage(
         "Sundletan and Lake Cave", maps(0x08, 0x09, range(0x0A, 0x0D)), "Lake Cave: saved Tia",
         entry=all_of("Door key"),  # the Cave to Sundletan B1 door
-        clear=all_of("Lake key"),
-        map_rules={0x0C: all_of("Lake key")},
+        clear=both(all_of("Lake key"), ARROWLIKE),
+        map_rules={0x0A: ARROWLIKE, 0x0B: ARROWLIKE, 0x0C: both(all_of("Lake key"), ARROWLIKE)},
     ),
     Stage(
         "Alunze", maps(range(0x0D, 0x1C)), "Alunze Northwest Cave: defeated the Regal Goblin",
@@ -217,8 +222,8 @@ STAGES: list[Stage] = [
     ),
     Stage(
         "Gratze", maps(range(0xD1, 0xD8)), "Gratze: got the Engine",
-        clear=all_of("Basement key"),
-        map_rules={0xD2: all_of("Basement key")},
+        clear=both(all_of("Basement key"), ARROWLIKE),
+        map_rules={0xD2: both(all_of("Basement key"), ARROWLIKE), **dict.fromkeys(range(0xD3, 0xD6), ARROWLIKE)},
     ),
     # The airship: Gratze's Engine (a script grant without a flag, so it stays vanilla) goes into it at Kirmo.
     Stage("Narvick and the sealed towers", maps(range(0xD8, 0xE7)), "Kamirno Tower: the Shrine of Daos opens"),

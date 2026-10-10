@@ -3,7 +3,7 @@ encounter scaling, fixes) are chosen when building the ROM and don't touch logic
 
 from dataclasses import dataclass
 
-from Options import Choice, PerGameCommonOptions, Range
+from Options import Choice, DefaultOnToggle, PerGameCommonOptions, Range
 
 
 class Placement(Choice):
@@ -75,13 +75,43 @@ class FillerItems(Choice):
 
 
 class UsefulItems(Range):
-    """With randomized Filler Items: the percentage that is equipment (weapons, armour, rings, jewels); the rest are
-    consumables. Dragon eggs always stay in the pool."""
+    """With randomized Filler Items: the percentage that is equipment (weapons, armour, rings, jewels, cursed copies
+    included); the rest are consumables and other items. Dragon eggs always stay in the pool."""
 
     display_name = "Useful Items"
     range_start = 0
     range_end = 100
     default = 50
+
+
+class ShipUpgrades(Choice):
+    """How the Ship, the Submarine and the airship (the Engine) can come to you before the story gives them.
+
+    progressive: three Progressive Ships: the Ship, then the Submarine, then the airship. separate: a Ship, a Submarine
+    and an Engine, in any order (the Engine without the Submarine flies but can't dive). vanilla: only the story gives
+    them. The story still gives them in every mode."""
+
+    display_name = "Ship Upgrades"
+    option_progressive = 0
+    option_separate = 1
+    option_vanilla = 2
+    default = option_progressive
+
+
+class Arrows(Choice):
+    """progressive: two Progressive Arrows, the Arrow and then the Fire arrow. separate: an Arrow and a Fire arrow."""
+
+    display_name = "Arrows"
+    option_progressive = 0
+    option_separate = 1
+    default = option_progressive
+
+
+class StartWithArrow(DefaultOnToggle):
+    """Maxim starts with the Arrow, as in vanilla. Off: the Arrow (or the first Progressive Arrow) is somewhere in the
+    multiworld; with vanilla Tool Placement you get it at the start from the server."""
+
+    display_name = "Start With Arrow"
 
 
 @dataclass
@@ -92,3 +122,6 @@ class L2OWOptions(PerGameCommonOptions):
     goal: Goal
     filler_items: FillerItems
     useful_items: UsefulItems
+    ship_upgrades: ShipUpgrades
+    arrows: Arrows
+    start_with_arrow: StartWithArrow

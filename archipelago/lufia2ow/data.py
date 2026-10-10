@@ -473,6 +473,10 @@ ITEMS = [(0, 'No equip', 'filler'),
 TOOLS = (423, 424, 425, 426, 427)
 SCENARIO_ITEMS = (428, 429, 430, 431, 432, 433, 434, 435, 436, 437, 438, 439, 440, 441, 442, 443, 444, 445, 446, 447, 448, 449, 450, 451, 452, 453, 459, 460, 461)
 AP_ITEM_INDEX = 458
+# Free scenario slots the base patch names (key_items.py): Ship, Submarine and the two progressive tokens.
+KEY_ITEMS = {454: 'Ship', 455: 'Submarine', 456: 'Prog. ship', 457: 'Prog. arrow'}
+# (offset, bytes) that make Maxim start without the Arrow.
+NO_STARTING_ARROW = ((110178, b'\xff'), (176842, b'\x00\x00'))
 
 # Red chests: (chest index, map, guide name, record offset, vanilla misc1 byte, vanilla item).
 # A chest's item is 9 bits: the low byte at record offset + 2, the high bit in misc1 bit 6.
