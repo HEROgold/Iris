@@ -231,9 +231,13 @@ class EventFlag(IntEnum):
     Tia and Dekar: flag ``5`` is Dekar and flag ``6`` is Tia. :attr:`PlayableCharacter.party_flag` maps a
     character index to the correct member via ``_PARTY_FLAG_BY_INDEX``.
 
-    ``FOUND_*`` (242-248) are new flags introduced by Iris' party-toggle patch (they occupy blank TCRF
-    slots): a character is "found/unlocked" once discovered in the story. 249 is left spare; 250-255 are
-    volatile post-boss dungeon flags and must not be reused; 240/241 are the Undo-magic flags.
+    ``FOUND_*`` (220-226) are new flags introduced by Iris' party-toggle patch: a character is
+    "found/unlocked" once discovered in the story. They sit in 220-239, the one block no vanilla event
+    script sets, clears or tests. 240-255 are off limits: vanilla uses them as per-dungeon scratch flags
+    (240/241 Undo magic, 242 in the Secret Skills Cave tutorial, 250-255 post-boss).
+
+    A few flags vanilla uses have no TCRF name; they are in :data:`VANILLA_UNNAMED_FLAGS`, so
+    :meth:`free_flags` doesn't hand them out.
     """
 
     # 1-7: "the respective character is in your party" (2-7 per TCRF, 1 = Maxim / new game).
@@ -251,6 +255,7 @@ class EventFlag(IntEnum):
     NEW_GAME_STARTED = 10
     GUSTO_JOINED = 12  # Gusto (Hard hat)
     ZAPPY_JOINED = 13  # Zappy (Red Fish)
+    DARBI_JOINED = 14  # set by Darbi Shrine ED-B-50, tested by its setup script
     SULLY_JOINED = 15  # Sully (Radisher)
     BLAZE_JOINED = 16  # Blaze (Armor Dog)
 
@@ -346,7 +351,7 @@ class EventFlag(IntEnum):
     DAOS_DEFEATED = 115
     FIRST_STONE_DESTROYED = 116
     SECOND_STONE_DESTROYED = 117
-    THIRD_STONE_DESTROYED = 118  # destroying the third stone starts the credits/outro
+    THIRD_STONE_DESTROYED = 118  # TCRF: starts the credits. No event script sets it; use GOAL_FLAG instead.
 
     # 119-219: secondary triggers, tutorial steps, Ancient Cave / Iris treasures.
     TUTORIAL_INITIALIZED = 119
@@ -369,6 +374,7 @@ class EventFlag(IntEnum):
     KILLED_IDURA_KARLLOON = 142
     RECEIVED_PRETTY_FLOWER_ALT = 143
     AMON_DEFEATED_DIVINE_ALT = 144
+    RECEIVED_MERMAID_JADE = 145  # not in TCRF; set with the Mermaid Jade grant in Chaed (BF-B-2D)
     AMON_DEFEATED_DIVINE_ALT2 = 146
     INSIDE_ANCIENT_CAVE = 147
     OPENED_WATER_GATE_AURALIO_ALT = 148
@@ -399,6 +405,7 @@ class EventFlag(IntEnum):
     TALKED_GIRL_FOOMY = 185
     DIVINE_POWER_PLATFORM = 186
     FINISHED_KARLLOON_TEMPLE_ALT = 190
+    DAOS_SHRINE_OPEN = 191  # not in TCRF; set with the Dual Blade in Kamirno Tower (E4-C-01), tested by Daos' Shrine
     KILLED_EGG_DRAGON = 193
     ANCIENT_CAVE_BOSS_KILLED = 195
     GIFT_MODE = 196  # party members standing in the pub of Gruberik (works in standard + Retry mode)
@@ -428,30 +435,76 @@ class EventFlag(IntEnum):
     UNDO_MAGIC_RECEIVED = 240
     UNDO_MAGIC_RECEIVED_ALT = 241
 
-    # 242-248: Iris' "found/unlocked" flags (new; occupy blank TCRF slots). 249 spare.
-    FOUND_MAXIM = 242
-    FOUND_SELAN = 243
-    FOUND_GUY = 244
-    FOUND_ARTEA = 245
-    FOUND_TIA = 246
-    FOUND_DEKAR = 247
-    FOUND_LEXIS = 248
+    # 220-226: Iris' "found/unlocked" flags (new). No vanilla event script touches 220-239.
+    # They used to be 242-248, but vanilla sets 242 in the Secret Skills Cave tutorial (05-B-11).
+    FOUND_MAXIM = 220
+    FOUND_SELAN = 221
+    FOUND_GUY = 222
+    FOUND_ARTEA = 223
+    FOUND_TIA = 224
+    FOUND_DEKAR = 225
+    FOUND_LEXIS = 226
 
     @classmethod
     def name_of(cls, index: int) -> str:
-        """Return the flag's name, or a generated ``FREE_XX`` for an unnamed/blank flag."""
-        try:
+        """Return the flag's name: ``VANILLA_XX`` for a used flag with no name, ``FREE_XX`` for a blank one."""
+        if index in cls._value2member_map_:
             return cls(index).name
-        except ValueError:
-            return f"FREE_{index:02X}"
+        if index in VANILLA_UNNAMED_FLAGS or index >= SCRATCH_FLAGS_START:
+            return f"VANILLA_{index:02X}"
+        return f"FREE_{index:02X}"
 
     @classmethod
     def all_flags(cls) -> dict[int, str]:
-        """The full ``0..255`` table: named where known, generated (``FREE_XX``) otherwise."""
+        """The full ``0..255`` table: named where known, generated (``VANILLA_XX``/``FREE_XX``) otherwise."""
         return {index: cls.name_of(index) for index in range(EVENT_FLAG_COUNT)}
 
     @classmethod
     def free_flags(cls) -> list[int]:
-        """Every flag index in ``0..255`` with no named member (candidate free slots)."""
+        """Every flag in ``0..239`` that no named member and no vanilla script uses (candidate free slots)."""
         known = {int(member) for member in cls}
-        return [index for index in range(EVENT_FLAG_COUNT) if index not in known]
+        return [index for index in range(SCRATCH_FLAGS_START) if index not in known and index not in VANILLA_UNNAMED_FLAGS]
+
+
+SCRATCH_FLAGS_START = 240
+"""Flags 240-255 are vanilla's per-dungeon scratch flags; never hand them out."""
+
+VANILLA_UNNAMED_FLAGS = frozenset(
+    {
+        0x0B,
+        0x22,
+        0x36,
+        0x38,
+        0x5B,
+        0x7B,
+        0x81,
+        0x83,
+        0x87,
+        0x8B,
+        0xA6,
+        0xA8,
+        0xAD,
+        0xAE,
+        0xAF,
+        0xB0,
+        0xB3,
+        0xB4,
+        0xB5,
+        0xB6,
+        0xB8,
+        0xBB,
+        0xBC,
+        0xC0,
+        0xC2,
+        0xC5,
+        0xC6,
+    },
+)
+"""Flags below 240 that vanilla event scripts set, clear or test but TCRF doesn't name.
+
+Found by scanning every vanilla event script for ``1A``/``1B``/``15``/``6A`` and the flag sub-codes of the
+``14`` chain (Iris-Dev#14)."""
+
+GOAL_FLAG = EventFlag.DAOS_DEFEATED
+"""The flag that means the game is beaten: Daos defeated (115). 118 (third stone) is never set by an event
+script, so it can't be the goal."""

@@ -8,7 +8,7 @@ into the seven playable characters. Talking to one shows dialogue and:
 - else -> nothing happens ("You haven't found X yet.")
 
 Membership uses :attr:`PlayableCharacter.party_flag` (flags 1..7; note Tia/Dekar are *not* ``index + 1``).
-"Found" uses :attr:`PlayableCharacter.found_flag` (new flags 242..248); the story scripts that recruit a
+"Found" uses :attr:`PlayableCharacter.found_flag` (new flags 220..226); the story scripts that recruit a
 character set it too -- see ``patches.HEROgold.found_flags``. Each NPC's overworld sprite is swapped to the
 character sprite via the existing ``0x68`` loads in the map-load (X) script (:meth:`Zone.set_npc_sprite`).
 

@@ -58,5 +58,6 @@ Party-membership event flags are **not** `character_index + 1`. Flag **5 = Dekar
 proved by the event dump (`2B(04)`→`1A(06)` for Tia, `2B(05)`→`1A(05)` for Dekar) and the TCRF flag notes.
 `PlayableCharacter.party_flag` uses an authoritative per-index map; all 256 flags are named in
 `enums/flags.EventFlag` (with `name_of()/all_flags()/free_flags()`). Iris' "found/unlocked" flags are
-`EventFlag.FOUND_MAXIM..FOUND_LEXIS` = 242..248 (blank TCRF slots); avoid 240/241 (Undo magic) and 250-255
-(volatile post-boss).
+`EventFlag.FOUND_MAXIM..FOUND_LEXIS` = 220..226, in 220-239, the one block no vanilla event script uses. Never
+use 240-255: vanilla uses them as per-dungeon scratch flags (240/241 Undo magic, 242 in the tutorial, 250-255
+post-boss). Flags vanilla uses without a TCRF name are in `VANILLA_UNNAMED_FLAGS`, so `free_flags()` skips them.

@@ -23,7 +23,6 @@ from .spells import Spells
 from .words import Words
 from .zones import Zones
 
-
 __all__ = [
     "AncientChests1",
     "AncientChests2",
