@@ -3,7 +3,7 @@
 - :func:`randomize_chest_contents` -- change WHAT each chest holds (the item). Positions are untouched,
   so the content<->position link is preserved. Uses the fixed ``PointerChest``/``AddressChest`` writers.
 - :func:`randomize_chest_locations` -- change WHERE each chest sits, *within its own map*, by permuting
-  the ``(x, y)`` of that map's chests in the map's ``ZoneData`` section 18 (see ``docs/chest_system.md``
+  the ``(x, y)`` of that map's chests in the map's ``ZoneData`` section 18 (see ``docs/guides/chests.md``
   / ``info/L2_ChestData.txt``). This is a same-length, in-place edit, so no ZoneData reassembler is
   needed and every chest stays on an already-valid tile. Cross-map relocation is intentionally NOT done
   here: it needs a ZoneData reassembler, the confirmed content<->slot linkage, and collision data.

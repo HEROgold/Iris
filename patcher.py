@@ -1,16 +1,16 @@
-import shutil
+import re
 import struct
 import subprocess
+import tempfile
 from os.path import getsize
 from pathlib import Path
 from typing import cast
 
 from bitstring import BitArray
 
-from args import args
 from enums.patches import Patch
 from helpers.addresses import address_from_lorom
-from helpers.files import BackupFile, new_file, write_file
+from helpers.files import output_path, write_file
 from logger import iris
 from patches.parser import PatchData, PatchParser
 from structures.item import Item
@@ -24,33 +24,40 @@ ASAR_EXE = Path(__file__).parent/"patches"/"asar191"/"asar.exe"
 
 parser = PatchParser()  # Script parser for patches.
 
-def apply_asm_patch(asm_path: Path, include_dirs: list[Path] | None = None, *, fix_checksum: bool = True) -> None:
+def apply_asm_patch(
+    asm_path: Path,
+    include_dirs: list[Path] | None = None,
+    *,
+    fix_checksum: bool = True,
+    defines: dict[str, str] | None = None,
+) -> None:
     """Assemble a 65816 asar patch onto the current per-seed ROM using the bundled asar.exe.
 
     asar keys header detection off the file *extension*: a ``.smc`` is treated as headered, so every
     write lands 512 bytes too high and the output gains a copier header. We therefore assemble on a
-    headerless ``.sfc`` copy of ``new_file`` and copy the result back, keeping the ``write_file`` handle
-    in sync so later structure writes see asar's output (e.g. the ROM expanded to 3MB).
+    headerless ``.sfc`` copy of the session's image in a temporary directory and read the result back
+    into the image, so later structure writes see asar's output (e.g. the ROM expanded to 3MB). Nothing
+    is written next to the ROM.
+
+    ``defines`` become asar ``-Dname=value`` arguments, readable in the patch as ``!name``.
     """
     if include_dirs is None:
         include_dirs = []
-    write_file.flush()  # push buffered structure writes to disk before asar reads new_file
-    sfc = new_file.with_suffix(".sfc")
-    shutil.copyfile(new_file, sfc)
-    cmd = [str(ASAR_EXE), *(f"-I{d}" for d in include_dirs),
-           f"--fix-checksum={'on' if fix_checksum else 'off'}", "--no-title-check", str(asm_path), str(sfc)]
-    iris.debug(f"Running asar: {cmd}")
-    result = subprocess.run(cmd, capture_output=True, text=True, check=False)  # noqa: S603
-    if result.returncode != 0:
-        sfc.unlink(missing_ok=True)
-        msg = f"asar failed to assemble {asm_path.name}:\n{result.stdout}\n{result.stderr}"
-        raise RuntimeError(msg)
-    data = sfc.read_bytes()
+    with tempfile.TemporaryDirectory(prefix="iris-asar-") as tmp:
+        sfc = Path(tmp)/"rom.sfc"
+        write_file.seek(0)
+        sfc.write_bytes(write_file.read())
+        cmd = [str(ASAR_EXE), *(f"-I{d}" for d in include_dirs), *(f"-D{k}={v}" for k, v in (defines or {}).items()),
+               f"--fix-checksum={'on' if fix_checksum else 'off'}", "--no-title-check", str(asm_path), str(sfc)]
+        iris.debug(f"Running asar: {cmd}")
+        result = subprocess.run(cmd, capture_output=True, text=True, check=False)  # noqa: S603
+        if result.returncode != 0:
+            msg = f"asar failed to assemble {asm_path.name}:\n{result.stdout}\n{result.stderr}"
+            raise RuntimeError(msg)
+        data = sfc.read_bytes()
     write_file.seek(0)
     write_file.write(data)
     write_file.truncate()
-    write_file.flush()
-    sfc.unlink(missing_ok=True)
     iris.info(f"Assembled {asm_path.name} ({len(data)} bytes).")
 
 
@@ -78,7 +85,7 @@ def apply_patch(patch: Patch) -> Path:
     # Vanilla > Frue > Spekkio, Kureji
     iris.info(f"Applying patch {patch.name}")
     if patch == Patch.VANILLA:
-        return new_file
+        return output_path()
     patch_dir = Path(__file__).parent/"patches"
     if patch == Patch.FRUE:
         patch_dir = patch_dir/"Lufia2_-_Frue_Lufia_v7"
@@ -92,63 +99,47 @@ def apply_patch(patch: Patch) -> Path:
     else:
         msg = f"Patch {patch.name} not implemented."
         raise NotImplementedError(msg)
-    return patch_files(Path(args.file), patch_file)
+    return patch_files(patch_file)
 
 
-def patch_files(rom: Path, patch: Path):
-    # Backup original ROM
-    original = rom
-    suffix = rom.suffix
-    header = False # We remove the header immediately after converting the rom.
-    rom = original.with_suffix(".tmp")
-    shutil.copy(original, rom)
+def patch_files(patch: Path) -> Path:
+    """Apply an IPS ``patch`` to the per-seed output in place, through ``write_file``.
 
-    iris.debug(f"Applying patch {patch=} to {rom=}.")
-    iris.debug(f"{original=}")
-    iris.debug(f"{patch=}")
-    iris.debug(f"{rom=}")
-
-
-    with patch.open("rb") as pf, rom.open("r+b") as rf:
+    The records go straight into the open handle, so writes made before this call (ROM name, event
+    patches) survive unless the IPS itself overwrites those bytes. The IPS files target a headered ROM
+    while ``write_file`` is headerless, so every record offset drops by 512.
+    """
+    header_size = 512
+    iris.debug(f"Applying patch {patch=}.")
+    records = 0
+    with patch.open("rb") as pf:
         patch_size = getsize(patch)
         if pf.read(5) != b"PATCH":
             msg = "Invalid patch header."
-            raise Exception(msg)
-        # Read First Record
+            raise ValueError(msg)
         r = pf.read(3)
         while pf.tell() not in [patch_size, patch_size - 3]:
-            # Unpack 3-byte pointers.
-            offset = unpack_int(r)
-            if not header:
-                offset -= 512
-            # Read size of data chunk
-            r = pf.read(2)
-            size = unpack_int(r)
-
-            if size == 0:  # RLE Record
-                r = pf.read(2)
-                rle_size = unpack_int(r)
+            offset = unpack_int(r) - header_size
+            size = unpack_int(pf.read(2))
+            if size == 0:  # RLE record
+                rle_size = unpack_int(pf.read(2))
                 data = pf.read(1) * rle_size
             else:
                 data = pf.read(size)
-
             if offset >= 0:
-                # Write to file
-                rf.seek(offset)
-                rf.write(data)
-            # Read Next Record
+                write_file.seek(offset)
+                write_file.write(data)
+                records += 1
             r = pf.read(3)
 
         if patch_size - 3 == pf.tell():
             trim_size = unpack_int(pf.read(3))
-            rf.truncate(trim_size)
+            iris.debug(f"IPS truncate {trim_size=:#08x}")
+            write_file.truncate(trim_size)
 
-    # Remove backup
-    new = rom.with_stem(f"{rom.stem}-{args.seed}").with_suffix(suffix)
-    shutil.copy(rom, new)
-    rom.unlink()
-    iris.info("Patch applied.")
-    return new
+    write_file.seek(0, 2)
+    iris.info(f"Patch applied. {records} records written (final size {write_file.tell()} bytes).")
+    return output_path()
 
 
 def unpack_int(string: bytes):
@@ -217,10 +208,14 @@ def apply_game_genie_codes(*codes: str) -> None:
     https://gamefaqs.gamespot.com/boards/588451-lufia-ii-rise-of-the-sinistrals/80223211
     Contains a lot of codes to use. (Needs a LOT of testing, and confirmation)
     """
-    if codes == ("",):
-        return
-    for code in codes:
-        code = code.replace("-", "").upper()
+    for raw_code in codes:
+        if re.fullmatch(r"7[EF][0-9A-F]{6}", raw_code.upper()):
+            msg = (
+                f"{raw_code} is a Pro Action Replay RAM code ($7E/$7F); it only works in a running game "
+                "and cannot be written into the ROM as a Game Genie code."
+            )
+            raise ValueError(msg)
+        code = raw_code.replace("-", "").upper()
         address, data = translate_game_genie_code_snes(code)
         address = address_from_lorom(address)
 
@@ -311,44 +306,41 @@ def apply_absynnonym_patch(name: str) -> None:
 def verify_patch(patch: PatchData, validation: PatchData) -> None:
     # Check if Validation is same as expected data. (before patching)
     iris.debug(f"Verifying patch. {patch=}, {validation=}")
-    with BackupFile(new_file) as backup, backup.open("rb") as file:
-        for (address, _), code in sorted(validation.items()):
-            file.seek(address)
-            written = file.read(len(code))
-            if code != written:
-                msg = f"Validation {address:x} conflicts with unmodified data."
-                raise Exception(msg)
+    for (address, _), code in sorted(validation.items()):
+        write_file.seek(address)
+        written = write_file.read(len(code))
+        if code != written:
+            msg = f"Validation {address:x} conflicts with unmodified data."
+            raise Exception(msg)
 
 
 def verify_after_patch(patch: PatchData) -> None:
     # Apply patch, then check if it is the same as the expected data.
     iris.debug(f"Verifying after patch. {patch=}")
-    with BackupFile(new_file) as backup, backup.open("rb") as file:
-        for (address, _), code in sorted(patch.items()):
-            file.seek(address)
-            written = file.read(len(code))
-            if code != written:
-                msg = f"Patch {address:x} conflicts with modified data."
-                raise Exception(msg)
+    for (address, _), code in sorted(patch.items()):
+        write_file.seek(address)
+        written = write_file.read(len(code))
+        if code != written:
+            msg = f"Patch {address:x} conflicts with modified data."
+            raise Exception(msg)
 
 
 def write_patch(patch: PatchData, validation: PatchData, no_verify: bool = False) -> None:
     iris.debug(f"Writing patch. {patch=}, {validation=}")
-    with BackupFile(new_file) as backup, backup.open("rb+") as f:
-        for patch_dict in (validation, patch):
-            for (address, _), code in sorted(patch_dict.items()):
-                code = cast("bytearray", code)
-                f.seek(address)
+    for patch_dict in (validation, patch):
+        for (address, _), code in sorted(patch_dict.items()):
+            code = cast("bytearray", code)
+            write_file.seek(address)
 
-                if patch_dict is validation:
-                    validate = f.read(len(code))
-                    if validate != code[:len(validate)]:
-                        error = f"Patch {patch:s}-{address:x} did not pass validation."
-                        if no_verify:
-                            pass
-                        else:
-                            raise Exception(error)
-                else:
-                    assert patch_dict is patch
-                    iris.debug(f"Writing {code=} to {address=}")
-                    f.write(code)
+            if patch_dict is validation:
+                validate = write_file.read(len(code))
+                if validate != code[:len(validate)]:
+                    error = f"Patch {patch:s}-{address:x} did not pass validation."
+                    if no_verify:
+                        pass
+                    else:
+                        raise Exception(error)
+            else:
+                assert patch_dict is patch
+                iris.debug(f"Writing {code=} to {address=}")
+                write_file.write(code)

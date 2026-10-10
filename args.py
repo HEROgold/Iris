@@ -2,7 +2,13 @@ import argparse
 from textwrap import dedent
 from time import time
 
-from constants import PROJECT_NAME, SUGGESTED_PATCH, VERSION
+from constants import (
+    PROJECT_NAME,
+    SCALE_ENCOUNTERS_MAX_BAND,
+    SCALE_ENCOUNTERS_MAX_OFFSET,
+    SUGGESTED_PATCH,
+    VERSION,
+)
 from enums.patches import Patch
 from logger import iris
 
@@ -31,7 +37,7 @@ ALL_CITIES = ", ".join([  # noqa: FLY002
 class Args(argparse.Namespace):
     debug: bool
     seed: int
-    file: str
+    file: str | None
     character: bool
     item: bool
     spell: bool
@@ -71,6 +77,7 @@ class Args(argparse.Namespace):
     spawn_location: str = "Portravia"  # start in Portravia
     unlock_gift_mode: bool
     start_engine: bool
+    scale_encounters: list[int] | None
     # Fixing patches
     ancient_cave_music: bool
     capsule_master_select: bool
@@ -83,6 +90,18 @@ class Args(argparse.Namespace):
     zero_capsule_command: bool
     zero_gold_command: bool
     fix_softlocks: bool
+    foomy_firebird: bool
+    start_capsule: int | None
+    start_capsule_name: str | None
+    debug_party: bool
+    # Sprite extract/import (uncompressed 4bpp <-> PNG). Take a registry name or a headerless hex offset.
+    extract_sprite: str | None
+    import_sprite: str | None
+    sprite_file: str | None
+    sprite_tiles: int | None
+    sprite_width: int
+    sprite_palette: str | None
+    sprite_palette_index: int
 
 
 # TODO: rewrite using herogold.args
@@ -90,8 +109,8 @@ parser = argparse.ArgumentParser(prog=PROJECT_NAME, description="Randomize Lufia
 parser.add_argument("-v", "--version", action="version", version=f"{PROJECT_NAME}, {VERSION}")
 parser.add_argument("-d", "--debug", action="store_true", help="Enable debug mode.")
 parser.add_argument("-s", "--seed", type=int, default=int(time()), help="Seed for the randomizer.")
-parser.add_argument("-f", "--file", type=str, help="File to randomize.", required=True)
-parser.add_argument("-gg", "--game_genie_codes", action="append", nargs="+", default=[""], help="Game Genie code to activate (on the ROM), Multiple uses supported.")
+parser.add_argument("-f", "--file", type=str, default=None, help="File to randomize. Required to build a ROM; importing Iris works without it.")
+parser.add_argument("-gg", "--game_genie_codes", action="extend", nargs="+", default=[], help="Game Genie codes to write into the ROM. Can be given more than once.")
 # Randomization flags
 parser.add_argument("--character", action="store_true", help="Randomize characters.", default=False)
 parser.add_argument("--item", action="store_true", help="Randomize items and item.", default=False)
@@ -111,7 +130,7 @@ parser.add_argument("--kureji", action="store_true", help="Apply the Kureji Lufi
 # Event patches
 parser.add_argument("--max_world_clock", action="store_true")  # TODO: Implement and set default to True
 parser.add_argument("--open_world_base", action="store_true")  # TODO: Implement and set default to True
-parser.add_argument("--skip_tutorial", action="store_true")  # TODO: Implement and set default to True
+parser.add_argument("--skip-tutorial", "--skip_tutorial", dest="skip_tutorial", action="store_true", help="Skip the Secret Skills Cave tutorial: its flags are set at new game and Maxim starts with Reset.")
 # Patch flags
 parser.add_argument("--aggressive-movement", action="store_true", help="Set all monsters to be aggressive.")
 parser.add_argument("--passive-movement", action="store_true", help="Set all monsters to be passive.")
@@ -121,12 +140,22 @@ parser.add_argument("--equip-anywhere", action="store_true", help="Any item can 
 parser.add_argument("--custom_spawn_city", action="store_true")
 parser.add_argument("--spawn_location", action="store", default="portravia", help="Set the starting location. Default is Portravia. Available locations:\n" + ALL_CITIES)
 parser.add_argument("--capsule_feeding_bonus", action="store_true")
-parser.add_argument("--clear_initial_spells", action="store_true")
+parser.add_argument("--clear-initial-spells", "--clear_initial_spells", dest="clear_initial_spells", action="store_true", help="Characters join without their starting spells (absynnonym patch). Not implied by --debug.")
 parser.add_argument("--eat_dragon_eggs", action="store_true")
 parser.add_argument("--no_boat_encounters", action="store_true")
 parser.add_argument("--secondary_tool", action="store_true")
 parser.add_argument("--unlock_gift_mode", action="store_true")
 parser.add_argument("--start_engine", action="store_true")
+parser.add_argument(
+    "--scale-encounters", nargs=2, type=int, default=None, metavar=("LOW", "HIGH"),
+    help=(
+        "Scale normal enemy encounters to the party's level. Every non-boss battle rolls an offset in "
+        "[LOW, HIGH], adds it to the party's average level, and swaps in the formation whose average "
+        "monster level best matches the result -- drawn from all 192 formations game-wide, so themes may "
+        "not match the map. Boss/event battles and the Ancient Cave (which scales itself) are unaffected. "
+        "Example: --scale-encounters -5 10"
+    ),
+)
 # Fix patches
 parser.add_argument("--ancient_cave_music", action="store_true") # TODO: seems to not work?. (Maybe don't apply the patch?)
 parser.add_argument("--capsule_master_select", action="store_true")
@@ -139,6 +168,22 @@ parser.add_argument("--spell_target_limit", action="store_true")
 parser.add_argument("--zero_capsule_command", action="store_true")
 parser.add_argument("--zero_gold_command", action="store_true")
 parser.add_argument("--fix-softlocks", action="store_true")
+parser.add_argument("--foomy-firebird", action="store_true", help="Give capsule Foomy S a Firebird (offense) / Valor (support) battle AI.")
+parser.add_argument("--start-capsule", type=int, choices=range(7), default=None, metavar="SPECIES",
+                    help="Start new games with a capsule: 0 Foomy, 1 Shaggy, 2 Hard Hat, 3 Red Fish, 4 Myconido, "
+                         "5 Raddisher, 6 Armor Dog. Works with any start location.")
+parser.add_argument("--debug-party", action="store_true",
+                    help="Dev: every character starts at level 99 with 999 base stats, and Elcid's party toggles let "
+                         "anyone join without being found first.")
+parser.add_argument("--start-capsule-name", type=str, default=None, help="Name for --start-capsule (1-5 ASCII).")
+# Sprite extract/import (uncompressed 4bpp sprites <-> PNG for paint.net). Runs standalone, then exits.
+parser.add_argument("--extract-sprite", type=str, default=None, help="Extract a sprite to PNG. Value is a KNOWN_SPRITES name (e.g. bunny_girls) or a headerless hex offset (e.g. 0x123C00).")
+parser.add_argument("--import-sprite", type=str, default=None, help="Import a PNG back into the ROM. Value is a KNOWN_SPRITES name or a headerless hex offset.")
+parser.add_argument("--sprite-file", type=str, default=None, help="PNG path for --extract-sprite / --import-sprite (default: <name-or-offset>.png).")
+parser.add_argument("--sprite-tiles", type=int, default=None, help="Number of 8x8 tiles (required when addressing a sprite by raw offset).")
+parser.add_argument("--sprite-width", type=int, default=16, help="Sheet width in tiles for raw-offset sprites (default 16). Ignored for registry names.")
+parser.add_argument("--sprite-palette", type=str, default=None, help="Headerless hex offset of the 16-colour BGR555 palette for raw-offset sprites (default 0x133F00).")
+parser.add_argument("--sprite-palette-index", type=int, default=0, help="Which 16-colour slot within the palette region to use (default 0).")
 
 
 args: Args = parser.parse_args(namespace=Args())
@@ -146,7 +191,6 @@ args: Args = parser.parse_args(namespace=Args())
 
 assert not args.max_world_clock,"EventPatch not implemented."
 assert not args.open_world_base,"EventPatch not implemented."
-assert not args.skip_tutorial,"EventPatch not implemented."
 assert not args.custom_spawn_city, "Custom starting location not implemented."
 assert args.spawn_location == "Portravia", "Custom starting location not implemented."
 assert not args.unlock_gift_mode, "Patch not implemented."
@@ -172,6 +216,20 @@ else:
 
 iris.info(f"Selected patch is {args.selected_patch.name}")
 
+if args.scale_encounters is not None:
+    # The band is baked into the ROM as a signed low byte plus an unsigned count, and the target level
+    # it produces is clamped to the game's 1..99 range, so a wider offset could never bite.
+    # Validated here as well as in the patch so a bad band fails before any ROM work starts.
+    _low, _high = args.scale_encounters
+    _limit = SCALE_ENCOUNTERS_MAX_OFFSET
+    if not (-_limit <= _low <= _high <= _limit):
+        msg = f"--scale-encounters needs {-_limit} <= LOW <= HIGH <= {_limit}, got {_low} {_high}."
+        raise ValueError(msg)
+    if _high - _low + 1 > SCALE_ENCOUNTERS_MAX_BAND:
+        msg = (f"--scale-encounters band spans {_high - _low + 1} levels, "
+               f"more than the {SCALE_ENCOUNTERS_MAX_BAND} the ROM can store.")
+        raise ValueError(msg)
+
 if args.aggressive_movement and args.passive_movement:
     msg = "You cannot set both aggressive and passive movement at the same time."
     raise ValueError(msg)
@@ -183,7 +241,7 @@ if args.debug:
     args.skip_tutorial = True
     args.treadool_warp = True
     args.capsule_feeding_bonus = True
-    args.clear_initial_spells = True
+    # Not --clear-initial-spells: check ROMs need the party's vanilla spells (Selan's Flash, MP to restore).
     args.eat_dragon_eggs = True
     args.no_boat_encounters = True
     args.secondary_tool = True

@@ -1,4 +1,4 @@
-from enum import Enum, IntFlag, auto
+from enum import Enum, IntEnum, IntFlag, auto
 from typing import Self
 
 
@@ -213,3 +213,245 @@ class TargetingCursor(Enum):
     POUCH = 0x03
     CHAR_CHANGE_ARROW = 0x04
     INVISIBLE = 0xFF
+
+
+# The game tracks exactly 256 event bits (0..255).
+EVENT_FLAG_COUNT = 256
+
+
+class EventFlag(IntEnum):
+    """The game's 256 event bits (a.k.a. EV flags), named from the TCRF notes for Lufia II.
+
+    Source: the "EV(ent) Flags" table on https://tcrf.net/Notes:Lufia_II:_Rise_of_the_Sinistrals .
+    Numbering is decimal, 0..255. Only the *known* flags are enum members; unnamed/blank flags are not
+    members and surface through :meth:`name_of` / :meth:`all_flags` / :meth:`free_flags` (generated on
+    access) as ``FREE_XX``.
+
+    Party membership (2-7 / 1 for Maxim) is authoritative here and, notably, is **not** ``index + 1`` for
+    Tia and Dekar: flag ``5`` is Dekar and flag ``6`` is Tia. :attr:`PlayableCharacter.party_flag` maps a
+    character index to the correct member via ``_PARTY_FLAG_BY_INDEX``.
+
+    ``FOUND_*`` (242-248) are new flags introduced by Iris' party-toggle patch (they occupy blank TCRF
+    slots): a character is "found/unlocked" once discovered in the story. 249 is left spare; 250-255 are
+    volatile post-boss dungeon flags and must not be reused; 240/241 are the Undo-magic flags.
+    """
+
+    # 1-7: "the respective character is in your party" (2-7 per TCRF, 1 = Maxim / new game).
+    MAXIM_IN_PARTY = 1
+    SELAN_IN_PARTY = 2
+    GUY_IN_PARTY = 3
+    ARTEA_IN_PARTY = 4
+    DEKAR_IN_PARTY = 5  # NB: Dekar is flag 5, Tia is flag 6 -- NOT index + 1 for these two.
+    TIA_IN_PARTY = 6
+    LEXIS_IN_PARTY = 7
+
+    # 8-16: capsule monsters joining the party.
+    JELZE_JOINED = 8  # Jelze (Foomy)
+    FLASH_JOINED = 9  # Flash (Shaggy)
+    NEW_GAME_STARTED = 10
+    GUSTO_JOINED = 12  # Gusto (Hard hat)
+    ZAPPY_JOINED = 13  # Zappy (Red Fish)
+    SULLY_JOINED = 15  # Sully (Radisher)
+    BLAZE_JOINED = 16  # Blaze (Armor Dog)
+
+    # 21-118: main story triggers.
+    FINISHED_TUTORIAL = 21
+    DINER_WITH_TIA_ELCID = 22
+    MET_IRIS_ELCID_CAVE = 23
+    SAVED_TIA_LAKE_CAVE = 24
+    KILLED_FISH_LAKE_CAVE = 25
+    TALKED_KING_ALUNZE = 26
+    PICKED_UP_CROWN = 27
+    RETURNED_CROWN_ALUNZE = 28
+    KILLED_REGAL_GOBLIN = 29
+    GUY_JOINED_STORY = 30
+    DEFEATED_CAMU = 31
+    RETURNED_HILDA_TANBEL = 32
+    TALKED_ROCHY_CLAMENTO = 33
+    KILLED_SPIDER_RUBY_CAVE = 35
+    RECEIVED_RUBY_APPLE = 36
+    DELIVERED_RUBY_APPLE = 37
+    FIRST_VISIT_PARCELYTE = 38
+    PARCELYTE_CASTLE_FIGHT = 39
+    SELAN_JOINED_STORY = 40
+    KILLED_PIERRE_FIRST = 41
+    KILLED_DANIELLE_FIRST = 42
+    SELAN_CLONES_TALK = 43
+    DEFEATED_PIERRE_DANIELLE = 44
+    TALKED_KING_GORDOVAN = 45
+    PASSED_GADES_GORDOVAN = 46
+    TALKED_KING_PARCELYTE = 47
+    DESTROYED_CRYSTAL_MERIX = 48
+    REPAIRED_BRIDGE_MERIX = 49
+    TALKED_KING_BOUND = 50
+    SAVED_PRINCE_BOUND = 51
+    DEKAR_GUY_JOINED_BOUND = 52
+    SUNDLETAN_EARTHQUAKE = 53
+    IDURA_KIDNAPPED_JEROS = 55
+    SAVED_JEROS = 57
+    TALKED_JYAD_PHANTOM_TREE = 58
+    PORTED_JYAD_ALEYN = 59
+    RESTED_TWICE_ALEYN = 60
+    NARCYSUS_WOMEN_FLEE = 62
+    NARCYSUS_WOMEN_FLEE_ALT = 63
+    IDURA_DEFEATED_SACRIFICE = 64
+    FINISHED_KARLLOON_TEMPLE = 65
+    TALKED_LEXIS_ASSISTANT_TREADOOL = 66
+    TALKED_LEXIS_LAB = 67
+    TALKED_SHIPBUILDER_ALEYN = 68
+    TALKED_FLOWER_GIRL_TREADOOL = 69
+    RECEIVED_PRETTY_FLOWER = 70
+    DELIVERED_PRIPHEA_LEFFA = 71
+    TALKED_KING_DANKIRK = 72
+    RUBY_ICON_MISSING = 73
+    TALKED_JAFFY_RUBY_ICON = 74
+    DELIVERED_RUBY_ICON_ALEX = 75
+    RETURNED_REAL_RUBY_ICON = 76
+    OPENED_WATER_GATE_AURALIO = 77
+    TALKED_FERIM_JEWEL = 78
+    MET_AMON_FIRST = 79
+    RETURNED_FERIM_KING = 80
+    TALKED_IRIS_AGURIO = 81
+    KIRMO_LAB_YES = 83
+    SAVED_MILKA = 84
+    AMON_DEFEATED_DIVINE = 85
+    GOT_SUBMARINE = 86
+    DEFEATED_GHOST_VENGEANCE = 87
+    TALKED_IRIS_BARNAN = 88
+    FINISHED_TOWER_OF_TRUTH = 89
+    FINISHED_DRAGON_MOUNTAIN = 90
+    TALKED_MERMAID_QUEEN = 92
+    DEFEATED_DOOM_SHIP = 93
+    TALKED_MERMAIDS_TEMPLE = 94
+    CHAED_DESTROYED = 95
+    TALKED_LEXIS_ENGINE = 96
+    KILLED_PRISON_SOLDIERS = 97
+    GOT_ENGINE = 98
+    GOT_AIRSHIP = 99
+    TALKED_NARVICK_1 = 100
+    NARVICK_FIRST_MAID = 101
+    GADES_DEFEATED = 102
+    TALKED_NARVICK_2 = 103
+    NARVICK_SECOND_MAID = 104
+    AMON_DEFEATED = 105
+    TALKED_NARVICK_3 = 106
+    NARVICK_THIRD_MAID = 107
+    OBTAINED_DUAL_BLADE = 108
+    PORTED_PORTRAVIA = 109
+    PORTRAVIA_CONVERSATION = 110
+    TALKED_LEXIS_FINAL = 111
+    GADES_DEFEATED_FINAL = 112
+    AMON_DEFEATED_FINAL = 113
+    ERIM_DEFEATED = 114
+    DAOS_DEFEATED = 115
+    FIRST_STONE_DESTROYED = 116
+    SECOND_STONE_DESTROYED = 117
+    THIRD_STONE_DESTROYED = 118  # destroying the third stone starts the credits/outro
+
+    # 119-219: secondary triggers, tutorial steps, Ancient Cave / Iris treasures.
+    TUTORIAL_INITIALIZED = 119
+    GUY_LEFT_PARCELYTE = 120
+    RESTED_TWICE_ALEYN_ALT = 121
+    TALKED_KING_ALUNZE_ALT = 124
+    OPENED_SHRINE_HILDA = 125
+    IRIS_JOINED_KARLLOON = 126
+    RECEIVED_SHIP_TREADOOL = 127
+    TALKED_IRIS_AGURIO_ALT = 128
+    DAOS_TELEPORTER_2 = 130
+    IDURA_KIDNAPPED_JEROS_ALT = 132
+    DEFEATED_GADES_ANCIENT_TOWER = 133
+    THIEVES_OPENED_PRISON = 134
+    TALKED_ROCHY_CLAMENTO_ALT = 136
+    MERIX_CAVE_CUTSCENE = 137
+    BOUND_ENTRANCE_CUTSCENE = 138
+    TALKED_JYAD_PHANTOM_TREE_ALT = 140
+    KILLED_LIONS_PHANTOM_TREE = 141
+    KILLED_IDURA_KARLLOON = 142
+    RECEIVED_PRETTY_FLOWER_ALT = 143
+    AMON_DEFEATED_DIVINE_ALT = 144
+    AMON_DEFEATED_DIVINE_ALT2 = 146
+    INSIDE_ANCIENT_CAVE = 147
+    OPENED_WATER_GATE_AURALIO_ALT = 148
+    OPENED_WATER_GATE_AURALIO_ALT2 = 149
+    KEY_GONE_ELCID = 150
+    ALUNZE_SEWER_SCENE = 151
+    TALKED_HILDA_TANBEL = 152
+    USED_SHIP_ALEYN = 153
+    TALKED_DEKAR_FIRST = 154
+    BOUND_GUARD_GADES = 155
+    IDURA_KIDNAPPED_JEROS_ALT2 = 156
+    DEKAR_GUY_JOINED_SHRINE = 157
+    TUTORIAL_CAVE_OLD_GUY = 158
+    TUTORIAL_JELLY_BEATEN = 159
+    TUTORIAL_MOVE_PILLAR = 160
+    TUTORIAL_JUMP_DOWN = 161
+    TUTORIAL_KILL_ALL = 162
+    TUTORIAL_CUT_GRASS = 163
+    ALUNZE_PASSED_OUT_GUY = 164
+    PICOLINA_AFTER_MILKA = 167
+    TALKED_ABEL_ALUNZE = 169
+    PICKED_UP_CROWN_ALT = 170
+    TUTORIAL_R_BUTTON = 171
+    TUTORIAL_UNDO_MAGIC = 172
+    KILLED_CLOWNS_SWORD_SHRINE = 177
+    DEKAR_GUY_JOINED_BOUND_ALT = 178
+    TALKED_BOY_TREBLE = 183
+    TALKED_GIRL_FOOMY = 185
+    DIVINE_POWER_PLATFORM = 186
+    FINISHED_KARLLOON_TEMPLE_ALT = 190
+    KILLED_EGG_DRAGON = 193
+    ANCIENT_CAVE_BOSS_KILLED = 195
+    GIFT_MODE = 196  # party members standing in the pub of Gruberik (works in standard + Retry mode)
+    DESTROYED_STATUES_ANCIENT_TOWER = 199
+    IRIS_TREASURE_01 = 200
+    IRIS_TREASURE_02 = 201
+    IRIS_TREASURE_03 = 202
+    IRIS_TREASURE_04 = 203
+    IRIS_TREASURE_05 = 204
+    IRIS_TREASURE_06 = 205
+    IRIS_TREASURE_07 = 206
+    IRIS_TREASURE_08 = 207
+    IRIS_TREASURE_09 = 208
+    IRIS_TREASURE_10 = 209
+    RETURNED_IRIS_SWORD = 210
+    RETURNED_IRIS_SHIELD = 211
+    RETURNED_IRIS_HELMET = 212
+    RETURNED_IRIS_ARMOR = 213
+    RETURNED_IRIS_RING = 214
+    RETURNED_IRIS_JEWEL = 215
+    RETURNED_IRIS_STAFF = 216
+    RETURNED_IRIS_POT = 217
+    RETURNED_IRIS_TIARA = 218
+    RETURNED_ANCIENT_CAVE_BOSS = 219
+
+    # 240/241: Undo magic (turned off again on leaving the dungeon).
+    UNDO_MAGIC_RECEIVED = 240
+    UNDO_MAGIC_RECEIVED_ALT = 241
+
+    # 242-248: Iris' "found/unlocked" flags (new; occupy blank TCRF slots). 249 spare.
+    FOUND_MAXIM = 242
+    FOUND_SELAN = 243
+    FOUND_GUY = 244
+    FOUND_ARTEA = 245
+    FOUND_TIA = 246
+    FOUND_DEKAR = 247
+    FOUND_LEXIS = 248
+
+    @classmethod
+    def name_of(cls, index: int) -> str:
+        """Return the flag's name, or a generated ``FREE_XX`` for an unnamed/blank flag."""
+        try:
+            return cls(index).name
+        except ValueError:
+            return f"FREE_{index:02X}"
+
+    @classmethod
+    def all_flags(cls) -> dict[int, str]:
+        """The full ``0..255`` table: named where known, generated (``FREE_XX``) otherwise."""
+        return {index: cls.name_of(index) for index in range(EVENT_FLAG_COUNT)}
+
+    @classmethod
+    def free_flags(cls) -> list[int]:
+        """Every flag index in ``0..255`` with no named member (candidate free slots)."""
+        known = {int(member) for member in cls}
+        return [index for index in range(EVENT_FLAG_COUNT) if index not in known]

@@ -46,6 +46,11 @@ class EventScript:
         self.dirty = False
         self._read = False
         self._pre = b""
+        # The true physical room at `pointer` before the next known script, fixed at parse time.
+        # Kept separate from `raw` (which write() below updates to the latest actual bytes) so a
+        # second in-place write's budget doesn't shrink to whatever the *previous* write happened
+        # to compile to -- it's always bounded by the real original slot.
+        self._slot_size = 0
 
     def __repr__(self) -> str:
         return f"EventScript(pointer={self.pointer:#07x}, class={self.event_class.name}, index={self.index})"
@@ -84,6 +89,7 @@ class EventScript:
             length = MAX_SCRIPT_LENGTH
         read_file.seek(self.pointer)
         self.raw = read_file.read(length)
+        self._slot_size = len(self.raw)
         self._pre = self._pre_data()
         self.instructions = self._parse(self.raw)
         self._read = True
@@ -183,13 +189,15 @@ class EventScript:
         from structures.event_script.compiler import compile_script  # noqa: PLC0415
 
         data = compile_script(self, script_pointer=self.pointer)
-        if len(data) > len(self.raw):
+        if len(data) > self._slot_size:
             msg = (
                 f"Event script {self.pointer:#07x} (class {self.event_class.name}, index {self.index}) "
-                f"compiled to {len(data)}B, exceeding its {len(self.raw)}B slot; the in-place write path "
+                f"compiled to {len(data)}B, exceeding its {self._slot_size}B slot; the in-place write path "
                 f"cannot relocate scripts."
             )
             raise ValueError(msg)
         log.debug(f"Writing EventScript {self.index=} {self.event_class.name} ({len(data)}B) → {self.pointer=:#08x}")
         write_file.seek(self.pointer)
         write_file.write(data)
+        self.raw = data
+        self.dirty = False

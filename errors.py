@@ -19,3 +19,27 @@ class FileEntryReadException(Exception):
 
 class EventFreeSpaceError(Exception):
     pass
+
+
+class ScriptAssemblyError(ValueError):
+    """A script can't be assembled: undefined or duplicate label, operand out of range, or too large."""
+
+
+class ScriptDecodeError(ValueError):
+    """Bytes can't be decoded as an operand (for example, the data ends mid-operand)."""
+
+
+class NoFreeSpace(Exception):  # noqa: N818 (name fixed by the spec)
+    """No free run is large enough for a placement."""
+
+
+class PlacementVerifyError(Exception):
+    """Bytes read back after a placement differ from what was written."""
+
+
+class TableNotMovable(Exception):  # noqa: N818 (name fixed by the spec)
+    """A table would have to move banks, but its code references aren't verified."""
+
+
+class CodeRefMismatch(Exception):  # noqa: N818 (name fixed by the spec)
+    """A code reference doesn't hold the value it should before a table move."""

@@ -12,12 +12,12 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, ClassVar, Self, SupportsIndex
 
 from _types.objects import Cache
-from constants import EMPTY_BYTES
 from enums.event_scripts import EventClass
 from helpers.addresses import address_to_lorom
 from helpers.bits import read_little_int
 from helpers.files import read_file, restore_pointer, write_file
-from helpers.name import read_as_decompressed_name, write_compressed_name
+from helpers.freespace import relocate_pointer_table_entry, zone_data_allocator
+from helpers.name import compress_name, read_as_decompressed_name
 from logger import iris
 from structures.event_script import EventScript, MapEvent, ZoneEventManager
 from structures.zone_data_pointers import zone_data_pointers
@@ -33,7 +33,6 @@ NPC_SECTION = 7
 WAYPOINT_SECTION = 8
 CHEST_SECTION = 18
 SECTION_COUNT = 21
-_free_cursor = EMPTY_BYTES[0].start  # simple bump allocator into the first freespace region
 
 
 if TYPE_CHECKING:
@@ -141,6 +140,11 @@ class ZoneData:
         self.size = read_little_int(read_file, 2)
         self.data = read_file.read(self.size)
         self.parsed_data: dict[int, bytes] = {}
+        self.dirty = False
+        # True once write_relocated has moved this blob into the shared freespace pool -- only then
+        # does its *previous* slot belong to that pool and need deallocating on the next relocation.
+        self._relocated = False
+        self._blob_length = self.size + 2  # the 2-byte size prefix + payload, as currently on ROM
 
         self._parse_offsets()
         self._parse_npc_positions()
@@ -181,7 +185,7 @@ class ZoneData:
         self.waypoint_shared_data = waypoint_data[1:] # Store the remaining data.
 
     def _parse_chests(self) -> None:
-        """Parse section 18: the per-map chest-placement table (see docs/chest_system.md).
+        """Parse section 18: the per-map chest-placement table (see docs/guides/chests.md).
 
         Records are 4 bytes ``[slot_id, x, y, type]`` terminated by ``0xFF``. Parsed tolerantly: not
         every map has a clean chest table (section 18 matched chest counts on ~39/40 sampled maps), and
@@ -286,6 +290,7 @@ class ZoneData:
         """Replace section 18 (the chest-placement table) with ``chests`` (0xFF-terminated)."""
         self.chests = list(chests)
         self._chests_parsed = True
+        self.dirty = True
         self.parsed_data[CHEST_SECTION] = b"".join(bytes(chest) for chest in chests) + b"\xff"
 
     def _sync_sections(self) -> None:
@@ -340,6 +345,18 @@ class ZoneData:
         write_file.write(self.size.to_bytes(2, "little"))
         write_file.write(data)
 
+    def set_exits(self, exits: "list[Exit]") -> None:
+        """Replace section 2 (the exit table) with ``exits`` (0xFF-terminated)."""
+        self.exits = list(exits)
+        self.dirty = True
+        self.parsed_data[EXIT_SECTION] = b"".join(bytes(exit_) for exit_ in exits) + b"\xff"
+
+    def set_npcs(self, npcs: "list[NPC]") -> None:
+        """Replace section 7 (the NPC-position table) with ``npcs`` (0xFF-terminated)."""
+        self.npc_positions = list(npcs)
+        self.dirty = True
+        self.parsed_data[NPC_SECTION] = b"".join(bytes(npc) for npc in npcs) + b"\xff"
+
     def rebuild(self) -> bytes:
         """Reassemble the whole ZoneData blob from ``parsed_data`` (canonical layout).
 
@@ -366,22 +383,38 @@ class ZoneData:
         return len(data).to_bytes(2, "little") + data
 
     def write_relocated(self, map_index: int) -> None:
-        """Rebuild this ZoneData, write it into free space, and repoint the map's pointer-table entry."""
-        global _free_cursor  # noqa: PLW0603
+        """Rebuild this ZoneData, write it into the shared freespace pool, and repoint the map's
+        pointer-table entry.
+
+        Deallocates this blob's *previous* slot first when it was itself an earlier relocation into
+        this same pool -- the vanilla-original location is never part of the pool and is never
+        deallocated.
+        """
         blob = self.rebuild()
-        pointer = _free_cursor
-        write_file.seek(pointer)
-        write_file.write(blob)
-        _free_cursor += len(blob)
-        write_file.seek(ZONE_DATA_POINTER_TABLE + map_index * 3)
-        write_file.write(address_to_lorom(pointer).to_bytes(3, "little"))
+        if self._relocated:
+            zone_data_allocator.deallocate(self.start, self._blob_length)
+        pointer = zone_data_allocator.allocate(len(blob))
+        zone_data_allocator.write(pointer, blob)
+        relocate_pointer_table_entry(ZONE_DATA_POINTER_TABLE, map_index, 3, pointer, encode=address_to_lorom)
         self.start = pointer
+        self.data = blob[2:]
+        self.size = len(blob) - 2
+        self._parse_offsets()  # the in-place layout check must see the new offset table
+        self._blob_length = len(blob)
+        self._relocated = True
+        self.dirty = False
+        # Re-register under the new pointer: from_pointer's cache is keyed by construction-time
+        # pointer only, so without this a later ZoneData.from_pointer(pointer) (e.g. a second
+        # MapMeta.write() on an already-relocated zone) would miss the cache and parse a second,
+        # separate instance of the same blob instead of reusing this in-memory object.
+        self._cache.to_cache(pointer, self)
 
     def write_section18_inplace(self) -> None:
         """Write section 18 back at its current location (only valid when its length is unchanged)."""
         offset18 = int.from_bytes(self.data[CHEST_SECTION * 2 : CHEST_SECTION * 2 + 2], "little")
         write_file.seek(self.start + offset18)
         write_file.write(self.parsed_data[CHEST_SECTION])
+        self.dirty = False
 
 
 
@@ -622,11 +655,9 @@ class Zone:
     def write(self) -> None:
         """Write zone name to ROM.
 
-        If the zone name has been modified via set_name(), this will:
-        1. Check if the new compressed name fits in the original space
-        2. If not, allocate new freespace for the name
-        3. Write the compressed name to the appropriate location
-        4. Update the zone's start pointer if relocated
+        A name set through ``name`` is compressed for this zone's address and written over the old one, padded with
+        spaces to the old length. A name that doesn't fit raises ``ValueError`` and writes nothing: moving a name
+        elsewhere isn't supported yet.
 
         If the name hasn't been modified, writes back the original compressed bytes.
         """
@@ -639,56 +670,21 @@ class Zone:
             write_file.write(compressed_name)
             return
 
-        # Name was modified, need to compress and check space
-        from io import BytesIO
-
-
-        # Calculate how much space the new compressed name will take
-        # Write to a temporary buffer to measure size
-        temp_buffer = BytesIO()
-        original_pos = write_file.tell()
-
-        # Temporarily redirect write_file to our buffer
-        import helpers.files
-        old_write_file = helpers.files.write_file
-        helpers.files.write_file = temp_buffer
-
-        try:
-            write_compressed_name(0, self._modified_name)
-            new_compressed_size = temp_buffer.tell()
-            compressed_bytes = temp_buffer.getvalue()
-        finally:
-            # Restore original write_file
-            helpers.files.write_file = old_write_file
-            write_file.seek(original_pos)
-
-        # Calculate available space at original location
-        original_compressed = self.read_compressed_name(self.start)
-        original_size = len(original_compressed)
+        # Encode at the zone's own address (back-references depend on it) without writing anything yet.
+        compressed_bytes = compress_name(self.start, self._modified_name)
         available_space = self.end - self.start
-
-        if new_compressed_size <= available_space:
-            # Fits in original location, write it there
-            write_file.seek(self.start)
-            write_file.write(compressed_bytes)
-            # Pad with zeros if shorter than original to avoid leftover data
-            if new_compressed_size < original_size:
-                write_file.write(b"\x00" * (original_size - new_compressed_size))
-        else:
-            # Need to allocate new space
-            # TODO: Implement freespace allocation
-            # For now, write a warning and fall back to original location
-            iris.warning(
-                f"Zone {self.index} '{self.clean_name.decode()}': "
-                f"New compressed name size ({new_compressed_size} bytes) exceeds "
-                f"available space ({available_space} bytes). "
-                f"Freespace allocation not yet implemented. Name change may cause corruption!",
+        if len(compressed_bytes) > available_space:
+            # TODO: place the name through rom_space and repoint the map's name pointer (HER-244 left this out).
+            msg = (
+                f"Zone {self.index}: compressed name {self._modified_name!r} needs {len(compressed_bytes)} bytes, "
+                f"only {available_space} are free at {self.start:#x}."
             )
-            # Write anyway (will overwrite next zone!)
-            write_file.seek(self.start)
-            write_file.write(compressed_bytes)
-
-        return
+            raise ValueError(msg)
+        # Names are packed back to back, and Zone._find_zone_address walks them terminator by terminator, so a
+        # shorter name keeps its old span: pad with spaces before the terminator, not with extra 0x00 names.
+        padding = b" " * (available_space - len(compressed_bytes))
+        write_file.seek(self.start)
+        write_file.write(compressed_bytes[:-1] + padding + compressed_bytes[-1:])
 
     @staticmethod
     def read_compressed_name(pointer: int) -> bytes:

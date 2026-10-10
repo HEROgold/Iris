@@ -1,34 +1,37 @@
 from args import args
-from helpers.files import read_file, write_file
+from helpers.files import open_rom, save
 from logger import iris
 from patcher import (
     apply_absynnonym_patch,
     apply_game_genie_codes,
-    apply_patch,
     set_spawn_location,
     start_engine,
 )
 from patches.genie_codes import (
     AIRSHIP_ANYWHERE,
-    ALWAYS_DROP_33,
     CAPSULE_ALWAYS_LOVE_FOOD,
     ELCID_REPORT,
     MASTER_ONE_SHOT,
-    NO_SCENARIO_ITEMS,
-    UNLOCK_WARP,
+    NO_SCENARIO_ITEMS, DEBUG_MODE,
 )
 from patches.HEROgold import (
     arty_to_artea,
     ax_to_axe,
     fix_boltfish,
+    foomy_s_firebird_valor,
     gorem_to_golem,
     guy_the_mage,
     # maxim_starts_with_warp,
+    everyone_learns_reset,
+    max_out_party,
     party_toggle_in_elcid,
+    set_found_flags_on_story_joins,
+    scale_encounters,
     set_rom_name,
     swap_pierre_danielle_sprites,
-    unlock_all_warp_destinations,
+    apply_new_game_hook,
 )
+from patches.HEROgold.start_capsule import start_capsule
 from patches.RealCritical import (
     ac_more_enemies,
     fix_cave_chest_table,
@@ -46,35 +49,39 @@ def main() -> None:
     if args.debug:
         iris.setLevel("DEBUG")
 
+    if not args.file:
+        msg = "Pass the ROM to randomize with --file."
+        raise SystemExit(msg)
+    # One read of the ROM, with the base patch (FRUE, Spekkio, Kureji) applied before any structure reads it.
+    open_rom(base=args.selected_patch)
+
     if args.no_patch:
         read_write_all()
-        # Cleanup after testing.
-        write_file.close()
-        # new_file.unlink()
         return
 
     set_rom_name(b"Lufia II (Iris patch)") # For identification purposes.
 
-    party_toggle_in_elcid()  # event-script demo: Elcid townspeople toggle party join/leave
+    party_toggle_in_elcid(require_found=not args.debug_party)  # event-script demo: Elcid townspeople toggle party join/leave
+    set_found_flags_on_story_joins()  # story joins also set each character's "found/unlocked" flag
 
-    apply_patch(args.selected_patch) # TODO: test with others besides Vanilla.
+    everyone_learns_reset()  # the party toggle can remove Maxim, who alone learned Reset in vanilla
     if args.fix_softlocks:
         fix_boltfish()
+    if args.foomy_firebird:
+        foomy_s_firebird_valor()
 
     if args.debug:
-        # apply_game_genie_codes(DEBUG_MODE)
+        apply_game_genie_codes(DEBUG_MODE)
         apply_game_genie_codes(*MASTER_ONE_SHOT)
         apply_game_genie_codes(NO_SCENARIO_ITEMS)
         apply_game_genie_codes(*AIRSHIP_ANYWHERE)
-        apply_game_genie_codes(ALWAYS_DROP_33)
+        # ALWAYS_DROP_33 is left out: it turns `CMP $09FB` at $81:FB55 into `BRA $FB52`, which loops forever
+        # inside the item-drop roll, so the game freezes when a defeated enemy rolls for its drop.
         apply_game_genie_codes(CAPSULE_ALWAYS_LOVE_FOOD)
         apply_game_genie_codes(ELCID_REPORT)
-        # Unlock all warp locations.
-        # Doesn't apply to ROM. Why? Because some are applied to running memory.
-        # These also don't contain a `-` between the 2 parts of the code
-        # Like flags for warp unlocks
-        apply_game_genie_codes(*UNLOCK_WARP)
-        apply_game_genie_codes("7E0C4324") # Maxim starts with warp. (slot 1)
+        # UNLOCK_WARP and "7E0C4324" (Maxim knows Warp) are Pro Action Replay RAM codes. They can't be baked
+        # into the ROM; decoding them as Game Genie codes wrote 0x3F into random ROM bytes, so
+        # apply_game_genie_codes now rejects them. Warps are unlocked by apply_new_game_hook() below.
 
     apply_game_genie_codes(*args.game_genie_codes)
 
@@ -84,8 +91,6 @@ def main() -> None:
     #     max_world_clock()
     # if args.open_world_base:
     #     open_world_base()
-    # if args.skip_tutorial:
-    #     skip_tutorial()
     # if args.treadool_warp:
     #     treadool_warp()
 
@@ -137,7 +142,15 @@ def main() -> None:
     guy_the_mage()
     # Dev/debug patches (not intended for release):
     # maxim_starts_with_warp()  # dev fix: Maxim begins every game knowing Warp (field teleport)
-    unlock_all_warp_destinations()  # dev fix: every Warp destination available from a fresh save
+    # One asar hook at the new-game handoff: every Warp destination unlocked (dev fix), and --skip-tutorial.
+    apply_new_game_hook(unlock_warps=True, skip_tutorial=args.skip_tutorial)
+    if args.debug_party:
+        max_out_party()
+    if args.start_capsule is not None:
+        start_capsule(args.start_capsule, args.start_capsule_name)
+    if args.scale_encounters:
+        # Runs with the other asm patches so asar assembles after every structure write.
+        scale_encounters(*args.scale_encounters)
 
     # Apply RealCritical patches
     fix_menu()
@@ -158,7 +171,7 @@ def main() -> None:
     # shuffle_chest_items()
     # randomize_chest_items()
 
-    # Chest randomizers -- two independent options (see docs/chest_system.md). Enable either:
+    # Chest randomizers -- two independent options (see docs/guides/chests.md). Enable either:
     # from patches.HEROgold.chest_randomizer import randomize_chest_contents, randomize_chest_locations
     # randomize_chest_contents()    # randomize WHAT each chest holds
     # randomize_chest_locations()   # shuffle WHERE chests sit, within each map
@@ -167,9 +180,7 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-read_file.close()
-write_file.close()
+    save()  # the one disk write of the run
 
 # TODO: Implement the following:
 # Create own rom extractor, which can and should extract data from the rom. > well on its way

@@ -883,6 +883,16 @@ class ShopObject:
 
 
 @dataclass
+class CapAttackNameObject:
+    """Capsule attack names (SP list, CapAttack name numbers): u16 offsets relative to ``address``, then
+    null-terminated ASCII. 78 names in vanilla; the table and every name stay inside bank $25."""
+
+    reference_pointer = 2
+    address = 0x12DF00
+    bank_end = 0x130000
+
+
+@dataclass
 class CapAttackObject:
     unknown = 1
     animation = 1

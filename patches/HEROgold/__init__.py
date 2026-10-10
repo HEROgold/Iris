@@ -13,7 +13,26 @@ from enums.flags import (
 from helpers.bits import bytes_overwrite
 from helpers.files import write_file
 from logger import iris
-from structures import Item, Monster, Spell
+from scripting.core import Data as ScriptData
+from scripting.core import Instruction as ScriptInstruction
+from scripting.core import Label as ScriptLabel
+from scripting.l2basm import L2BASM
+from structures import CapsuleMonster, Item, Monster, Spell
+from scripting.l2basm.helpers import (
+    Target,
+    capsule_attack,
+    end,
+    flee,
+    if_ge,
+    label,
+    on_chance,
+    physical_attack,
+    resist,
+    sequence,
+    set_reg,
+    target,
+)
+from structures.capsule_attacks import append_capsule_attack, write_capsule_attacks
 from structures.character import InitialEquipment, PlayableCharacter
 from structures.chest import AddressChest, PointerChest
 from structures.ip_attack import IPAttack
@@ -29,15 +48,15 @@ from tables import (
     SpellObject,
 )
 
+# maxim_warp imports `lookups`, which crashes on FRUE/Spekkio/Kureji spell names (UTF-8 decode in
+# Spell.from_pointer). It imports fine on vanilla.
 # from .maxim_warp import maxim_starts_with_warp  # pyright: ignore[reportUnusedImport] # noqa: F401
-# Importing maxim_warp causes   File "C:\Users\marti\Documents\GitHub\Iris\src\structures\battlescript.py", line 674, in get_arguments
-#    return op_codes[opcode]["params"]
-#           ~~~~~~~~^^^^^^^^
-#KeyError: 163
-#?
-# FIXME
+from .found_flags import set_found_flags_on_story_joins  # pyright: ignore[reportUnusedImport] # noqa: F401
+from .everyone_learns_reset import everyone_learns_reset  # pyright: ignore[reportUnusedImport] # noqa: F401
+from .debug_party import max_out_party  # pyright: ignore[reportUnusedImport] # noqa: F401
 from .party_toggle import party_toggle_in_elcid  # pyright: ignore[reportUnusedImport] # noqa: F401
-from .unlock_warps import unlock_all_warp_destinations  # pyright: ignore[reportUnusedImport] # noqa: F401
+from .scale_encounters import scale_encounters  # pyright: ignore[reportUnusedImport] # noqa: F401
+from .new_game import apply_new_game_hook  # pyright: ignore[reportUnusedImport] # noqa: F401
 
 
 def get_items() -> list[Item]:
@@ -272,15 +291,101 @@ def set_rom_name(name: bytes) -> None:
     write_file.write(name)
 
 def fix_boltfish() -> None:
-    """Fix the boltfish attack script to avoid softlocks.
-    This sets 2 offsets to 0x45.
-    Previously they pointed to itself (0x3b)."""
+    """Fix the Bolt Fish attack script to avoid a softlock.
+
+    Its spell handler at record offset +0x3B jumps to itself twice (the ``on_chance`` and the ``on_fail`` right
+    after it). Both now go to the unreached ``1F 00 08 28 00`` block at +0x45. The decision code's jump into the
+    handler stays.
+    """
     bolt_fish = Monster.from_index(85)
-    assert bolt_fish.attack_script
-    code = bolt_fish.attack_script.bytecode
-    patch = b"\x45"
-    patched_code = bytes_overwrite(code, 0x15, patch)
-    patched_code = bytes_overwrite(patched_code, 0x1A, patch)
-    bolt_fish.attack_script.bytecode = patched_code
+    assert bolt_fish.code is not None
+    body = bolt_fish.code.body
+    _label_at(body, bolt_fish.code_start, 0x45, "L_0045")
+    handler = body.index(ScriptLabel("L_003B"))
+    for item in body[handler + 1 :]:
+        if isinstance(item, ScriptInstruction):
+            item.operands = [ScriptLabel("L_0045") if op == ScriptLabel("L_003B") else op for op in item.operands]
     bolt_fish.write()
-    bolt_fish.attack_script.read()
+
+
+def _label_at(body: list, start: int, offset: int, name: str) -> None:
+    """Put ``Label(name)`` at record ``offset`` in ``body`` (which begins at record offset ``start``)."""
+    if ScriptLabel(name) in body:
+        return
+    position = start
+    for i, item in enumerate(body):
+        if position == offset:
+            body.insert(i, ScriptLabel(name))
+            return
+        if isinstance(item, ScriptData):
+            if position < offset < position + len(item.raw):
+                cut = offset - position
+                body[i : i + 1] = [ScriptData(item.raw[:cut]), ScriptLabel(name), ScriptData(item.raw[cut:])]
+                return
+            position += len(item.raw)
+        elif isinstance(item, ScriptInstruction):
+            spec = L2BASM.spec(item.opcode)
+            position += 1 + sum(kind.size(value) for kind, value in zip(spec.operands, item.operands, strict=True))
+    msg = f"No item boundary at record offset {offset:#x}."
+    raise ValueError(msg)
+
+
+ITEM_BOOST = 0x57
+"""``57 item item boost``: a spell hits harder when the caster wears a matching item. Capsules can't equip items."""
+FIREBIRD_ANIMATION = 0x82  # Inferno's animation byte
+VALOR_ANIMATION = 0x2D  # Healing aura's animation byte
+
+
+def _spell_effect(spell: Spell) -> list[ScriptInstruction]:
+    """The spell's effect instructions up to and including END, without item boosts."""
+    assert spell.code is not None
+    effect = [item for item in spell.code.body if isinstance(item, ScriptInstruction) and item.opcode != ITEM_BOOST]
+    return effect[: next(i for i, ins in enumerate(effect) if ins.opcode == 0x00) + 1]
+
+
+def foomy_s_firebird_valor() -> None:
+    """Give capsule Foomy S (index 0) a Firebird/Valor battle AI whose casts show their names.
+
+    Firebird and Valor become new capsule attacks (``structures.capsule_attacks``): a name, an animation, then the
+    spell's own effect script behind the target, the way native capsule magic like Inferno works. The AI runs them
+    with ``3E XX``, which shows the attack's name in battle (HER-177). Capsules have no MP pool, and capsule attacks
+    cost none.
+
+    The attack (per-turn AI) script keeps vanilla Foomy S's flee check: ``42 25 00`` puts the % of HP lost
+    in reg $80 and ``GUT * 25 / reg $82`` (reg $82 = 0x11 for Foomy S) in reg $81; if reg $80 >= reg $81
+    the capsule flees. Otherwise each turn it rolls:
+      - ~19% (0x30/255)                  -> Valor on all allies (support/revive)
+      - ~56% (69% of the remaining 81%)  -> Firebird on one foe (offense)
+      - ~25%                             -> physical attack on one foe
+
+    The reaction script stays vanilla ``42 11 00`` (status immunity): the reaction slot runs passive-protection
+    code in the attacker's damage calculation, so it cannot hold a spell cast.
+    """
+    iris.info("Giving Foomy S a Firebird/Valor AI with named capsule attacks.")
+    foomy = CapsuleMonster.from_index(0)
+    # Spell.from_index avoids the eager `lookups` import (which trips a pre-existing spell-name decode
+    # bug); with `lookups` fixed these are simply ``Spells.VALOR`` / ``Spells.FIREBIRD``.
+    valor = Spell.from_index(30)
+    firebird = Spell.from_index(5)
+    firebird_attack = append_capsule_attack(
+        "Firebird", FIREBIRD_ANIMATION, sequence(target(Target.ONE_FOE), _spell_effect(firebird)),
+    )
+    valor_attack = append_capsule_attack(
+        "Valor", VALOR_ANIMATION, sequence(target(Target.ALL_ALLIES), _spell_effect(valor)),
+    )
+    write_capsule_attacks()
+    foomy.set_scripts(
+        attack=sequence(
+            set_reg(0x82, 0x0011),          # GUT divisor used by subroutine 0x25
+            resist(0x25),                   # 42 25 00: reg $80 = % HP lost, reg $81 = GUT threshold
+            if_ge(0x80, 0x8081, "flee"),    # reg $80 >= reg $81 -> flee (0x8081 = register $81)
+            on_chance(0x30, "valor"),
+            on_chance(0xB0, "firebird"),
+            physical_attack(target=Target.ONE_FOE), end(),
+            label("firebird"), capsule_attack(firebird_attack), end(),
+            label("valor"), capsule_attack(valor_attack), end(),
+            label("flee"), flee(), end(),
+        ),
+        reaction=sequence(resist(0x11), end()),  # vanilla: full status immunity
+    )
+    foomy.write()

@@ -84,7 +84,7 @@ def _write_item(index: int, name: str, row: bytes) -> None:
     item.price = int.from_bytes(row[5:7], "little")
     item.equip_types = EquipTypes.from_byte(row[7:8])
     item.equipability = EquipableCharacter.from_byte(row[8:9])
-    item.item_effects = ItemEffects.from_bytes(row[9:11])  # Item.write re-reverses to restore these bytes
+    item.item_effects = ItemEffects(int.from_bytes(row[9:11], "little"))  # property bits; script bits follow the scripts
     item.unknown2 = row[11:13]
     item.write()
 

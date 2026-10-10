@@ -269,7 +269,7 @@ class ChestLocation:
 
         The content<->placement link is positional/heuristic: chests on a map are ordered by global chest
         index (as ``chests_by_map`` yields them), and that order is matched against the section-18 records in
-        order -- the same assumption ``randomize_chest_locations`` makes (docs/chest_system.md "Open questions"
+        order -- the same assumption ``randomize_chest_locations`` makes (docs/guides/chests.md "Open questions"
         #1). Returns None when the map's parsed chest count doesn't match the mapping (a few maps don't line up).
         """
         placements = self.zone.data.chests

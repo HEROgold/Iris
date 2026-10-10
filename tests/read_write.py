@@ -7,7 +7,7 @@ import logging
 from args import args
 from enums.patches import Patch
 from helpers.bits import find_table_pointer
-from helpers.files import new_file, original_file, write_file
+from helpers.files import original_file, output_bytes
 from logger import iris
 from structures.capsule import CapsuleAttack, CapsuleLevel, CapsuleMonster
 from structures.character import (
@@ -26,6 +26,7 @@ from structures.map_meta import MapMeta
 from structures.monster import Monster
 from structures.monster_move import MonsterMove
 from structures.npc import RoamingNPC
+from structures.map_meta import MapMeta
 from structures.shop import Shop, ShopKureji
 from structures.spell import Spell
 from structures.sprites import CapsulePallette, CapsuleSprite, OverPallette, OverSprite, SpriteMeta, TownSprite
@@ -130,10 +131,8 @@ def read_write_all() -> None:
 
 
 def verify_files(msg: str) -> None:
-    write_file.flush()
-    with original_file.open("rb") as o, new_file.open("rb") as n:
-        if o.read() != n.read():
-            log.critical(msg)
+    if original_file.read_bytes() != output_bytes():
+        log.critical(msg)
 
 def assert_files_are_same(location: object = None) -> None:
     """
@@ -145,11 +144,9 @@ def assert_files_are_same(location: object = None) -> None:
     :class:`AssertionError`
         When the files are not the same.
     """
-    write_file.flush()  # The comparison reads new_file from disk, so buffered writes must land first.
-    with original_file.open("rb") as o, new_file.open("rb") as n:
-        if o.read() != n.read():
-            msg = f"Files are not the same.\nLocation: {location!r}"
-            raise AssertionError(msg)
+    if original_file.read_bytes() != output_bytes():
+        msg = f"Files are not the same.\nLocation: {location!r}"
+        raise AssertionError(msg)
 
 def test_words() -> None:
     for i in range(WordObject.count):

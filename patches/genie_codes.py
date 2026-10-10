@@ -12,6 +12,7 @@ NO_SCENARIO_ITEMS = "1DE6-3DDC"
 # talk to the person there, and will stay displayed if you do talk to them)
 ALL_IRIS_TREASURES = "BAC2-44AD"
 AIRSHIP_ANYWHERE = "1DB8-CD9C", "C2B2-3FFB"
+# Broken on the US ROM: writes BRA $FB52 at $81:FB55 (the item-drop roll), an endless loop. Don't use.
 ALWAYS_DROP_33 = "6DE9-3F01"
 ALWAYS_DROP_99 = "D2E9-3F61"
 CAPSULE_ALWAYS_LOVE_FOOD = "6DA0-C7AB"
