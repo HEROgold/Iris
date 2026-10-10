@@ -37,6 +37,8 @@ TOOLS = range(423, 428)
 SCENARIO_ITEMS = range(428, 462)
 """The scenario-item bitfield's ids (docs/ap/scenario_items.md); 454-458 are unused KEY26..KEY30."""
 UNUSED_ITEM_SLOTS = range(454, 458)
+CHEST_OPENED_BITS = 0x7E093B
+"""WRAM bitfield of opened chests, indexed by chest number (docs/ap/chest_opened_bits.md)."""
 
 
 def _classification(index: int, item: Item) -> str:
@@ -88,6 +90,8 @@ def render() -> str:
         f"AP_ITEM_INDEX = {AP_ITEM_INDEX}\n",
         "# Red chests: (chest index, map, guide name, record offset, vanilla misc1 byte, vanilla item).",
         "# A chest's item is 9 bits: the low byte at record offset + 2, the high bit in misc1 bit 6.",
+        "# Chest n is opened when bit n & 7 of CHEST_OPENED_BITS + (n >> 3) is set (docs/ap/chest_opened_bits.md).",
+        f"CHEST_OPENED_BITS = {CHEST_OPENED_BITS:#08x}",
         f"CHESTS = {pformat(_chests(), width=120)}\n",
         "# Event-script grants: (map, event signature, offset of the item byte, item, count, flags the script sets).",
         "# Opcode 0x21 grants item 0x100 + the byte, opcode 0x20 the byte itself.",
