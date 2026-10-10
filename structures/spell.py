@@ -12,7 +12,7 @@ from _types.objects import Cache
 from abc_.pointers import Pointer
 from enums.flags import CastableSpells
 from errors import SpellNotFound
-from helpers.files import write_file
+from helpers.files import on_new_session, write_file
 from logger import iris
 from rom_space.table import Table
 from scripting.core import Data, Label, Script, assemble
@@ -171,6 +171,7 @@ def spell_table() -> Table:
     return Table("spells", address, records, table_bound(write_file, address))  # type: ignore[arg-type]
 
 
+@on_new_session
 def reset_spell_table() -> None:
     spell_table.cache_clear()
     _record_sources.cache_clear()

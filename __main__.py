@@ -2,53 +2,10 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from args import Args, parse_args
+from build import Options, build
 from helpers import files
-from helpers.files import open_rom, output_path, save
+from helpers.files import output_path, save
 from logger import iris
-from patcher import (
-    apply_absynnonym_patch,
-    apply_game_genie_codes,
-    set_spawn_location,
-    start_engine,
-)
-from patches.genie_codes import (
-    AIRSHIP_ANYWHERE,
-    CAPSULE_ALWAYS_LOVE_FOOD,
-    ELCID_REPORT,
-    MASTER_ONE_SHOT,
-    NO_SCENARIO_ITEMS, DEBUG_MODE,
-)
-from patches.HEROgold import (
-    arty_to_artea,
-    ax_to_axe,
-    fix_boltfish,
-    foomy_s_firebird_valor,
-    gorem_to_golem,
-    guy_the_mage,
-    # maxim_starts_with_warp,
-    everyone_learns_reset,
-    max_out_party,
-    party_toggle_in_elcid,
-    set_found_flags_on_story_joins,
-    scale_encounters,
-    set_rom_name,
-    swap_pierre_danielle_sprites,
-    apply_new_game_hook,
-)
-from patches.HEROgold.start_capsule import start_capsule
-from patches.RealCritical import (
-    ac_more_enemies,
-    fix_cave_chest_table,
-    fix_menu,
-    jelly_damage_display,
-    killer_names,
-)
-from patches.RealCritical.sprites import bunny_girls, fix_shrine_tile_set
-from structures.monster import Monster
-from structures.shop import Shop
-from structures.zone import Zone
-from tables import select
-from tests.read_write import read_write_all
 
 
 def main(argv: Sequence[str] | None = None) -> Args:
@@ -60,132 +17,7 @@ def main(argv: Sequence[str] | None = None) -> Args:
     if not args.file:
         msg = "Pass the ROM to randomize with --file."
         raise SystemExit(msg)
-    select(args.selected_patch)
-    Shop.verify_pointers = args.debug or args.no_patch  # an unrandomized ROM keeps every shop's next pointer
-    Monster.easy_mode = args.easy_mode
-    # One read of the ROM, with the base patch (FRUE, Spekkio, Kureji) applied before any structure reads it.
-    open_rom(Path(args.file), base=args.selected_patch)
-
-    if args.no_patch:
-        read_write_all()
-        return args
-
-    set_rom_name(b"Lufia II (Iris patch)") # For identification purposes.
-
-    party_toggle_in_elcid(require_found=not args.debug_party)  # event-script demo: Elcid townspeople toggle party join/leave
-    set_found_flags_on_story_joins()  # story joins also set each character's "found/unlocked" flag
-
-    everyone_learns_reset()  # the party toggle can remove Maxim, who alone learned Reset in vanilla
-    if args.fix_softlocks:
-        fix_boltfish()
-    if args.foomy_firebird:
-        foomy_s_firebird_valor()
-
-    if args.debug:
-        apply_game_genie_codes(DEBUG_MODE)
-        apply_game_genie_codes(*MASTER_ONE_SHOT)
-        apply_game_genie_codes(NO_SCENARIO_ITEMS)
-        apply_game_genie_codes(*AIRSHIP_ANYWHERE)
-        # ALWAYS_DROP_33 is left out: it turns `CMP $09FB` at $81:FB55 into `BRA $FB52`, which loops forever
-        # inside the item-drop roll, so the game freezes when a defeated enemy rolls for its drop.
-        apply_game_genie_codes(CAPSULE_ALWAYS_LOVE_FOOD)
-        apply_game_genie_codes(ELCID_REPORT)
-        # UNLOCK_WARP and "7E0C4324" (Maxim knows Warp) are Pro Action Replay RAM codes. They can't be baked
-        # into the ROM; decoding them as Game Genie codes wrote 0x3F into random ROM bytes, so
-        # apply_game_genie_codes now rejects them. Warps are unlocked by apply_new_game_hook() below.
-
-    apply_game_genie_codes(*args.game_genie_codes)
-
-    # Apply Event patches
-    # TODO: Implement EventParser
-    # if args.max_world_clock:
-    #     max_world_clock()
-    # if args.open_world_base:
-    #     open_world_base()
-    # if args.treadool_warp:
-    #     treadool_warp()
-
-    # Apply Randomizer patches
-    if args.capsule_feeding_bonus:
-        apply_absynnonym_patch("capsule_feeding_bonus")
-    if args.clear_initial_spells:
-        apply_absynnonym_patch("clear_initial_spells")
-    if args.eat_dragon_eggs:
-        apply_absynnonym_patch("eat_dragon_eggs")
-    if args.no_boat_encounters:
-        apply_absynnonym_patch("no_boat_encounters")
-    if args.secondary_tool:
-        apply_absynnonym_patch("secondary_tool")
-    if args.unlock_gift_mode:
-        apply_absynnonym_patch("unlock_gift_mode")
-    if args.custom_spawn_city:
-        set_spawn_location(Zone.from_name("Elcid"), entrance_cutscene=0x02) # TODO: Investigate and fix (event) script loading.
-        # set_spawn_location(Zone.from_name(args.spawn_location))
-    if args.start_engine:
-        start_engine()
-
-    if args.capsule_master_select:
-        apply_absynnonym_patch("capsule_master_select")
-    if args.capsule_tag:
-        apply_absynnonym_patch("capsule_tag")
-    if args.ancient_cave_items:
-        apply_absynnonym_patch("fix_ac_items")
-    if args.no_maxim_boat:
-        apply_absynnonym_patch("maximless_boat_fix")
-    if args.no_maxim_warp:
-        apply_absynnonym_patch("maximless_warp_animation_fix")
-    if args.no_submarine:
-        apply_absynnonym_patch("no_submarine")
-    if args.spell_target_limit:
-        apply_absynnonym_patch("spell_target_limit")
-    if args.zero_capsule_command:
-        apply_absynnonym_patch("zero_capsule_command")
-    if args.zero_gold_command:
-        apply_absynnonym_patch("zero_gold_command")
-
-    # TODO: Implement a route finder, which will place required items (arrow, hook, scenario items.)
-
-    # Apply custom patches
-    ax_to_axe()
-    arty_to_artea()
-    gorem_to_golem()
-    swap_pierre_danielle_sprites()
-    guy_the_mage()
-    # Dev/debug patches (not intended for release):
-    # maxim_starts_with_warp()  # dev fix: Maxim begins every game knowing Warp (field teleport)
-    # One asar hook at the new-game handoff: every Warp destination unlocked (dev fix), and --skip-tutorial.
-    apply_new_game_hook(unlock_warps=True, skip_tutorial=args.skip_tutorial)
-    if args.debug_party:
-        max_out_party()
-    if args.start_capsule is not None:
-        start_capsule(args.start_capsule, args.start_capsule_name)
-    if args.scale_encounters:
-        # Runs with the other asm patches so asar assembles after every structure write.
-        scale_encounters(*args.scale_encounters, seed=args.seed)
-
-    # Apply RealCritical patches
-    fix_menu()
-    killer_names() # Could be done with Iris. (Would also allow for moving item table if required later.)
-    # gift_mode() # Already done by absynnonym. (unlock_gift_mode)
-    ac_more_enemies()
-    fix_cave_chest_table()
-    jelly_damage_display() # Should be done with Iris.  (When a more capable script parser is implemented.)
-    bunny_girls()
-    fix_shrine_tile_set()
-
-    # Randomize the game
-    # randomize_all_spells()
-    # randomize_all_items() # Causes issues bc random bits are set (works in theory, crashes in practice.)
-    # shuffle_items()
-    # randomize_all_monsters() # Causes issues bc random bits are set (works in theory, crashes in practice.)
-    # shuffle_monsters()
-    # shuffle_chest_items()
-    # randomize_chest_items()
-
-    # Chest randomizers -- two independent options (see docs/guides/chests.md). Enable either:
-    # from patches.HEROgold.chest_randomizer import randomize_chest_contents, randomize_chest_locations
-    # randomize_chest_contents()    # randomize WHAT each chest holds
-    # randomize_chest_locations()   # shuffle WHERE chests sit, within each map
+    build(Path(args.file), Options.from_args(args))
     return args
 
 

@@ -9,6 +9,7 @@ import logging
 import re
 from collections import defaultdict
 
+from helpers.files import on_new_session
 from logger import iris
 from structures.event_script.instructions import TextChunk
 from structures.event_script.opcodes import EXIT_TEXT_MODE, VALID_ASCII_CHARACTERS
@@ -162,6 +163,10 @@ class _WordCompressor:
     def __init__(self) -> None:
         self._by_length: dict[int, dict[str, list[tuple[str, int]]]] | None = None
 
+    def reset(self) -> None:
+        """Forget the dictionary; the next use reads the words again."""
+        self._by_length = None
+
     def _build(self) -> dict[int, dict[str, list[tuple[str, int]]]]:
         by_length: dict[int, dict[str, list[tuple[str, int]]]] = defaultdict(lambda: defaultdict(list))
         for index in range(WordObject.count):
@@ -218,6 +223,7 @@ class _WordCompressor:
 
 
 _compressor = _WordCompressor()
+on_new_session(_compressor.reset)
 
 
 def _split_once(part: str, reverse_keys: list[str], *, compress: bool) -> list[str | int] | None:

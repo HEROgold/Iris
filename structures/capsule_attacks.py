@@ -16,7 +16,7 @@ and the ``ADC`` base stay where they are, and there's no bounds check to change.
 """
 
 from helpers.addresses import address_from_lorom, address_to_lorom
-from helpers.files import write_file
+from helpers.files import on_new_session, write_file
 from rom_space.place import BytesBlock, CodeLong, Placement, PointerSite, place
 from rom_space.pool import EXPANSION, bank_of
 from scripting.l2basm.helpers import Block, assemble_block
@@ -111,6 +111,7 @@ def write_capsule_attacks() -> None:
     _pending.clear()
 
 
+@on_new_session
 def reset_capsule_attacks() -> None:
     """Forget appended attacks and the cached count (tests reset the output between runs)."""
     global _count  # noqa: PLW0603

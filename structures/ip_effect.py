@@ -9,7 +9,7 @@ Editing an ``IPEffect`` changes every IP that uses its index.
 
 from functools import cache
 
-from helpers.files import write_file
+from helpers.files import on_new_session, write_file
 from logger import iris
 from rom_space.place import CodeAbs16, CodeLong, PointerSite
 from rom_space.table import Table
@@ -97,6 +97,7 @@ def append_ip_effect(items: list[Item]) -> int:
     return index
 
 
+@on_new_session
 def reset_ip_effect_table() -> None:
     global _count  # noqa: PLW0603
     _count = IP_EFFECT_COUNT

@@ -11,9 +11,8 @@ from pathlib import Path
 NAME = sys.argv.pop(sys.argv.index("--name") + 1)
 sys.argv.remove("--name")
 
-source = Path("__main__.py").read_text(encoding="utf-8").split('if __name__ == "__main__":')[0]
-ns: dict[str, object] = {"__name__": "iris_main"}
-exec(compile(source, "__main__.py", "exec"), ns)  # noqa: S102
+import build as iris_build  # noqa: E402
+from args import parse_args  # noqa: E402
 
 from helpers.addresses import address_from_lorom  # noqa: E402
 from helpers.files import save, session, write_file  # noqa: E402
@@ -21,7 +20,7 @@ from helpers.files import save, session, write_file  # noqa: E402
 HOOK = 0x1AD80  # $83:AD80, the new game's capsule check that start_capsule.asm hooks
 HOOK_BODY = 0x100
 snapshot: dict[str, bytes | int] = {}
-_start_capsule = ns["start_capsule"]
+_start_capsule = iris_build.start_capsule
 
 
 def start_capsule_and_snapshot(*args: object, **kwargs: object) -> None:
@@ -35,8 +34,9 @@ def start_capsule_and_snapshot(*args: object, **kwargs: object) -> None:
     snapshot.update(target=target, body=write_file.read(HOOK_BODY))
 
 
-ns["start_capsule"] = start_capsule_and_snapshot
-options = ns["main"]()  # type: ignore[operator]
+iris_build.start_capsule = start_capsule_and_snapshot
+options = parse_args()
+iris_build.build(Path(options.file), iris_build.Options.from_args(options))  # type: ignore[arg-type]
 
 write_file.flush()
 target = snapshot["target"]

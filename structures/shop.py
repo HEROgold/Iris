@@ -6,7 +6,7 @@ from _types.objects import Cache
 from abc_.pointers import Pointer, TablePointer
 from enums.flags import ShopIdentifier, ShopTypes
 from helpers.bits import find_table_pointer, read_little_int
-from helpers.files import read_file, restore_pointer, write_file
+from helpers.files import on_new_session, read_file, restore_pointer, write_file
 from logger import iris
 from structures.item import Item
 from structures.spell import Spell
@@ -303,6 +303,11 @@ class Shop(TablePointer):
             section.write()
 
         iris.debug(f"Shop {self.index} written.")
+
+@on_new_session
+def reset_shops() -> None:
+    Shop._cache.clear()  # noqa: SLF001
+
 
 if TYPE_CHECKING:
     from tables.kureji import ShopObject  # noqa: TC004

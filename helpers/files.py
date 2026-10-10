@@ -25,6 +25,7 @@ if TYPE_CHECKING:
 
 
 _session: Rom | None = None
+_resets: list[Callable[[], None]] = []
 
 
 def output_path(source: Path, seed: int) -> Path:
@@ -32,15 +33,27 @@ def output_path(source: Path, seed: int) -> Path:
     return source.with_stem(f"{source.stem}-{seed}").with_suffix(source.suffix)
 
 
+def on_new_session[F: Callable[[], None]](reset: F) -> F:
+    """Register ``reset`` to drop state read from the previous session whenever another one becomes active.
+
+    Use it on every cache of ROM data (a decorator on the module's reset function), so two builds in one process
+    can't see each other's ROM.
+    """
+    _resets.append(reset)
+    return reset
+
+
 def use(rom: Rom | None) -> None:
-    """Make ``rom`` the active session (``None`` drops it)."""
+    """Make ``rom`` the active session (``None`` drops it), dropping every cache of the previous one."""
     global _session  # noqa: PLW0603
     _session = rom
+    for reset in _resets:
+        reset()
 
 
-def open_rom(path: Path, base: "Patch | None" = None) -> Rom:
-    """Read ``path`` into a new active session and apply the base patch to it."""
-    rom = Rom.open(convert_rom(Path(path), ".smc"))
+def open_rom(source: Path | bytes, base: "Patch | None" = None) -> Rom:
+    """Read ``source`` (a ROM file, or its bytes) into a new active session and apply the base patch to it."""
+    rom = Rom.open(convert_rom(source, ".smc")) if isinstance(source, Path) else Rom.from_bytes(source)
     use(rom)
     if base is not None:
         from patcher import apply_patch  # noqa: PLC0415 - patcher imports this module
