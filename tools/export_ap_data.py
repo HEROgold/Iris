@@ -1,9 +1,9 @@
 """Export the plain data the Archipelago world needs, as a module that imports without a ROM (Iris-Dev#7).
 
-``iris/lookups/`` reads the ROM at import, which the apworld can't do. This writes ``archipelago/lufia2_data.py``:
+``iris/lookups/`` reads the ROM at import, which the apworld can't do. This writes ``archipelago/lufia2ow/data.py``:
 only literals, so it imports on Archipelago's Python with nothing else installed. Run from the repo root::
 
-    python tools/export_ap_data.py --file <vanilla-rom>          # write archipelago/lufia2_data.py
+    python tools/export_ap_data.py --file <vanilla-rom>          # write archipelago/lufia2ow/data.py
     python tools/export_ap_data.py --file <vanilla-rom> --check  # exit 1 if the committed module is stale
 
 Not exported yet: hint-eligible NPCs and their text budgets, which wait on the M2 research.
@@ -30,7 +30,7 @@ from iris.tables import ChestObject, ItemObject, select
 from tools.dump_item_grants import collect
 
 
-DATA_FILE = Path(__file__).resolve().parent.parent / "archipelago" / "lufia2_data.py"
+DATA_FILE = Path(__file__).resolve().parent.parent / "archipelago" / "lufia2ow" / "data.py"
 
 TOOLS = range(423, 428)
 """Hook, Bomb, Arrow, Fire arrow, Hammer."""

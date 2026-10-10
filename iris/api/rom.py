@@ -101,6 +101,11 @@ class RomView:
         """Nothing to do: the image lives until the session ends."""
 
 
+CART_SIZE_20MBIT = 0x280000
+MIRRORED_SIZE = 0x80000
+"""The last 4 Mbit of a 20 Mbit cart, which the address decoding repeats up to 3MB."""
+
+
 class Rom:
     """One ROM image in memory, with a read view, a write view and the free-space pool over it."""
 
@@ -122,9 +127,16 @@ class Rom:
 
     @classmethod
     def from_bytes(cls, data: bytes, source: Path | None = None) -> "Rom":
-        """A session over a copy of ``data``, dropping a copier header."""
+        """A session over a copy of ``data``, dropping a copier header.
+
+        The US cart is 20 Mbit (2.5MB): its last 4 Mbit answer twice, so dumps come as 2.5MB (No-Intro, the ROM
+        Archipelago players have) or 3MB with that half-megabyte repeated. Iris reads the 3MB layout, so a 2.5MB image
+        gets the repeat appended.
+        """
         if len(data) % 0x400 == HEADER_SIZE:
             data = data[HEADER_SIZE:]
+        if len(data) == CART_SIZE_20MBIT:
+            data = data + data[CART_SIZE_20MBIT - MIRRORED_SIZE :]
         return cls(data, source)
 
     def save(self, path: Path) -> None:

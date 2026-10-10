@@ -3,7 +3,7 @@
 Every fixed change (Iris's own patches, the config block header, the AP item) is baked in here; the apworld only
 writes seed-dependent bytes on top, as tokens. Run from the repo root::
 
-    python tools/build_ap_basepatch.py --file <vanilla-rom>           # write archipelago/basepatch.bsdiff4
+    python tools/build_ap_basepatch.py --file <vanilla-rom>           # write archipelago/lufia2ow/basepatch.bsdiff4
     python tools/build_ap_basepatch.py --file <vanilla-rom> --check   # exit 1 if the committed patch is stale
 
 ``--check`` applies the committed patch to the vanilla ROM and compares it with a fresh build, so it doesn't depend
@@ -11,6 +11,7 @@ on bsdiff4 producing the same diff twice. Needs the ``bsdiff4`` package.
 """
 
 import argparse
+import hashlib
 import sys
 from pathlib import Path
 
@@ -19,19 +20,25 @@ import bsdiff4
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from iris.api.rom import Rom
+from iris.api.rom import CART_SIZE_20MBIT, Rom
 from iris.build import Options, build
 from iris.enums.patches import Patch
 
 
-PATCH_FILE = Path(__file__).resolve().parent.parent / "archipelago" / "basepatch.bsdiff4"
+PATCH_FILE = Path(__file__).resolve().parent.parent / "archipelago" / "lufia2ow" / "basepatch.bsdiff4"
+US_MD5 = "6efc477d6203ed2b3b9133c1cd9e9c5d"
+"""The headerless 2.5MB US ROM (No-Intro), the bytes Archipelago players patch."""
 OPTIONS = Options(0, selected_patch=Patch.VANILLA, archipelago=True, unlock_warps=False)
 """Seed-independent: no randomizer runs, so the seed changes nothing."""
 
 
 def vanilla_image(rom: Path) -> bytes:
-    """The headerless vanilla ROM, the bytes players' ROMs are patched from."""
-    return bytes(Rom.open(rom).image)
+    """The headerless 2.5MB US ROM, from a headered, headerless or 3MB (repeated last half-megabyte) dump."""
+    image = bytes(Rom.open(rom).image)[:CART_SIZE_20MBIT]
+    if hashlib.md5(image).hexdigest() != US_MD5:  # noqa: S324 - identifies the ROM, not security
+        msg = f"{rom} isn't the US Lufia II ROM (md5 of the headerless 2.5MB image should be {US_MD5})."
+        raise ValueError(msg)
+    return image
 
 
 def build_patch(vanilla: bytes) -> bytes:
