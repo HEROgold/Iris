@@ -1,4 +1,5 @@
 import argparse
+from collections.abc import Sequence
 from textwrap import dedent
 from time import time
 
@@ -186,56 +187,71 @@ parser.add_argument("--sprite-palette", type=str, default=None, help="Headerless
 parser.add_argument("--sprite-palette-index", type=int, default=0, help="Which 16-colour slot within the palette region to use (default 0).")
 
 
-args: Args = parser.parse_args(namespace=Args())
+def parse_args(argv: Sequence[str] | None = None) -> Args:
+    """Parse ``argv`` (default: ``sys.argv[1:]``) into :class:`Args`, with the selected patch and implied flags resolved.
+
+    Nothing reads the command line at import: the CLI, the tests and Archipelago each call this with their own argv.
+    """
+    args = parser.parse_args(argv, namespace=Args())
+    _reject_unimplemented(args)
+    _select_patch(args)
+    if args.scale_encounters is not None:
+        _check_scale_encounters(*args.scale_encounters)
+    if args.debug:
+        _enable_debug_patches(args)
+    return args
 
 
-assert not args.max_world_clock,"EventPatch not implemented."
-assert not args.open_world_base,"EventPatch not implemented."
-assert not args.custom_spawn_city, "Custom starting location not implemented."
-assert args.spawn_location == "Portravia", "Custom starting location not implemented."
-assert not args.unlock_gift_mode, "Patch not implemented."
-assert not args.start_engine, "Patch not implemented."
-assert not args.ancient_cave_music, "Fix not implemented."  # Won't be implemented.
+def _reject_unimplemented(args: Args) -> None:
+    assert not args.max_world_clock,"EventPatch not implemented."
+    assert not args.open_world_base,"EventPatch not implemented."
+    assert not args.custom_spawn_city, "Custom starting location not implemented."
+    assert args.spawn_location == "Portravia", "Custom starting location not implemented."
+    assert not args.unlock_gift_mode, "Patch not implemented."
+    assert not args.start_engine, "Patch not implemented."
+    assert not args.ancient_cave_music, "Fix not implemented."  # Won't be implemented.
+    # Item.from_index reads the equip bytes after these were applied, and Monster never writes its movement byte.
+    assert not args.equip_everyone, "Patch not implemented."
+    assert not args.equip_anywhere, "Patch not implemented."
+    assert not args.aggressive_movement, "Patch not implemented."
+    assert not args.passive_movement, "Patch not implemented."
 
 
-if args.spekkio and args.kureji:
-    msg = "You cannot apply both the Spekkio and Kureji patches at the same time."
-    raise ValueError(msg)
+def _select_patch(args: Args) -> None:
+    if args.spekkio and args.kureji:
+        msg = "You cannot apply both the Spekkio and Kureji patches at the same time."
+        raise ValueError(msg)
 
-if args.kureji:
-    args.selected_patch = Patch.KUREJI
-elif args.spekkio:
-    args.selected_patch = Patch.SPEKKIO
-elif args.frue:
-    args.selected_patch = Patch.FRUE
-    args.ancient_cave_items = False
-elif args.no_patch or args.vanilla:
-    args.selected_patch = Patch.VANILLA
-else:
-    args.selected_patch = SUGGESTED_PATCH
+    if args.kureji:
+        args.selected_patch = Patch.KUREJI
+    elif args.spekkio:
+        args.selected_patch = Patch.SPEKKIO
+    elif args.frue:
+        args.selected_patch = Patch.FRUE
+        args.ancient_cave_items = False
+    elif args.no_patch or args.vanilla:
+        args.selected_patch = Patch.VANILLA
+    else:
+        args.selected_patch = SUGGESTED_PATCH
 
-iris.info(f"Selected patch is {args.selected_patch.name}")
+    iris.info(f"Selected patch is {args.selected_patch.name}")
 
-if args.scale_encounters is not None:
+
+def _check_scale_encounters(low: int, high: int) -> None:
     # The band is baked into the ROM as a signed low byte plus an unsigned count, and the target level
     # it produces is clamped to the game's 1..99 range, so a wider offset could never bite.
     # Validated here as well as in the patch so a bad band fails before any ROM work starts.
-    _low, _high = args.scale_encounters
-    _limit = SCALE_ENCOUNTERS_MAX_OFFSET
-    if not (-_limit <= _low <= _high <= _limit):
-        msg = f"--scale-encounters needs {-_limit} <= LOW <= HIGH <= {_limit}, got {_low} {_high}."
+    limit = SCALE_ENCOUNTERS_MAX_OFFSET
+    if not (-limit <= low <= high <= limit):
+        msg = f"--scale-encounters needs {-limit} <= LOW <= HIGH <= {limit}, got {low} {high}."
         raise ValueError(msg)
-    if _high - _low + 1 > SCALE_ENCOUNTERS_MAX_BAND:
-        msg = (f"--scale-encounters band spans {_high - _low + 1} levels, "
+    if high - low + 1 > SCALE_ENCOUNTERS_MAX_BAND:
+        msg = (f"--scale-encounters band spans {high - low + 1} levels, "
                f"more than the {SCALE_ENCOUNTERS_MAX_BAND} the ROM can store.")
         raise ValueError(msg)
 
-if args.aggressive_movement and args.passive_movement:
-    msg = "You cannot set both aggressive and passive movement at the same time."
-    raise ValueError(msg)
 
-
-if args.debug:
+def _enable_debug_patches(args: Args) -> None:
     args.max_world_clock = True
     args.open_world_base = True
     args.skip_tutorial = True

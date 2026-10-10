@@ -1,13 +1,13 @@
 from functools import cache
-from typing import IO, Literal, Self
+from typing import IO, ClassVar, Literal, Self
 
 from _types.objects import Cache
 from abc_.pointers import TablePointer
 from abc_.stats import ScalableRpgStats
-from args import args
 from helpers.bits import find_table_pointer, read_little_int
 from helpers.files import read_file, restore_pointer, write_file
 from logger import iris
+from enums.patches import Patch
 from rom_space.table import Table
 from scripting.core import Item as ScriptItem
 from scripting.core import Data, Label, Script, assemble
@@ -23,7 +23,7 @@ from scripting.l2basm.records import (
     table_bound,
 )
 from structures.subroutine import make_room_in_bank_96
-from tables import MonsterObject
+from tables import MonsterObject, selected
 
 from .item import Item
 
@@ -39,14 +39,14 @@ class MonsterSprite:
         if index > MonsterObject.count:
             index = 0xA4 # Red JElly
         name, sprite = MONSTER_SPRITES[index]
-        if args.spekkio and "Lady Spider" in name:
+        if selected() is Patch.SPEKKIO and "Lady Spider" in name:
             sprite = 0x89 # Web Spider
         return cls(name, index, sprite)
 
 
-TABLE_SIZE = MonsterObject.count * 2
-
 class Monster(TablePointer):
+    easy_mode: ClassVar[bool] = False
+    """``--easy-mode``: every monster read from the ROM gets 1 in each stat. Set by the CLI for its run."""
     name: str
     index: int
     sprite_index: int
@@ -262,14 +262,6 @@ class Monster(TablePointer):
         else:
             replace_entry(self.code, entry, block(items))
 
-    def _set_movement(self) -> None:
-        if args.aggressive_movement:
-            self.movement = 0x1F
-        elif args.passive_movement:
-            self.movement = 0x1B
-        else:
-            self.movement = 0x0
-
     def apply_scale(self) -> None:
         # TODO: properly validate scaling behaviour.
         if self._scaled:
@@ -313,7 +305,7 @@ class Monster(TablePointer):
     @stats.setter
     def stats(self, stats: ScalableRpgStats) -> None:
         self._stats = stats
-        if args.easy_mode:
+        if self.easy_mode:
             self._stats = ScalableRpgStats(
                 health_points = 1,
                 attack = 1,

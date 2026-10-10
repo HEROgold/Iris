@@ -1,5 +1,3 @@
-from args import args
-from enums.patches import Patch
 from helpers.bits import find_table_pointer
 from structures.capsule import CapsuleMonster
 from structures.character import PlayableCharacter
@@ -22,10 +20,7 @@ from structures.sprites import (
     TownSprite,
 )
 from structures.word import Word
-
-
-args.selected_patch = Patch.SPEKKIO # Force the patch to SPEKKIO for testing purposes
-from tables import (  # noqa: E402
+from tables import (
     AncientChest1Object,
     AncientChest2Object,
     BossFormationObject,

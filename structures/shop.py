@@ -1,10 +1,9 @@
 from collections.abc import Generator
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Self
+from typing import TYPE_CHECKING, Any, ClassVar, Self
 
 from _types.objects import Cache
 from abc_.pointers import Pointer, TablePointer
-from args import args
 from enums.flags import ShopIdentifier, ShopTypes
 from helpers.bits import find_table_pointer, read_little_int
 from helpers.files import read_file, restore_pointer, write_file
@@ -146,6 +145,8 @@ class ShopSection:
 
 
 class Shop(TablePointer):
+    verify_pointers: ClassVar[bool] = False
+    """Assert each shop's next-shop pointer matches the table (true on an unrandomized ROM). Set by the CLI."""
     _cache = Cache[int, Self]()
     identifier: ShopIdentifier
     shop_sections: list[ShopSection]
@@ -277,7 +278,7 @@ class Shop(TablePointer):
     def fix_next_shop_pointer(cls, index: int) -> None:
         shop = cls.from_index(index)
         next_shop = cls.from_index(index+1)
-        if args.debug or args.no_patch: # Test for vanilla. (No randomizing.)
+        if cls.verify_pointers:
             assert next_shop.pointer == shop.next_shop_pointer, f"Next shop pointer is not correct. {shop.next_shop_pointer}, {next_shop.pointer}"
         next_shop.pointer = shop.next_shop_pointer
 

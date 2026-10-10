@@ -4,10 +4,10 @@
 
 import logging
 
-from args import args
 from enums.patches import Patch
 from helpers.bits import find_table_pointer
-from helpers.files import original_file, output_bytes
+from helpers import files
+from helpers.files import output_bytes
 from logger import iris
 from structures.capsule import CapsuleAttack, CapsuleLevel, CapsuleMonster
 from structures.character import (
@@ -67,6 +67,7 @@ from tables import (
     TownSpriteObject,
     WordObject,
     ZoneObject,
+    selected,
 )
 
 
@@ -131,7 +132,7 @@ def read_write_all() -> None:
 
 
 def verify_files(msg: str) -> None:
-    if original_file.read_bytes() != output_bytes():
+    if files.original_file.read_bytes() != output_bytes():
         log.critical(msg)
 
 def assert_files_are_same(location: object = None) -> None:
@@ -144,7 +145,7 @@ def assert_files_are_same(location: object = None) -> None:
     :class:`AssertionError`
         When the files are not the same.
     """
-    if original_file.read_bytes() != output_bytes():
+    if files.original_file.read_bytes() != output_bytes():
         msg = f"Files are not the same.\nLocation: {location!r}"
         raise AssertionError(msg)
 
@@ -163,7 +164,7 @@ def test_spells() -> None:
 
 
 def test_shops() -> None:
-    if args.selected_patch is Patch.KUREJI:
+    if selected() is Patch.KUREJI:
         for i, pointer in enumerate(ShopObject.pointers):
             shop = ShopKureji.from_pointer(pointer, i)
             shop.write()

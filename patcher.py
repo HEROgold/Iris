@@ -10,7 +10,7 @@ from bitstring import BitArray
 
 from enums.patches import Patch
 from helpers.addresses import address_from_lorom
-from helpers.files import output_path, write_file
+from helpers.files import write_file
 from logger import iris
 from patches.parser import PatchData, PatchParser
 from structures.item import Item
@@ -61,7 +61,7 @@ def apply_asm_patch(
     iris.info(f"Assembled {asm_path.name} ({len(data)} bytes).")
 
 
-def apply_patch(patch: Patch) -> Path:
+def apply_patch(patch: Patch) -> None:
     """
     Applies a given patch to the file.
 
@@ -69,13 +69,6 @@ def apply_patch(patch: Patch) -> Path:
     -----------
     :param:`patch`: :class:`Patch`
         The patch to apply
-
-    Returns
-    -------
-    :class:`Path`
-        The path to the patched file.
-    :class:`bool`
-        True if the patch was applied, False if not.
 
     Raises
     ------
@@ -85,7 +78,7 @@ def apply_patch(patch: Patch) -> Path:
     # Vanilla > Frue > Spekkio, Kureji
     iris.info(f"Applying patch {patch.name}")
     if patch == Patch.VANILLA:
-        return output_path()
+        return
     patch_dir = Path(__file__).parent/"patches"
     if patch == Patch.FRUE:
         patch_dir = patch_dir/"Lufia2_-_Frue_Lufia_v7"
@@ -99,10 +92,10 @@ def apply_patch(patch: Patch) -> Path:
     else:
         msg = f"Patch {patch.name} not implemented."
         raise NotImplementedError(msg)
-    return patch_files(patch_file)
+    patch_files(patch_file)
 
 
-def patch_files(patch: Path) -> Path:
+def patch_files(patch: Path) -> None:
     """Apply an IPS ``patch`` to the per-seed output in place, through ``write_file``.
 
     The records go straight into the open handle, so writes made before this call (ROM name, event
@@ -139,7 +132,6 @@ def patch_files(patch: Path) -> Path:
 
     write_file.seek(0, 2)
     iris.info(f"Patch applied. {records} records written (final size {write_file.tell()} bytes).")
-    return output_path()
 
 
 def unpack_int(string: bytes):

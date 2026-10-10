@@ -4,12 +4,10 @@
 same bytes, so a structure can't read the original ROM behind an earlier patch's back. Nothing is written to disk
 until :func:`save`.
 
-The CLI opens the session explicitly (:func:`open_rom`). Anything else that touches ``read_file`` / ``write_file``
-first opens a default session from ``--file``, so tests and scripts keep working unchanged. Importing this module
-(or any structure) doesn't need ``--file``.
+Whoever runs Iris opens the session explicitly (:func:`open_rom`): the CLI, the tests' conftest, a headless build.
+Importing this module (or any structure) doesn't need a ROM.
 
-``original_file`` (the headerless source ROM on disk) and ``new_file`` (where :func:`save` writes by default) are
-resolved on first use.
+``original_file`` is the active session's source ROM on disk, resolved on first use.
 """
 
 from collections.abc import Callable
@@ -17,11 +15,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from api.rom import Rom, RomView
-from args import args
 
 # Converts a ROM file to a different extension, and removes a header if present.
 from helpers.extension import convert_rom
-from logger import iris
 
 
 if TYPE_CHECKING:
@@ -31,28 +27,20 @@ if TYPE_CHECKING:
 _session: Rom | None = None
 
 
-def _source() -> Path:
-    if not args.file:
-        msg = "No ROM session: pass --file, or open one with helpers.files.open_rom()."
-        raise RuntimeError(msg)
-    return convert_rom(Path(args.file), ".smc")
-
-
-def output_path(source: Path | None = None) -> Path:
-    """Where :func:`save` writes by default: the source ROM's name with the seed appended."""
-    source = _source() if source is None else source
-    return source.with_stem(f"{source.stem}-{args.seed}").with_suffix(source.suffix)
+def output_path(source: Path, seed: int) -> Path:
+    """The CLI's default output: the source ROM's name with the seed appended."""
+    return source.with_stem(f"{source.stem}-{seed}").with_suffix(source.suffix)
 
 
 def use(rom: Rom | None) -> None:
-    """Make ``rom`` the active session (``None`` drops it; the next use opens the default one again)."""
+    """Make ``rom`` the active session (``None`` drops it)."""
     global _session  # noqa: PLW0603
     _session = rom
 
 
-def open_rom(path: Path | None = None, base: "Patch | None" = None) -> Rom:
-    """Read ``path`` (default: ``--file``) into a new active session and apply the base patch to it."""
-    rom = Rom.open(_source() if path is None else convert_rom(Path(path), ".smc"))
+def open_rom(path: Path, base: "Patch | None" = None) -> Rom:
+    """Read ``path`` into a new active session and apply the base patch to it."""
+    rom = Rom.open(convert_rom(Path(path), ".smc"))
     use(rom)
     if base is not None:
         from patcher import apply_patch  # noqa: PLC0415 - patcher imports this module
@@ -62,18 +50,16 @@ def open_rom(path: Path | None = None, base: "Patch | None" = None) -> Rom:
 
 
 def session() -> Rom:
-    """The active session, opening the default one (``--file``, no base patch) on first use."""
+    """The active session."""
     if _session is None:
-        iris.debug("Opening the default ROM session from --file.")
-        return open_rom()
+        msg = "No ROM session: open one with helpers.files.open_rom()."
+        raise RuntimeError(msg)
     return _session
 
 
-def save(path: Path | None = None) -> Path:
-    """Write the session's image to ``path`` (default: :func:`output_path`). The one disk write of a run."""
-    rom = session()
-    path = output_path(rom.source) if path is None else path
-    rom.save(path)
+def save(path: Path) -> Path:
+    """Write the session's image to ``path``. The one disk write of a run."""
+    session().save(path)
     return path
 
 
@@ -118,11 +104,13 @@ write_file = _SessionFile("writer")
 
 
 def __getattr__(name: str) -> Path:
-    """``original_file`` and ``new_file``, resolved from the session (or ``--file``) on first use."""
+    """``original_file``: the active session's source ROM."""
     if name == "original_file":
-        return session().source or _source()
-    if name == "new_file":
-        return output_path(session().source)
+        source = session().source
+        if source is None:
+            msg = "The active ROM session wasn't read from a file."
+            raise RuntimeError(msg)
+        return source
     msg = f"module {__name__!r} has no attribute {name!r}"
     raise AttributeError(msg)
 
