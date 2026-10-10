@@ -27,28 +27,41 @@ def read_compressed_name(pointer: int) -> bytes:
 
 
 def read_as_decompressed_name(pointer: int) -> bytes:
-    """Read a name from the ROM. Also decompresses the name from the ROM."""
+    """Read and decompress the name at ``pointer``, terminator included. Leaves ``read_file`` just past the terminator.
+
+    A ``0x0A`` byte starts a back-reference (see :func:`create_compression_reference`): its 2-byte operand copies
+    bytes from the name window at ``$87:8000``.
+    """
     read_file.seek(pointer)
-    name = read = read_file.read(1)
-    while read != END:
-        if read == COMPRESS:
-            read_file.seek(read_file.tell() + 2)
-            decompress_name(name)
-        read = read_file.read(1)
-        name += read
-    return name
+    name = b""
+    while (byte := read_file.read(1)) not in (END, b""):
+        if byte == COMPRESS:
+            name += decompress_reference(read_file.read(2))
+        else:
+            name += byte
+    return name + END
+
 
 @restore_pointer
-def decompress_name(name: bytes) -> None:
-    # 12 lower bits = address,
-    # 4 higher bits = bytes to copy -2
-    # stored in byte1 and byte2
-    byte1 = BitArray(read_file.read(1))
-    byte2 = BitArray(read_file.read(1))
-    length = byte2[:4].uint + 2 # Get first digit, add 2
-    copy_address = address_from_lorom((byte2[4:] + byte1).uint + COMPRESSED_NAME_OFFSET)
-    read_file.seek(copy_address)
-    name += read_file.read(length) # + b"\x0A" # we add a mark, so we can split later.??
+def decompress_reference(operand: bytes) -> bytes:
+    """The bytes a back-reference's operand copies: little-endian word, low 12 bits offset, high 4 bits length - 2.
+
+    The copied bytes can hold a back-reference of their own, which is expanded in turn.
+    """
+    word = int.from_bytes(operand, "little")
+    read_file.seek(COMPRESSED_NAMES_START + (word & MAX_ADDRESS_OFFSET))
+    raw = read_file.read((word >> 12) + 2)
+    out = b""
+    i = 0
+    while i < len(raw):
+        if raw[i : i + 1] == COMPRESS and i + 2 < len(raw):
+            out += decompress_reference(raw[i + 1 : i + 3])
+            i += 3
+        else:
+            out += raw[i : i + 1]
+            i += 1
+    return out
+
 
 @restore_pointer
 def find_substring_in_rom(target: bytes) -> int | None:
