@@ -4,17 +4,17 @@ from collections.abc import Iterator
 
 import pytest
 
-from enums.patches import Patch
-from helpers.files import original_file, write_file
-from patcher import apply_patch
-from rom_space.pool import reset_pool
-from scripting.core import Label, assemble
-from scripting.l2basm.edit import reachable
-from scripting.l2basm.helpers import cast_spell, end, label, on_chance, physical_attack, sequence
-from scripting.l2basm.records import MONSTER_HEADER_SIZE
-from structures import subroutine
-from structures.monster import Monster, monster_table, reset_monster_table
-from tables import MonsterObject
+from iris.enums.patches import Patch
+from iris.helpers.files import original_file, write_file
+from iris.patcher import apply_patch
+from iris.rom_space.pool import reset_pool
+from iris.scripting.core import Label, assemble
+from iris.scripting.l2basm.edit import reachable
+from iris.scripting.l2basm.helpers import cast_spell, end, label, on_chance, physical_attack, sequence
+from iris.scripting.l2basm.records import MONSTER_HEADER_SIZE
+from iris.structures import subroutine
+from iris.structures.monster import Monster, monster_table, reset_monster_table
+from iris.tables import MonsterObject
 from tests.reset_file import reset_file
 
 
@@ -82,7 +82,7 @@ def test_attack_offset_points_at_the_attack_label() -> None:
 
 
 def test_fix_boltfish_writes_the_same_bytes_as_before() -> None:
-    from patches.HEROgold import fix_boltfish  # noqa: PLC0415
+    from iris.patches.HEROgold import fix_boltfish  # noqa: PLC0415
 
     fish_start = monster_table().starts()[85]
     vanilla = bytearray(original_file.read_bytes()[fish_start : fish_start + 0x51])

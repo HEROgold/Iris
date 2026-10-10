@@ -1,5 +1,5 @@
-from structures.zone import Zone
-from tables import ZoneObject
+from iris.structures.zone import Zone
+from iris.tables import ZoneObject
 from tests.reset_file import test_equal
 
 

@@ -8,13 +8,13 @@ from collections.abc import Iterator
 
 import pytest
 
-from enums.patches import Patch
-from helpers.files import original_file, write_file
-from patcher import apply_patch
-from patches.HEROgold import foomy_s_firebird_valor
-from rom_space.pool import reset_pool
-from scripting.core import Item, assemble
-from scripting.l2basm.helpers import (
+from iris.enums.patches import Patch
+from iris.helpers.files import original_file, write_file
+from iris.patcher import apply_patch
+from iris.patches.HEROgold import foomy_s_firebird_valor
+from iris.rom_space.pool import reset_pool
+from iris.scripting.core import Item, assemble
+from iris.scripting.l2basm.helpers import (
     Target,
     end,
     flee,
@@ -26,11 +26,11 @@ from scripting.l2basm.helpers import (
     resist,
     sequence,
 )
-from scripting.l2basm.opcodes import PARAM_COUNTS
-from structures.capsule import CapsuleMonster, reset_capsule_table
-from structures.capsule_attack_names import capsule_attack_names
-from structures.capsule_attacks import reset_capsule_attacks
-from tables import CapsuleObject
+from iris.scripting.l2basm.opcodes import PARAM_COUNTS
+from iris.structures.capsule import CapsuleMonster, reset_capsule_table
+from iris.structures.capsule_attack_names import capsule_attack_names
+from iris.structures.capsule_attacks import reset_capsule_attacks
+from iris.tables import CapsuleObject
 from tests.reset_file import reset_file
 
 

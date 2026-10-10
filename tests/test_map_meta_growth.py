@@ -13,11 +13,11 @@ Caveat: like the rest of this suite, ZoneData._cache/MapMeta don't get reset bet
 ROM bytes do (via reset_file). Pick a map index no other test in this session touches.
 """
 
-from helpers.addresses import address_from_lorom
-from helpers.files import output_bytes, write_file
-from structures.map_meta import MapMeta
-from structures.zone import Boundary, Exit
-from tables import MapMetaObject
+from iris.helpers.addresses import address_from_lorom
+from iris.helpers.files import output_bytes, write_file
+from iris.structures.map_meta import MapMeta
+from iris.structures.zone import Boundary, Exit
+from iris.tables import MapMetaObject
 from tests.reset_file import reset_file
 
 

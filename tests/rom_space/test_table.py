@@ -5,10 +5,10 @@ from dataclasses import dataclass
 
 import pytest
 
-from errors import CodeRefMismatch, NoFreeSpace, TableNotMovable
-from rom_space.place import CodeAbs16, CodeBank, CodeLong, PointerSite
-from rom_space.pool import BANK_SIZE, FreeSpace, bank_of
-from rom_space.table import Table
+from iris.errors import CodeRefMismatch, NoFreeSpace, TableNotMovable
+from iris.rom_space.place import CodeAbs16, CodeBank, CodeLong, PointerSite
+from iris.rom_space.pool import BANK_SIZE, FreeSpace, bank_of
+from iris.rom_space.table import Table
 
 
 TABLE = 0x8000  # bank 1

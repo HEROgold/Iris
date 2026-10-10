@@ -4,10 +4,10 @@ from collections.abc import Iterator
 
 import pytest
 
-from helpers.files import write_file
-from patches.HEROgold.everyone_learns_reset import ALL_CHARACTERS, RESET, TUTORIAL_MAP, everyone_learns_reset
-from scripting.l2basm.records import spell_records
-from structures.event_script.containers import MapEvent
+from iris.helpers.files import write_file
+from iris.patches.HEROgold.everyone_learns_reset import ALL_CHARACTERS, RESET, TUTORIAL_MAP, everyone_learns_reset
+from iris.scripting.l2basm.records import spell_records
+from iris.structures.event_script.containers import MapEvent
 from tests.reset_file import reset_file
 
 
@@ -37,8 +37,8 @@ def test_reset_is_learnable_by_everyone() -> None:
 
 def test_the_tutorial_cave_is_left_in_place() -> None:
     """HER-232: the grants don't fit map 5's container in place, and moving it breaks the cave in game."""
-    from helpers.files import original_file  # noqa: PLC0415
-    from tables import MapEventObject  # noqa: PLC0415
+    from iris.helpers.files import original_file  # noqa: PLC0415
+    from iris.tables import MapEventObject  # noqa: PLC0415
 
     everyone_learns_reset()
     record = MapEventObject.address + TUTORIAL_MAP * MapEventObject.size

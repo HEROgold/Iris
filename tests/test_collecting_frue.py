@@ -1,17 +1,17 @@
-from helpers.bits import find_table_pointer
-from structures.capsule import CapsuleMonster
-from structures.character import PlayableCharacter
-from structures.chest import AddressChest, PointerChest
-from structures.events import Event, MapEvent
-from structures.formation import BattleFormation
-from structures.ip_attack import IPAttack
-from structures.item import Item
-from structures.maiden import Clare, Lisa, Marie
-from structures.monster import Monster
-from structures.npc import RoamingNPC
-from structures.shop import Shop
-from structures.spell import Spell
-from structures.sprites import (
+from iris.helpers.bits import find_table_pointer
+from iris.structures.capsule import CapsuleMonster
+from iris.structures.character import PlayableCharacter
+from iris.structures.chest import AddressChest, PointerChest
+from iris.structures.events import Event, MapEvent
+from iris.structures.formation import BattleFormation
+from iris.structures.ip_attack import IPAttack
+from iris.structures.item import Item
+from iris.structures.maiden import Clare, Lisa, Marie
+from iris.structures.monster import Monster
+from iris.structures.npc import RoamingNPC
+from iris.structures.shop import Shop
+from iris.structures.spell import Spell
+from iris.structures.sprites import (
     CapsulePallette,
     CapsuleSprite,
     OverPallette,
@@ -19,8 +19,8 @@ from structures.sprites import (
     SpriteMeta,
     TownSprite,
 )
-from structures.word import Word
-from tables import (
+from iris.structures.word import Word
+from iris.tables import (
     AncientChest1Object,
     AncientChest2Object,
     BossFormationObject,

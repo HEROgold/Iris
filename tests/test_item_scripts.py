@@ -5,17 +5,17 @@ from copy import deepcopy
 
 import pytest
 
-from enums.flags import ItemEffects
-from enums.patches import Patch
-from helpers.files import original_file, write_file
-from patcher import apply_patch
-from rom_space.pool import reset_pool
-from scripting.core import Data, Label, assemble
-from scripting.l2basm.helpers import physical_attack, sequence
-from scripting.l2basm.records import ITEM_WORDS
-from structures import subroutine
-from structures.item import Item, item_table, reset_item_table
-from tables import ItemObject
+from iris.enums.flags import ItemEffects
+from iris.enums.patches import Patch
+from iris.helpers.files import original_file, write_file
+from iris.patcher import apply_patch
+from iris.rom_space.pool import reset_pool
+from iris.scripting.core import Data, Label, assemble
+from iris.scripting.l2basm.helpers import physical_attack, sequence
+from iris.scripting.l2basm.records import ITEM_WORDS
+from iris.structures import subroutine
+from iris.structures.item import Item, item_table, reset_item_table
+from iris.tables import ItemObject
 from tests.reset_file import reset_file
 
 

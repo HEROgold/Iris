@@ -2,11 +2,11 @@
 
 import pytest
 
-from errors import ScriptAssemblyError
-from scripting.core import Label, assemble
-from scripting.l2basm import parse_record
-from scripting.l2basm.edit import reachable, replace_entry
-from scripting.l2basm.helpers import end, flee, label, physical_attack, sequence
+from iris.errors import ScriptAssemblyError
+from iris.scripting.core import Label, assemble
+from iris.scripting.l2basm import parse_record
+from iris.scripting.l2basm.edit import reachable, replace_entry
+from iris.scripting.l2basm.helpers import end, flee, label, physical_attack, sequence
 
 
 SHARED = bytes.fromhex("03 06 00 03 09 00 28 00 00 29 00")

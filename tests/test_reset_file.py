@@ -2,7 +2,7 @@
 
 import pytest
 
-from helpers.files import original_file, write_file
+from iris.helpers.files import original_file, write_file
 from tests.reset_file import test_equal as files_equal
 
 

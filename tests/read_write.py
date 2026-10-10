@@ -4,35 +4,34 @@
 
 import logging
 
-from enums.patches import Patch
-from helpers.bits import find_table_pointer
-from helpers import files
-from helpers.files import output_bytes
-from logger import iris
-from structures.capsule import CapsuleAttack, CapsuleLevel, CapsuleMonster
-from structures.character import (
+from iris.enums.patches import Patch
+from iris.helpers import files
+from iris.helpers.bits import find_table_pointer
+from iris.helpers.files import output_bytes
+from iris.logger import iris
+from iris.structures.capsule import CapsuleAttack, CapsuleLevel, CapsuleMonster
+from iris.structures.character import (
     CharacterExperience,
     CharacterGrowth,
     CharacterLevel,
     InitialEquipment,
     PlayableCharacter,
 )
-from structures.chest import AddressChest, PointerChest
-from structures.events import Event, MapEvent
-from structures.formation import BattleFormation
-from structures.ip_attack import IPAttack
-from structures.item import Item, ItemName
-from structures.map_meta import MapMeta
-from structures.monster import Monster
-from structures.monster_move import MonsterMove
-from structures.npc import RoamingNPC
-from structures.map_meta import MapMeta
-from structures.shop import Shop, ShopKureji
-from structures.spell import Spell
-from structures.sprites import CapsulePallette, CapsuleSprite, OverPallette, OverSprite, SpriteMeta, TownSprite
-from structures.word import Word
-from structures.zone import Zone
-from tables import (
+from iris.structures.chest import AddressChest, PointerChest
+from iris.structures.events import Event, MapEvent
+from iris.structures.formation import BattleFormation
+from iris.structures.ip_attack import IPAttack
+from iris.structures.item import Item, ItemName
+from iris.structures.map_meta import MapMeta
+from iris.structures.monster import Monster
+from iris.structures.monster_move import MonsterMove
+from iris.structures.npc import RoamingNPC
+from iris.structures.shop import Shop, ShopKureji
+from iris.structures.spell import Spell
+from iris.structures.sprites import CapsulePallette, CapsuleSprite, OverPallette, OverSprite, SpriteMeta, TownSprite
+from iris.structures.word import Word
+from iris.structures.zone import Zone
+from iris.tables import (
     AncientChest1Object,
     AncientChest2Object,
     BlueChestObject,

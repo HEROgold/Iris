@@ -13,9 +13,9 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from helpers.files import original_file, output_bytes, write_file
-from patcher import ASAR_EXE
-from patches.archipelago.ancient_cave.basepatch import _ARCHIPELAGO_DIR, apply_ancient_cave_base
+from iris.helpers.files import original_file, output_bytes, write_file
+from iris.patcher import ASAR_EXE
+from iris.patches.archipelago.ancient_cave.basepatch import _ARCHIPELAGO_DIR, apply_ancient_cave_base
 from tests.reset_file import reset_file
 
 

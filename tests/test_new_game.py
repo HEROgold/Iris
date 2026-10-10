@@ -4,9 +4,9 @@ from collections.abc import Iterator
 
 import pytest
 
-from helpers.addresses import address_from_lorom
-from helpers.files import write_file
-from patches.HEROgold.new_game import EVENT_FLAGS, TUTORIAL_FLAGS, apply_new_game_hook
+from iris.helpers.addresses import address_from_lorom
+from iris.helpers.files import write_file
+from iris.patches.HEROgold.new_game import EVENT_FLAGS, TUTORIAL_FLAGS, apply_new_game_hook
 from tests.reset_file import reset_file
 
 
@@ -76,7 +76,7 @@ def test_tutorial_flags_match_the_cave_events() -> None:
 
 
 def test_start_items_go_through_the_games_add_item_routine() -> None:
-    from lookups.items import Items  # noqa: PLC0415
+    from iris.lookups.items import Items  # noqa: PLC0415
 
     apply_new_game_hook(unlock_warps=False, start_items=[(Items.SPEED_POTION, 3), (Items.SHORT_SWORD, 1)])
     hook = _hook()
@@ -87,7 +87,7 @@ def test_start_items_go_through_the_games_add_item_routine() -> None:
 
 
 def test_start_items_reject_a_quantity_a_slot_cant_hold() -> None:
-    from lookups.items import Items  # noqa: PLC0415
+    from iris.lookups.items import Items  # noqa: PLC0415
 
     with pytest.raises(ValueError, match="quantity"):
         apply_new_game_hook(start_items=[(Items.POTION, 10)])

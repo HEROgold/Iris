@@ -2,8 +2,8 @@
 
 import pytest
 
-from errors import ScriptAssemblyError
-from scripting.core import (
+from iris.errors import ScriptAssemblyError
+from iris.scripting.core import (
     U8,
     Data,
     External,

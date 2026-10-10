@@ -5,10 +5,10 @@ Moved from test_capsule_scripts.py; the decoder and helpers come from there.
 
 import pytest
 
-from enums.patches import Patch
-from patcher import apply_patch
-from structures.capsule import CapsuleMonster
-from tables import CapsuleObject
+from iris.enums.patches import Patch
+from iris.patcher import apply_patch
+from iris.structures.capsule import CapsuleMonster
+from iris.tables import CapsuleObject
 from tests.test_capsule_scripts import (  # noqa: F401 (_clean_output is the autouse fixture)
     BANK_END,
     FOOMY_S,
@@ -25,7 +25,6 @@ from tests.test_capsule_scripts import (  # noqa: F401 (_clean_output is the aut
     _vanilla_reaction,
     _write,
 )
-
 
 
 def test_growing_script_moves_the_record_into_free_space() -> None:

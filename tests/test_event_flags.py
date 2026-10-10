@@ -4,8 +4,8 @@ import re
 
 import pytest
 
-from enums.flags import GOAL_FLAG, SCRATCH_FLAGS_START, VANILLA_UNNAMED_FLAGS, EventFlag
-from structures.event_script.dump import dump_all
+from iris.enums.flags import GOAL_FLAG, SCRATCH_FLAGS_START, VANILLA_UNNAMED_FLAGS, EventFlag
+from iris.structures.event_script.dump import dump_all
 from tests.reset_file import reset_file
 
 

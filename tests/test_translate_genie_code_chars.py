@@ -1,7 +1,7 @@
 import pytest
 
-from helpers.files import write_file
-from patcher import apply_game_genie_codes, translate_game_genie_code_snes
+from iris.helpers.files import write_file
+from iris.patcher import apply_game_genie_codes, translate_game_genie_code_snes
 from tests.reset_file import reset_file
 from tests.reset_file import test_equal as files_equal
 

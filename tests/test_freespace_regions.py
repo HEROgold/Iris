@@ -4,13 +4,13 @@ Mirrors ``test_scale_encounters.py::test_reserved_region_is_blank_in_the_base_ro
 constant is a claim, not a fact, until checked against the actual bytes of whichever ROM is loaded.
 """
 
-from constants import (
+from iris.constants import (
     EVENT_SCRIPT_FREESPACE,
     RESERVED_REGIONS,
     ZONE_DATA_FREESPACE,
 )
-from helpers.files import read_file
-from helpers.rom_expansion import assert_no_overlaps
+from iris.helpers.files import read_file
+from iris.helpers.rom_expansion import assert_no_overlaps
 
 
 _BASE_ROM_SIZE = 3 * 1024 * 1024  # the unexpanded cart

@@ -4,10 +4,10 @@ from collections.abc import Iterator
 
 import pytest
 
-import args
-from args import parse_args
-from enums.patches import Patch
-from tables import BlueChestObject, CapAttackNameObject, ZoneObject, frue, kureji, select, selected, vanilla
+from iris import args
+from iris.args import parse_args
+from iris.enums.patches import Patch
+from iris.tables import BlueChestObject, CapAttackNameObject, ZoneObject, frue, kureji, select, selected, vanilla
 
 
 @pytest.fixture

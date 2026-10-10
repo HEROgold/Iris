@@ -1,8 +1,8 @@
 """``apply_patch`` must patch the per-seed output in place, keeping writes that happened before it ran."""
 
-from enums.patches import Patch
-from helpers.files import write_file
-from patcher import apply_patch
+from iris.enums.patches import Patch
+from iris.helpers.files import write_file
+from iris.patcher import apply_patch
 from tests.reset_file import reset_file
 
 

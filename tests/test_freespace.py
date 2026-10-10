@@ -4,9 +4,9 @@ Pure allocator-logic tests: no ROM bytes are read, only helpers.files.write_file
 relocate_pointer_table_entry) which the ROM fixture in conftest.py already provides.
 """
 
-from errors import EventFreeSpaceError
-from helpers.files import output_bytes, write_file
-from helpers.freespace import BANK_MASK, REACH, FreeSpaceAllocator, relocate_pointer_table_entry
+from iris.errors import EventFreeSpaceError
+from iris.helpers.files import output_bytes, write_file
+from iris.helpers.freespace import BANK_MASK, REACH, FreeSpaceAllocator, relocate_pointer_table_entry
 from tests.reset_file import reset_file
 
 

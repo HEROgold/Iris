@@ -5,16 +5,16 @@ from copy import deepcopy
 
 import pytest
 
-from enums.patches import Patch
-from errors import TableNotMovable
-from helpers.files import original_file, write_file
-from patcher import apply_patch
-from rom_space.pool import bank_of, pool, reset_pool
-from scripting.core import Instruction
-from scripting.l2basm.edit import replace_entry
-from scripting.l2basm.helpers import block, end, physical_attack, sequence
-from scripting.l2basm.records import SPELL_COUNT, SPELL_SCRIPT_FIELD, SPELL_TABLE
-from structures.spell import Spell, reset_spell_table, spell_table
+from iris.enums.patches import Patch
+from iris.errors import TableNotMovable
+from iris.helpers.files import original_file, write_file
+from iris.patcher import apply_patch
+from iris.rom_space.pool import bank_of, pool, reset_pool
+from iris.scripting.core import Instruction
+from iris.scripting.l2basm.edit import replace_entry
+from iris.scripting.l2basm.helpers import block, end, physical_attack, sequence
+from iris.scripting.l2basm.records import SPELL_COUNT, SPELL_SCRIPT_FIELD, SPELL_TABLE
+from iris.structures.spell import Spell, reset_spell_table, spell_table
 from tests.reset_file import reset_file
 
 

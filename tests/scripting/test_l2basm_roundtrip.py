@@ -4,12 +4,12 @@ from collections.abc import Iterator
 
 import pytest
 
-from enums.patches import Patch
-from helpers.files import read_file, write_file
-from patcher import apply_patch
-from scripting.core import Label, assemble
-from scripting.l2basm import parse_record
-from scripting.l2basm.records import ALL_READERS, RecordSource, read_record
+from iris.enums.patches import Patch
+from iris.helpers.files import read_file, write_file
+from iris.patcher import apply_patch
+from iris.scripting.core import Label, assemble
+from iris.scripting.l2basm import parse_record
+from iris.scripting.l2basm.records import ALL_READERS, RecordSource, read_record
 from tests.reset_file import reset_file
 
 
@@ -61,7 +61,7 @@ def test_ten_monsters_share_blocks_between_attack_and_defense() -> None:
 
 
 def _reach_overlaps(parsed: object) -> int:
-    from scripting.l2basm.edit import reachable  # noqa: PLC0415 (edit.py arrives in Task 7)
+    from iris.scripting.l2basm.edit import reachable  # noqa: PLC0415 (edit.py arrives in Task 7)
 
     script = parsed.script  # type: ignore[attr-defined]
     return int(bool(reachable(script, "attack") & reachable(script, "defense")))

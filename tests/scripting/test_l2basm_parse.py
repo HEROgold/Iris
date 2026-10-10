@@ -1,7 +1,7 @@
 """parse_record on hand-made records: walking, labels, Data gaps, shared blocks, External targets."""
 
-from scripting.core import Data, External, Instruction, Label, assemble
-from scripting.l2basm import parse_record
+from iris.scripting.core import Data, External, Instruction, Label, assemble
+from iris.scripting.l2basm import parse_record
 
 
 def _hex(text: str) -> bytes:

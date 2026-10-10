@@ -7,14 +7,14 @@ from pathlib import Path
 
 import pytest
 
-from args import parse_args
-from build import Options, build
-from enums.patches import Patch
-from helpers import files
-from helpers.files import session, use
-from structures.monster import Monster
-from structures.shop import Shop
-from tables import select, selected
+from iris.args import parse_args
+from iris.build import Options, build
+from iris.enums.patches import Patch
+from iris.helpers import files
+from iris.helpers.files import session, use
+from iris.structures.monster import Monster
+from iris.structures.shop import Shop
+from iris.tables import select, selected
 
 
 ROOT = Path(__file__).parent.parent
@@ -56,7 +56,7 @@ def test_build_matches_the_cli(source: bytes, tmp_path: Path) -> None:
     rom = tmp_path / "rom.smc"
     rom.write_bytes(source)
     argv = ["--file", str(rom), "--seed", "2", "--vanilla", "--debug", "--debug-party", "--scale-encounters", "-5", "10"]
-    subprocess.run([sys.executable, "__main__.py", *argv], cwd=ROOT, check=True, capture_output=True)  # noqa: S603
+    subprocess.run([sys.executable, "-m", "iris", *argv], cwd=ROOT, check=True, capture_output=True)  # noqa: S603
     cli = (tmp_path / "rom-2.smc").read_bytes()
 
     assert build(source, Options.from_args(parse_args(argv))) == cli

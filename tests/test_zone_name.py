@@ -8,9 +8,9 @@ from collections.abc import Iterator
 
 import pytest
 
-from helpers.files import original_file, output_bytes
-from helpers.name import compress_name
-from structures.zone import Zone
+from iris.helpers.files import original_file, output_bytes
+from iris.helpers.name import compress_name
+from iris.structures.zone import Zone
 from tests.reset_file import reset_file
 
 

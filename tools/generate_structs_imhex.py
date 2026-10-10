@@ -29,10 +29,11 @@ import re
 from pathlib import Path
 from types import ModuleType
 
+
 SRC_DIR = Path(__file__).resolve().parent.parent          # .../src
 REPO_ROOT = SRC_DIR.parent                                 # repo root
-VANILLA_PATH = SRC_DIR / "tables" / "vanilla.py"
-LOOKUPS_DIR = SRC_DIR / "lookups"
+VANILLA_PATH = SRC_DIR / "iris" / "tables" / "vanilla.py"
+LOOKUPS_DIR = SRC_DIR / "iris" / "lookups"
 EVENTS_DUMP = REPO_ROOT / "events_dump.txt"
 OUTPUT = REPO_ROOT / "structs.imhex"
 

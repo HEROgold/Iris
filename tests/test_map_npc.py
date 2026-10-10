@@ -8,11 +8,11 @@ Uses Elcid (map 0x03), the map `patches/HEROgold/party_toggle.py` edits in place
 
 import pytest
 
-from errors import EventFreeSpaceError
-from helpers.files import output_bytes, write_file
-from structures.event_script.instructions import Instruction
-from structures.map_npc import add_npc
-from structures.zone import Zone
+from iris.errors import EventFreeSpaceError
+from iris.helpers.files import output_bytes, write_file
+from iris.structures.event_script.instructions import Instruction
+from iris.structures.map_npc import add_npc
+from iris.structures.zone import Zone
 from tests.reset_file import reset_file
 
 
