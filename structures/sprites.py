@@ -1,7 +1,7 @@
 """Extra structures for sprites and palettes, for future support of gathering sprites and palettes from the ROM.
 
 Raw sprite graphics data lives in two ROM regions (headerless offsets): 0xDFFF0-0xF2FFF (0x13010 bytes) and
-0x2FE000 to end of ROM; see the SpriteBank / SpriteBankTail markers in src/lufia2.hexpat.
+0x2FE000 to end of ROM; see sprite_bank / sprite_bank_tail in src/lufia2.hexpat.
 """
 
 from dataclasses import dataclass
