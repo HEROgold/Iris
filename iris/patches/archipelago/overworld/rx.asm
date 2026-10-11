@@ -1,5 +1,6 @@
 ; Iris: receive Archipelago items in the overworld game (Iris-Dev#20). Ported from the lufia2ac base patch's RX.
-; The main loop also runs key_items.asm (progressive items, ship type), included at the end.
+; The main loop also runs key_items.asm (progressive items, ship type), included at the end. Item ids from $0200 are
+; characters, capsules and maidens (rx_specials.asm).
 ;
 ; The SNI client appends received items to a list in expanded SRAM and bumps the "received" counter; the field main
 ; loop gives one item per frame through the chest routine (the "found X" message, without the chest animation) until
@@ -62,6 +63,11 @@ RX:
     asl
     tax
     lda $F02802,x           ; item n is at $F02802 + 2n, n counted from 1
+    cmp.w #$0200
+    bcc .item
+    jsr ReceiveSpecial      ; a character, capsule or maiden (rx_specials.asm)
+    bra +
+.item:
     sta $7FD4EF             ; give it as a chest's item
     sep #$20
     jsl $8EC1EF             ; chest routine, without the chest animation
@@ -111,4 +117,5 @@ LoadRX:
     rep #$10
     rtl
 
+incsrc "rx_specials.asm"
 incsrc "key_items.asm"
