@@ -13,13 +13,16 @@ from typing import TYPE_CHECKING, ClassVar, Self, SupportsIndex
 
 from iris._types.objects import Cache
 from iris.enums.event_scripts import EventClass
-from iris.helpers.addresses import address_to_lorom
+from iris.constants import ZONE_DATA_FREESPACE
+from iris.helpers.addresses import address_from_lorom, address_to_lorom
 from iris.helpers.bits import read_little_int
 from iris.helpers.files import on_new_session, read_file, restore_pointer, write_file
-from iris.helpers.freespace import relocate_pointer_table_entry, zone_data_allocator
+from iris.helpers.freespace import event_script_allocator, relocate_pointer_table_entry, zone_data_allocator
 from iris.helpers.name import compress_name, read_as_decompressed_name
+from iris.helpers.rom_expansion import ensure_rom_expanded
 from iris.logger import iris
 from iris.structures.event_script import EventScript, MapEvent, ZoneEventManager
+from iris.structures.event_script.containers import EVENT_BANK_LIMIT
 from iris.structures.zone_data_pointers import zone_data_pointers
 from iris.tables import MapMetaObject, ZoneObject
 
@@ -564,7 +567,7 @@ class Zone:
         inst.event = MapEvent.from_index(index)
         Zone.event_manager.load_zone_events(inst)
         # get_npc_script / export_zone_events are called on demand, not necessarily here.
-        inst.data = ZoneData.from_pointer(zone_data_pointers[index])
+        inst.data = ZoneData.from_pointer(zone_data_pointer(index))
 
         cls._cache.to_cache(index, inst)
 
@@ -695,6 +698,49 @@ class Zone:
             if name.endswith(b"\x00"):
                 break
         return name
+
+@restore_pointer
+def zone_data_pointer(index: int) -> int:
+    """Where map ``index``'s ZoneData is now: its pointer-table entry, which a move updates.
+
+    ``zone_data_pointers`` holds the vanilla addresses; past the table's end it is the only source.
+    """
+    if index >= MapMetaObject.count:
+        return zone_data_pointers[index]
+    read_file.seek(ZONE_DATA_POINTER_TABLE + index * MapMetaObject.reference_pointer)
+    return address_from_lorom(read_little_int(read_file, MapMetaObject.reference_pointer))
+
+
+def move_all_zone_data() -> None:
+    """Move every map's ZoneData, unchanged, to ``ZONE_DATA_FREESPACE``, and give the bytes it leaves to event scripts.
+
+    An event container that grows must move, and it must stay in banks $80-$BF (HER-232), where only a few hundred
+    bytes are free. Vanilla ZoneData fills 111KB of banks $91-$94 and works from the expansion area as well (HER-206),
+    so moving it out is what makes room for growing events. Each blob is copied as is (its offsets are relative to its
+    own start) and its pointer-table entry repointed; its old bytes stay as they are until an event container takes
+    them. A ZoneData already read follows its blob. Blobs already outside banks $80-$BF are left alone, so a second
+    call does nothing.
+    """
+    ensure_rom_expanded(ZONE_DATA_FREESPACE.stop)
+    for index in range(MapMetaObject.count):
+        start = zone_data_pointer(index)
+        if start >= EVENT_BANK_LIMIT:
+            continue
+        read_file.seek(start)
+        length = read_little_int(read_file, 2)  # the size counts its own 2 bytes: the next blob starts at start+size
+        read_file.seek(start)
+        blob = read_file.read(length)
+        pointer = zone_data_allocator.allocate(length)
+        zone_data_allocator.write(pointer, blob)
+        relocate_pointer_table_entry(
+            ZONE_DATA_POINTER_TABLE, index, MapMetaObject.reference_pointer, pointer, encode=address_to_lorom,
+        )
+        if (zone_data := ZoneData._cache.from_cache(start)) is not None:  # noqa: SLF001
+            ZoneData._cache.discard(start)  # noqa: SLF001
+            zone_data.start = pointer
+            ZoneData._cache.to_cache(pointer, zone_data)  # noqa: SLF001
+        event_script_allocator.deallocate(start, length)
+
 
 @on_new_session
 def reset_zones() -> None:

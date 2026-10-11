@@ -291,14 +291,16 @@ class MapEvent:
             event_list.write()
 
     def _needs_relocation(self) -> bool:
-        """True if any dirty script's recompiled bytes would overflow its original slot."""
+        """True if any dirty script's recompiled bytes would overflow its original slot, compressed or not."""
         from iris.structures.event_script.compiler import compile_script  # noqa: PLC0415
 
         for event_list in self.event_lists:
             for event in event_list.events:
                 if not event.dirty:
                     continue
-                if len(compile_script(event, ignore_pointers=True)) > len(event.raw):
+                if len(compile_script(event, ignore_pointers=True)) <= len(event.raw):
+                    continue
+                if len(compile_script(event, ignore_pointers=True, compress=True)) > len(event.raw):
                     return True
         return False
 
@@ -316,7 +318,13 @@ class MapEvent:
         the NPC script) is allocated as **one** contiguous, bank-local block via
         ``helpers.freespace.event_script_allocator``. Staying within a single 32KB bank keeps every
         event-list table offset (checked against ``0..0xFFFF`` by ``EventList.write``) comfortably
-        in range for free, since a bank is half that span.
+        in range for free, since a bank is half that span. That pool is empty until
+        ``structures.zone.move_all_zone_data`` gives it the bytes ZoneData leaves in banks $91-$94.
+
+        Every script is compiled with ``compress=True``: its text only copies its own earlier text, never the bytes
+        that sat in front of it at the old address. The old bytes are left as they are and never handed out again:
+        map names (``<REPEAT>`` from $87:8000), other scripts' back-references and FRUE's shared code may still read
+        them.
 
         Every ``Address`` operand a successfully-parsed script can contain is local (script-relative,
         ``instructions.Address`` raises at parse time on anything else -- see its docstring), so
@@ -339,19 +347,23 @@ class MapEvent:
         lengths: dict[int, int] = {}
         for event_list in class_lists:
             for event in event_list.events:
-                lengths[id(event)] = len(compile_script(event, ignore_pointers=True))
-        lengths[id(npc_script)] = len(compile_script(npc_script, ignore_pointers=True))
+                lengths[id(event)] = len(compile_script(event, ignore_pointers=True, compress=True))
+        lengths[id(npc_script)] = len(compile_script(npc_script, ignore_pointers=True, compress=True))
 
         table_sizes = [len(event_list.events) * 3 + 1 for event_list in class_lists]
         total_size = EVENT_HEADER_SIZE + sum(table_sizes) + sum(lengths.values())
-        header_base = event_script_allocator.allocate(total_size)
-        if header_base + total_size > EVENT_BANK_LIMIT:
-            event_script_allocator.deallocate(header_base, total_size)
+        try:
+            header_base = event_script_allocator.allocate(total_size)
+        except EventFreeSpaceError:
             msg = (
                 f"Map {self.index:#04x}: its event container ({total_size} bytes) no longer fits in place, and event "
-                f"scripts must stay in banks $80-$BF (below {EVENT_BANK_LIMIT:#x}); there is no free space there "
-                "(HER-232)."
+                f"scripts must stay in banks $80-$BF (below {EVENT_BANK_LIMIT:#x}, HER-232). Their only free space is "
+                "what structures.zone.move_all_zone_data frees; call it first."
             )
+            raise EventFreeSpaceError(msg) from None
+        if header_base + total_size > EVENT_BANK_LIMIT:
+            event_script_allocator.deallocate(header_base, total_size)
+            msg = f"Map {self.index:#04x}: the event pool handed out {header_base:#x}, outside banks $80-$BF."
             raise EventFreeSpaceError(msg)
 
         # Pass 2: assign every final address now that the full layout size is known.
@@ -398,15 +410,14 @@ class MapEvent:
         # Pass 4: recompile (now that base_pointer/pointer are final, so local Address operands
         # resolve correctly) and write every script, dirty or not.
         for script in [event for event_list in class_lists for event in event_list.events] + [npc_script]:
-            data = compile_script(script, script_pointer=script.pointer)
-            script.raw = data
-            script.dirty = False
+            data = compile_script(script, script_pointer=script.pointer, compress=True)
             # Scripts are packed with zero slack in the new layout (see docstring); a later
             # in-place edit's overflow check (EventScript.write's `_slot_size`) must reflect that,
             # not whatever slack the script happened to have at its old, pre-relocation address.
             script._slot_size = len(data)  # noqa: SLF001 -- this method IS EventScript's relocator
             write_file.seek(script.pointer)
             write_file.write(data)
+            script.parse_written(data)
 
         # Pass 5: write the event-list header (magic + six offsets from header_base).
         write_file.seek(header_base)

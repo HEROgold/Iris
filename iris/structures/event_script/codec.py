@@ -119,6 +119,64 @@ def resolve_repeat(buffer: bytes, params: bytes) -> bytes:
     return buffer[index : index + length] if index >= 0 else b""
 
 
+REPEAT_CODE = 0x0A
+REPEAT_COPYABLE = range(0x20, 0x80)
+"""Bytes a ``<REPEAT>`` may copy: plain ASCII. Every back-reference in the vanilla scripts copies only these (no word
+codes, no control codes), so the game is never asked to copy half of a two-byte code."""
+REPEAT_MIN_LENGTH = 4
+"""A back-reference costs 3 bytes, so only a copy of 4 or more saves space."""
+REPEAT_MAX_LENGTH = 17
+"""The length field is 4 bits, plus 2."""
+REPEAT_MAX_DISTANCE = 0xFFF
+_UNCOPYABLE = 0x00
+"""Stands in the window for a byte a back-reference must not copy; never in REPEAT_COPYABLE, so it never matches."""
+
+
+class RepeatWindow:
+    """What one script has emitted so far, as a ``<REPEAT>`` back-reference may copy it (terrorwave's ``Script.compress``).
+
+    Only literal text the script itself emitted is copyable, so the result depends neither on the bytes in front of the
+    script (it can be moved) nor on the values of its jump addresses (the length pass and the final pass agree).
+    """
+
+    def __init__(self) -> None:
+        self._window = bytearray()
+
+    def skip(self, length: int) -> None:
+        """Account for ``length`` emitted bytes no back-reference may copy (opcodes, operands, word codes)."""
+        self._window.extend(bytes([_UNCOPYABLE]) * length)
+
+    def compress(self, text: bytes) -> list[int]:
+        """Emit the literal run ``text``, replacing each longest copyable piece seen before with a back-reference."""
+        out: list[int] = []
+        while text:
+            match = self._longest_match(text)
+            if match is None:
+                out.append(text[0])
+                self._window.append(text[0] if text[0] in REPEAT_COPYABLE else _UNCOPYABLE)
+                text = text[1:]
+                continue
+            source, length = match
+            fields = ((length - 2) << 12) | (len(self._window) + 1 - source)
+            out.extend((REPEAT_CODE, fields & 0xFF, fields >> 8))
+            self.skip(3)
+            text = text[length:]
+        return out
+
+    def _longest_match(self, text: bytes) -> tuple[int, int] | None:
+        """``(source offset, length)`` of the longest earlier copy of a prefix of ``text``, if one saves space."""
+        position = len(self._window)
+        start = max(position + 1 - REPEAT_MAX_DISTANCE, 0)
+        for length in range(min(REPEAT_MAX_LENGTH, len(text)), REPEAT_MIN_LENGTH - 1, -1):
+            piece = text[:length]
+            if any(byte not in REPEAT_COPYABLE for byte in piece):
+                continue
+            source = self._window.rfind(piece, start, position)
+            if source != -1:
+                return source, length
+        return None
+
+
 def render_text(chunks: list[TextChunk]) -> str:
     """Render decoded chunks into the dump's human-readable text form."""
     out = ""

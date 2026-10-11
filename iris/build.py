@@ -51,11 +51,12 @@ from iris.patches.RealCritical import (
     killer_names,
 )
 from iris.patches.archipelago.overworld.basepatch import apply_overworld_basepatch
+from iris.patches.archipelago.overworld.hint_npcs import hint_npc_candidates
 from iris.patches.RealCritical.sprites import bunny_girls, fix_shrine_tile_set
 from iris.structures.item import Item
 from iris.structures.monster import Monster
 from iris.structures.shop import Shop
-from iris.structures.zone import Zone
+from iris.structures.zone import Zone, move_all_zone_data
 from iris.tables import select
 from tests.read_write import read_write_all
 
@@ -148,6 +149,9 @@ def build(source: Path | bytes, options: Options) -> bytes:
         return output_bytes()
 
     set_rom_name(b"Lufia II (Iris patch)") # For identification purposes.
+    if options.archipelago:
+        move_all_zone_data()  # the room event containers need to grow (hint slots), before anything reads ZoneData
+        hint_npcs = hint_npc_candidates()  # before any patch changes a script
 
     party_toggle_in_elcid(require_found=not options.debug_party)  # event-script demo: Elcid townspeople toggle party join/leave
     set_found_flags_on_story_joins()  # story joins also set each character's "found/unlocked" flag
@@ -210,7 +214,7 @@ def build(source: Path | bytes, options: Options) -> bytes:
     # randomize_chest_locations()   # shuffle WHERE chests sit, within each map
 
     if options.archipelago:
-        apply_overworld_basepatch()
+        apply_overworld_basepatch(hint_npcs)
     return output_bytes()
 
 

@@ -16,7 +16,7 @@ directly fixing the "two independent bump allocators can collide" problem
 
 from collections.abc import Callable
 
-from iris.constants import EVENT_SCRIPT_FREESPACE, ZONE_DATA_FREESPACE
+from iris.constants import ZONE_DATA_FREESPACE
 from iris.errors import EventFreeSpaceError
 from iris.helpers.files import on_new_session, write_file
 
@@ -37,12 +37,16 @@ class FreeSpaceAllocator:
 
     def __init__(self, region: range, *, bank_local: bool = False) -> None:
         self._region = region
-        self._regions: list[list[int]] = [[region.start, region.stop]]
+        self._regions: list[list[int]] = []
         self._bank_local = bank_local
+        self.reset()
 
     def reset(self) -> None:
-        """Free the whole region again (a new ROM session starts with nothing allocated)."""
-        self._regions = [[self._region.start, self._region.stop]]
+        """Free the whole region again (a new ROM session starts with nothing allocated).
+
+        An empty ``region`` starts with nothing at all: such a pool only holds what :meth:`deallocate` gives it.
+        """
+        self._regions = [[self._region.start, self._region.stop]] if self._region else []
 
     def allocate(self, length: int, *, near: list[int] | None = None) -> int:
         """Reserve ``length`` bytes and return the chosen start offset.
@@ -136,7 +140,10 @@ def relocate_pointer_table_entry(
 # so two relocations into the same pool cannot pick overlapping bytes (fixes the "zone.py's bump
 # cursor and event_script/allocator.py's FreeSpaceAllocator never coordinated" gap -- both drew
 # independently from constants.EMPTY_BYTES, which is also just plain wrong; see that constant).
-zone_data_allocator = FreeSpaceAllocator(ZONE_DATA_FREESPACE)
-event_script_allocator = FreeSpaceAllocator(EVENT_SCRIPT_FREESPACE, bank_local=True)
+# ZoneData blobs stay inside one bank each, so the game never has to read one across a bank boundary.
+zone_data_allocator = FreeSpaceAllocator(ZONE_DATA_FREESPACE, bank_local=True)
+# Event containers must stay in banks $80-$BF (HER-232), and the expansion area is outside them, so this pool starts
+# empty: structures.zone.move_all_zone_data gives it the bytes ZoneData leaves behind in banks $91-$94.
+event_script_allocator = FreeSpaceAllocator(range(0), bank_local=True)
 on_new_session(zone_data_allocator.reset)
 on_new_session(event_script_allocator.reset)

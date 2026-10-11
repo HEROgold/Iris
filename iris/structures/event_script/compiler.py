@@ -10,13 +10,17 @@ original bytes), so an unchanged script compiles back to its original bytes. A l
 a ``<REPEAT>`` back-reference is re-emitted as that back-reference only while it still expands to the
 same bytes in the new output; otherwise (e.g. an earlier edit shifted the window) it is written literally.
 
+With ``compress=True`` the original back-references are dropped and the text is compressed again, copying only the
+script's own earlier text (:class:`codec.RepeatWindow`). The result doesn't depend on the bytes in front of the script,
+so it is what a script must be compiled with when it moves, and it is usually smaller than the original.
+
 Compile once with ``ignore_pointers=True`` to measure the length, allocate, then compile again with
 the real ``script_pointer`` to fix the offsets.
 """
 
 from typing import TYPE_CHECKING
 
-from iris.structures.event_script.codec import resolve_repeat
+from iris.structures.event_script.codec import REPEAT_CODE, RepeatWindow, resolve_repeat
 from iris.structures.event_script.instructions import Address, Instruction, TextChunk
 from iris.structures.event_script.opcodes import ADDR, POINTERS, TEXT, VARIABLE, operand_shape
 
@@ -25,8 +29,8 @@ if TYPE_CHECKING:
     from iris.structures.event_script.script import EventScript
 
 
-type Token = int | Address
-REPEAT_CODE = 0x0A
+type Token = int | Address | bytes
+"""A byte, a jump target (2 bytes), or a literal text run still to be compressed (``compress=True`` only)."""
 
 
 def _emit_text(
@@ -34,11 +38,18 @@ def _emit_text(
     chunks: list[TextChunk],
     repeats: list[tuple[int, TextChunk]],
     literal: set[int],
+    *,
+    compress: bool,
 ) -> None:
-    """Emit ``chunks`` byte-for-byte, recording each re-emitted ``<REPEAT>`` as ``(token index, chunk)``."""
+    """Emit ``chunks`` byte-for-byte, recording each re-emitted ``<REPEAT>`` as ``(token index, chunk)``.
+
+    With ``compress``, literal runs (back-references expanded) stay whole ``bytes`` tokens for :func:`_compress`.
+    """
     for chunk in chunks:
         if chunk.tag is None:
-            if chunk.repeat is not None and id(chunk) not in literal:
+            if compress:
+                line.append(chunk.data)
+            elif chunk.repeat is not None and id(chunk) not in literal:
                 repeats.append((len(line), chunk))
                 line.append(REPEAT_CODE)
                 line.extend(chunk.repeat)
@@ -78,6 +89,8 @@ def _emit_instruction(
     instruction: Instruction,
     repeats: list[tuple[int, TextChunk]],
     literal: set[int],
+    *,
+    compress: bool,
 ) -> list[Token]:
     line: list[Token] = [instruction.opcode]
     shape = operand_shape(instruction.opcode)
@@ -88,7 +101,7 @@ def _emit_instruction(
             if not isinstance(chunks, list):
                 msg = "Text operand expected."
                 raise TypeError(msg)
-            _emit_text(line, chunks, repeats, literal)
+            _emit_text(line, chunks, repeats, literal, compress=compress)
             operand_index += 1
         elif token == POINTERS:
             count = instruction.operands[operand_index]
@@ -110,19 +123,40 @@ def _emit_instruction(
 
 
 def _byte_length(line: list[Token]) -> int:
-    return sum(2 if isinstance(tok, Address) else 1 for tok in line)
+    return sum(2 if isinstance(tok, Address) else len(tok) if isinstance(tok, bytes) else 1 for tok in line)
 
 
-def compile_script(script: "EventScript", script_pointer: int | None = None, *, ignore_pointers: bool = False) -> bytes:
+def _compress(partial: dict[int, list[Token]], ordered: list[int]) -> None:
+    """Replace every literal text run, in output order, with its compressed bytes (see :class:`RepeatWindow`)."""
+    window = RepeatWindow()
+    for line_number in ordered:
+        line: list[Token] = []
+        for tok in partial[line_number]:
+            if isinstance(tok, bytes):
+                line.extend(window.compress(tok))
+            else:
+                window.skip(2 if isinstance(tok, Address) else 1)
+                line.append(tok)
+        partial[line_number] = line
+
+
+def compile_script(
+    script: "EventScript",
+    script_pointer: int | None = None,
+    *,
+    ignore_pointers: bool = False,
+    compress: bool = False,
+) -> bytes:
     """Emit the script's bytecode, resolving every local :class:`Address` to a 2-byte offset.
 
     Compiles, then checks every re-emitted ``<REPEAT>`` against the output; any that no longer expands
     to its original text is demoted to a literal run and the script is recompiled (only ever shrinking
-    the set of back-references, so this terminates).
+    the set of back-references, so this terminates). With ``compress``, the text is compressed again from scratch
+    instead (see the module docstring), so there is nothing to check.
     """
     literal: set[int] = set()
     while True:
-        out, repeats = _compile(script, script_pointer, literal, ignore_pointers=ignore_pointers)
+        out, repeats = _compile(script, script_pointer, literal, ignore_pointers=ignore_pointers, compress=compress)
         broken = [
             chunk
             for position, chunk in repeats
@@ -139,6 +173,7 @@ def _compile(
     literal: set[int],
     *,
     ignore_pointers: bool,
+    compress: bool,
 ) -> tuple[bytes, list[tuple[int, TextChunk]]]:
     """One compile pass; also returns each re-emitted ``<REPEAT>`` as ``(byte offset, chunk)``."""
     partial: dict[int, list[Token]] = {}
@@ -150,9 +185,12 @@ def _compile(
             raise ValueError(msg)
         previous = instruction.line
         line_repeats[instruction.line] = []
-        partial[instruction.line] = _emit_instruction(instruction, line_repeats[instruction.line], literal)
+        partial[instruction.line] = _emit_instruction(
+            instruction, line_repeats[instruction.line], literal, compress=compress,
+        )
 
     ordered = sorted(partial)
+    _compress(partial, ordered)  # only compress=True emits literal runs to compress; otherwise nothing changes
     conversions: dict[int, int] = {}
     repeats: list[tuple[int, TextChunk]] = []
     running = 0
@@ -180,6 +218,8 @@ def _compile(
                     raise ValueError(msg)
                 out.append(value & 0xFF)
                 out.append(value >> 8)
+            elif isinstance(tok, bytes):
+                out.extend(tok)
             else:
                 out.append(tok & 0xFF)
     return bytes(out), repeats

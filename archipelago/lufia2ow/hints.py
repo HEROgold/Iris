@@ -1,7 +1,8 @@
-"""Hint NPCs: their new talk script, written over the old one in place (data.HINT_NPCS, Iris hint_npcs.py).
+"""Hint NPCs: their new talk script, written over the old one (data.HINT_NPCS, Iris hint_npcs.py).
 
-Script: ``1A(flag)``, then text boxes ``08 <text> 01`` with the last ending in ``00`` (END EVENT); the rest of the old
-script's slot is zero. Text is plain ASCII (the game's font for 0x20-0x7E); line breaks are 0x03. A box holds three
+The base patch gave each one a slot of at least 160 bytes (Iris's ``HINT_SLOT_SIZE``), room for the longest wording.
+Script: ``1A(flag)``, then text boxes ``08 <text> 01`` with the last ending in ``00`` (END EVENT); the rest of the
+slot is zero. Text is plain ASCII (the game's font for 0x20-0x7E); line breaks are 0x03. A box holds three
 lines of up to 24 characters (vanilla boxes are 26 wide and up to four lines).
 """
 

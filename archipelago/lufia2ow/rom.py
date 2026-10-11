@@ -53,7 +53,7 @@ class L2OWProcedurePatch(APProcedurePatch, APTokenMixin):
             self.write_token(APTokenTypes.WRITE, offset, value)
 
     def write_hint_npc(self, offset: int, script: bytes) -> None:
-        """Overwrite a hint NPC's talk script in place (hints.py builds it at its old size)."""
+        """Overwrite a hint NPC's talk script: its slot in the base ROM, which hints.py fills to the slot's size."""
         self.write_token(APTokenTypes.WRITE, offset, script)
 
     def write_auth(self, auth: bytes) -> None:

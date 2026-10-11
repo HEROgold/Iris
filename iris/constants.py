@@ -47,12 +47,11 @@ SCALE_ENCOUNTERS_MAX_BAND = 0xFF
 """The band size is baked as one byte, so it cannot span more than 255 distinct offsets."""
 
 
-# --- Reserved space: ZoneData / event-script relocation freespace -------------------------------
-# Dedicated arenas for the shared FreeSpaceAllocator instances (helpers.freespace) that back
-# ZoneData.write_relocated and the event-script container relocator. 128KB each, bank-aligned, well
-# clear of SCALE_ENCOUNTERS_REGION.
+# --- Reserved space: ZoneData relocation freespace ----------------------------------------------
+# The arena for the shared ZoneData FreeSpaceAllocator (helpers.freespace): 128KB, bank-aligned, well clear of
+# SCALE_ENCOUNTERS_REGION. structures.zone.move_all_zone_data moves every map's ZoneData (111KB) here. Event containers
+# have no arena out here: they must stay in banks $80-$BF (HER-232) and grow into the space ZoneData leaves behind.
 ZONE_DATA_FREESPACE = range(0x320000, 0x340000)
-EVENT_SCRIPT_FREESPACE = range(0x340000, 0x360000)
 
 # --- Reserved space: RealCritical fix_cave_chest_table --------------------------------------------
 # 71-byte hook body at headerless 0x30D820 (SNES $E1:D820); the patched code at 0x19176 jumps to $E1:D84A.
@@ -110,7 +109,7 @@ AP_HINT_ARENA_OFFSET = 0x360090
 AP_HINT_ARENA_END = 0x368000
 """Reserved hint text arena: AP_HINT_ARENA_OFFSET up to the end of AP_CONFIG_REGION."""
 
-RESERVED_REGIONS = [SCALE_ENCOUNTERS_REGION, ZONE_DATA_FREESPACE, EVENT_SCRIPT_FREESPACE, CAVE_CHEST_FIX_REGION, AP_CONFIG_REGION]
+RESERVED_REGIONS = [SCALE_ENCOUNTERS_REGION, ZONE_DATA_FREESPACE, CAVE_CHEST_FIX_REGION, AP_CONFIG_REGION]
 """Every fixed ROM-expansion reservation, checked for overlaps by helpers.rom_expansion.assert_no_overlaps."""
 
 

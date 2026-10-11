@@ -6,7 +6,8 @@ only literals, so it imports on Archipelago's Python with nothing else installed
     python tools/export_ap_data.py --file <vanilla-rom>          # write archipelago/lufia2ow/data.py
     python tools/export_ap_data.py --file <vanilla-rom> --check  # exit 1 if the committed module is stale
 
-Not exported yet: hint-eligible NPCs and their text budgets, which wait on the M2 research.
+Most of it comes from the vanilla ROM. What the base patch moves comes from the built base ROM instead: the hint slots
+(``hint_npcs.make_hint_slots``) and the grants, whose scripts move with their map's event container.
 """
 
 import argparse
@@ -14,29 +15,29 @@ import sys
 from pathlib import Path
 from pprint import pformat
 
-import bsdiff4
-
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from iris import constants
-from iris.api.rom import CART_SIZE_20MBIT
+from iris.build import build
 from iris.enums.flags import GOAL_FLAG, EventFlag, Usability
 from iris.enums.patches import Patch
 from iris.helpers.files import open_rom, read_file
 from iris.patches.archipelago.overworld.ap_item import AP_ITEM_INDEX
-from iris.patches.archipelago.overworld.hint_npcs import HINT_FLAGS, hint_npc_candidates
+from iris.patches.archipelago.overworld.hint_npcs import HINT_FLAGS, hint_slots
 from iris.patches.archipelago.overworld.key_items import KEY_ITEM_NAMES, NO_STARTING_ARROW
 from iris.structures.chest import PointerChest
 from iris.structures.chest_location import CHEST_MAP
 from iris.structures.chest_names import CHEST_NAMES
+from iris.structures.event_script import MapEvent
+from iris.structures.event_script.dump import _signature
 from iris.structures.item import Item
 from iris.structures.key_doors import key_doors
 from iris.structures.zone import Zone
 from iris.structures.zone_data_pointers import zone_data_pointers
 from iris.tables import ChestObject, ItemObject, select
-from tools.build_ap_basepatch import PATCH_FILE as BASEPATCH_FILE
-from tools.dump_item_grants import collect
+from tools.build_ap_basepatch import OPTIONS, vanilla_image
+from tools.dump_item_grants import GRANT_OPS, collect
 
 
 DATA_FILE = Path(__file__).resolve().parent.parent / "archipelago" / "lufia2ow" / "data.py"
@@ -108,15 +109,57 @@ def _no_starting_arrow() -> tuple[tuple[int, bytes], ...]:
 
 
 def _hint_npcs() -> list[tuple[int, str, int, int]]:
-    """(map, signature, script offset, script size) of every talk script a hint can replace (hint_npcs.py)."""
-    read_file.seek(0)
-    vanilla = read_file.read(CART_SIZE_20MBIT)
-    patched = bsdiff4.patch(vanilla, BASEPATCH_FILE.read_bytes())
-    return [(npc.map_index, npc.signature, npc.pointer, npc.size) for npc in hint_npc_candidates(patched)]
+    """(map, signature, slot offset, slot size) of every talk script a hint can replace, as the build made them."""
+    return [(npc.map_index, npc.signature, npc.pointer, npc.size) for npc in hint_slots()]
 
 
-def render() -> str:
-    """The module's text, from the active ROM session (a vanilla ROM with the vanilla tables selected)."""
+type Grant = tuple[int, str, int, int, int, tuple[int, ...]]
+type HintSlot = tuple[int, str, int, int]
+
+
+def _moved(grants: list[Grant]) -> list[Grant]:
+    """``grants`` (from the vanilla ROM) with the offsets of their item bytes in the active session.
+
+    A grant is the n-th grant instruction of its script; the script is found again by its signature, which moving its
+    container doesn't change.
+    """
+    out = []
+    order: dict[tuple[int, str], int] = {}
+    for map_index, signature, _, item, count, flags in grants:
+        n = order.get((map_index, signature), 0)
+        order[map_index, signature] = n + 1
+        map_event = MapEvent.from_index(map_index)
+        map_event.read()
+        script = next(
+            script for event_list in map_event.event_lists for script in event_list.events
+            if _signature(map_index, script) == signature
+        )
+        instruction = [ins for ins in script.instructions if ins.opcode in GRANT_OPS][n]
+        if GRANT_OPS[instruction.opcode] + int(instruction.operands[0]) != item:
+            msg = f"Grant {n} of {signature} gives {instruction.operands[0]} in the base ROM, not item {item}."
+            raise ValueError(msg)
+        out.append((map_index, signature, script.pointer + instruction.line + 1, item, count, flags))
+    return out
+
+
+def _from_base_rom(vanilla: bytes, grants: list[Grant]) -> tuple[list[Grant], list[HintSlot]]:
+    """Where ``grants`` and the hint slots are in the base ROM Iris builds: the base patch moves event containers.
+
+    Read from the build's own session, where every moved script was parsed again from its new bytes. Parsing the built
+    ROM afresh would not do: a script's end is found from the next known pointer, and a moved neighbour no longer
+    marks it, so a parse runs on into the neighbour's old bytes and finds its grants there too.
+    """
+    build(vanilla, OPTIONS)
+    return _moved(grants), _hint_npcs()
+
+
+def render(vanilla: bytes) -> str:
+    """The module's text, from the vanilla US ROM ``vanilla`` and the base ROM Iris builds from it."""
+    select(Patch.VANILLA)
+    open_rom(vanilla)
+    grants, hint_npcs = _from_base_rom(vanilla, _grants())
+    select(Patch.VANILLA)
+    open_rom(vanilla)
     ap_constants = {name: getattr(constants, name) for name in dir(constants) if name.startswith("AP_")}
     sections = [
         '"""Lufia II data for the Archipelago world. AUTO-GENERATED by tools/export_ap_data.py from the vanilla US ROM;\n'
@@ -137,13 +180,13 @@ def render() -> str:
         f"CHESTS = {pformat(_chests(), width=120)}\n",
         "# Event-script grants: (map, event signature, offset of the item byte, item, count, flags the script sets).",
         "# Opcode 0x21 grants item 0x100 + the byte, opcode 0x20 the byte itself.",
-        f"GRANTS = {pformat(_grants(), width=120)}\n",
+        f"GRANTS = {pformat(grants, width=120)}\n",
         "# Locked doors: (map, map object, key item). A door opens when the party holds the key.",
         f"KEY_DOORS = {pformat([(d.map_index, d.map_object, d.item) for d in key_doors()], width=120)}\n",
         f"MAP_NAMES = {pformat(_map_names(), width=120)}\n",
-        "# Talk scripts that only show text, which a hint can overwrite in place: (map, signature, offset, size).",
-        "# Hint NPC n sets HINT_FLAGS[n] when talked to.",
-        f"HINT_NPCS = {pformat(_hint_npcs(), width=120)}",
+        "# Talk scripts that only show text, which a hint can overwrite: (map, signature, offset, size). The base patch",
+        "# moved each into a slot of at least hint_npcs.HINT_SLOT_SIZE bytes. Hint NPC n sets HINT_FLAGS[n] when talked to.",
+        f"HINT_NPCS = {pformat(hint_npcs, width=120)}",
         f"HINT_FLAGS = {HINT_FLAGS!r}\n",
         f"EVENT_FLAGS = {pformat({flag.name: int(flag) for flag in EventFlag}, width=120, sort_dicts=False)}",
         f"GOAL_FLAG = {int(GOAL_FLAG)}\n",
@@ -158,9 +201,7 @@ def main() -> int:
     parser.add_argument("--file", type=Path, required=True, help="The vanilla US ROM (headered or not).")
     parser.add_argument("--check", action="store_true", help="Fail if the committed module is stale.")
     args = parser.parse_args()
-    select(Patch.VANILLA)
-    open_rom(args.file)
-    text = render()
+    text = render(vanilla_image(args.file))
 
     if args.check:
         current = DATA_FILE.exists() and DATA_FILE.read_text(encoding="utf-8") == text

@@ -192,8 +192,9 @@ class EventScript:
           is what keeps ``write()`` confined to the scripts that actually changed.
         - **Mode B (dirty):** recompile in place at ``self.pointer`` and write. The write path is
           in-place only (no relocation), so the recompiled bytes must fit the original slot -- bounded by
-          ``len(self.raw)`` (the next known pointer). Overrunning it would corrupt the following script,
-          so raise instead.
+          ``len(self.raw)`` (the next known pointer). When they don't, the text is compressed again
+          (``compile_script(compress=True)``); if that doesn't fit either, overrunning would corrupt the
+          following script, so raise instead (``MapEvent.write`` relocates the container in that case).
         """
         if not self.dirty:
             return
@@ -207,6 +208,8 @@ class EventScript:
 
         data = compile_script(self, script_pointer=self.pointer)
         if len(data) > self._slot_size:
+            data = compile_script(self, script_pointer=self.pointer, compress=True)
+        if len(data) > self._slot_size:
             msg = (
                 f"Event script {self.pointer:#07x} (class {self.event_class.name}, index {self.index}) "
                 f"compiled to {len(data)}B, exceeding its {self._slot_size}B slot; the in-place write path "
@@ -216,5 +219,16 @@ class EventScript:
         log.debug(f"Writing EventScript {self.index=} {self.event_class.name} ({len(data)}B) → {self.pointer=:#08x}")
         write_file.seek(self.pointer)
         write_file.write(data)
+        self.parse_written(data)
+
+    def parse_written(self, data: bytes) -> None:
+        """Take ``data``, just written at ``self.pointer``, as the script, and parse it again.
+
+        Compiling changes byte offsets (text compressed again, a back-reference written out), so the instructions are
+        parsed from the written bytes: their offsets then match the ROM, and so do the offsets callers derive from
+        them (an item byte for a token, the next write's jump targets).
+        """
         self.raw = data
+        self._pre = self._pre_data()
+        self.instructions = self._parse(data)
         self.dirty = False

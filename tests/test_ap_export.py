@@ -8,9 +8,8 @@ from pathlib import Path
 import pytest
 
 from iris.constants import AP_CONFIG_MAGIC, AP_CONFIG_MAGIC_OFFSET, AP_CONFIG_VERSION, AP_CONFIG_VERSION_OFFSET
-from iris.enums.patches import Patch
 from iris.helpers import files
-from iris.helpers.files import open_rom, session, use
+from iris.helpers.files import session, use
 from iris.tables import select, selected
 
 
@@ -41,9 +40,7 @@ def test_basepatch_writes_the_config_header(vanilla: bytes) -> None:
 
 
 def test_data_module_is_current(vanilla: bytes) -> None:
-    select(Patch.VANILLA)
-    open_rom(vanilla)
-    assert DATA_FILE.read_text(encoding="utf-8") == render(), "rerun tools/export_ap_data.py and commit the module"
+    assert DATA_FILE.read_text(encoding="utf-8") == render(vanilla), "rerun tools/export_ap_data.py and commit the module"
 
 
 def test_data_module_imports_without_iris() -> None:
