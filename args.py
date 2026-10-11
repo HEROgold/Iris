@@ -61,6 +61,7 @@ class Args(argparse.Namespace):
     max_world_clock: bool
     open_world_base: bool
     skip_tutorial: bool
+    skip_intro: bool
     treadool_warp: bool
     # Specific rom patches
     aggressive_movement: bool
@@ -131,6 +132,13 @@ parser.add_argument("--kureji", action="store_true", help="Apply the Kureji Lufi
 parser.add_argument("--max_world_clock", action="store_true")  # TODO: Implement and set default to True
 parser.add_argument("--open_world_base", action="store_true")  # TODO: Implement and set default to True
 parser.add_argument("--skip-tutorial", "--skip_tutorial", dest="skip_tutorial", action="store_true", help="Skip the Secret Skills Cave tutorial: its flags are set at new game and Maxim starts with Reset.")
+parser.add_argument(
+    "--skip-intro", "--skip_intro", dest="skip_intro", action="store_true",
+    help=(
+        "Debug runs: skip the Elcid intro (Tia's shop, dinner and \"Bad news\" scenes). "
+        "A new game starts in Elcid with their flags set. Implies --skip-tutorial."
+    ),
+)
 # Patch flags
 parser.add_argument("--aggressive-movement", action="store_true", help="Set all monsters to be aggressive.")
 parser.add_argument("--passive-movement", action="store_true", help="Set all monsters to be passive.")
@@ -258,3 +266,7 @@ if args.debug:
     args.spell_target_limit = True
     args.zero_capsule_command = True
     args.zero_gold_command = True
+
+if args.skip_intro:
+    # The tutorial sits between Tia's shop scene and her dinner scene, so skipping the intro skips it too.
+    args.skip_tutorial = True

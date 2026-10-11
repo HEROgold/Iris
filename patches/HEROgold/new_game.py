@@ -8,6 +8,9 @@ asar can only hook the new-game handoff once, so every new-game feature is a swi
 - ``skip_tutorial``: the Secret Skills Cave (map 5) behaves as vanilla leaves it after the tutorial, and Maxim knows
   Reset. This sets event flags instead of editing event scripts, because grown event containers can't be placed yet
   (HER-232, HER-237). The flags come from the cave's own events and absynnonym's ``eventpatch_skip_tutorial.txt``.
+- ``skip_intro``: debug runs. Sets the flags the Elcid intro would have set (Tia's shop, dinner and "Bad news"
+  scenes), so those scenes skip. The other half, starting the new game at Elcid entrance 3 instead of 2 so the
+  opening scene never loads, is ``set_spawn_location``'s job (see ``__main__``).
 - ``start_items``: ``(item, quantity)`` pairs the game's add-item routine ($82:E80C) puts in the inventory.
 """
 
@@ -41,19 +44,39 @@ TUTORIAL_FLAGS = (
 )
 """Set at new game by ``skip_tutorial``. The Elcid "Bad news" scene (flag 0x96) still plays and starts the quest."""
 
+INTRO_SPAWN_ENTRANCE = 0x03
+"""Elcid entrance 3: where leaving Tia's house puts you. Its LOAD_MAP script (03-A-03) only sets the lighting.
+Vanilla starts at entrance 2, whose 03-A-02 sets flag 0x0A and walks Maxim into Tia's shop (04-A-01)."""
+
+INTRO_FLAGS = (
+    0x01,  # MAXIM_IN_PARTY: set by the end of Tia's shop scene (04-A-01), which also pays Maxim 120 gold
+    0x0A,  # NEW_GAME_STARTED: set by 03-A-02 just before it walks Maxim into Tia's shop
+    0x16,  # Tia's dinner scene (04-C-01) has run
+    0x96,  # the Elcid "Bad news" scene (03-C-01) has run; the guard of the cave toward Sundletan (06-B-50) lets you in
+)
+"""Set at new game by ``skip_intro``."""
+
 
 def apply_new_game_hook(
     *,
     unlock_warps: bool = True,
     skip_tutorial: bool = False,
+    skip_intro: bool = False,
     start_items: Sequence[tuple[Item, int]] = (),
 ) -> None:
     """Install the new-game hook with the chosen features. Call once per build: a second call replaces the first.
 
     ``start_items`` are ``(item, quantity)`` pairs added to the inventory at new game.
     """
-    iris.info(f"New-game hook: unlock_warps={unlock_warps}, skip_tutorial={skip_tutorial}, start_items={len(start_items)}.")
-    defines = {"unlock_warps": str(int(unlock_warps)), "skip_tutorial": str(int(skip_tutorial))}
+    iris.info(
+        f"New-game hook: unlock_warps={unlock_warps}, skip_tutorial={skip_tutorial}, skip_intro={skip_intro}, "
+        f"start_items={len(start_items)}.",
+    )
+    defines = {
+        "unlock_warps": str(int(unlock_warps)),
+        "skip_tutorial": str(int(skip_tutorial)),
+        "skip_intro": str(int(skip_intro)),
+    }
     if start_items:
         for item, quantity in start_items:
             if not 1 <= quantity <= MAX_ITEM_QUANTITY:

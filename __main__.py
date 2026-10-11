@@ -10,27 +10,29 @@ from patcher import (
 from patches.genie_codes import (
     AIRSHIP_ANYWHERE,
     CAPSULE_ALWAYS_LOVE_FOOD,
+    DEBUG_MODE,
     ELCID_REPORT,
     MASTER_ONE_SHOT,
-    NO_SCENARIO_ITEMS, DEBUG_MODE,
+    NO_SCENARIO_ITEMS,
 )
 from patches.HEROgold import (
+    apply_new_game_hook,
     arty_to_artea,
     ax_to_axe,
+    # maxim_starts_with_warp,
+    everyone_learns_reset,
     fix_boltfish,
     foomy_s_firebird_valor,
     gorem_to_golem,
     guy_the_mage,
-    # maxim_starts_with_warp,
-    everyone_learns_reset,
     max_out_party,
     party_toggle_in_elcid,
-    set_found_flags_on_story_joins,
     scale_encounters,
+    set_found_flags_on_story_joins,
     set_rom_name,
     swap_pierre_danielle_sprites,
-    apply_new_game_hook,
 )
+from patches.HEROgold.new_game import INTRO_SPAWN_ENTRANCE
 from patches.HEROgold.start_capsule import start_capsule
 from patches.RealCritical import (
     ac_more_enemies,
@@ -107,8 +109,11 @@ def main() -> None:
         apply_absynnonym_patch("secondary_tool")
     if args.unlock_gift_mode:
         apply_absynnonym_patch("unlock_gift_mode")
-    if args.custom_spawn_city:
-        set_spawn_location(Zone.from_name("Elcid"), entrance_cutscene=0x02) # TODO: Investigate and fix (event) script loading.
+    if args.skip_intro:
+        # Elcid entrance 3 instead of 2, so the opening scene in Tia's shop never loads; the hook sets its flags.
+        set_spawn_location(Zone.from_name("Elcid"), entrance_cutscene=INTRO_SPAWN_ENTRANCE)
+    elif args.custom_spawn_city:
+        set_spawn_location(Zone.from_name(args.spawn_location), entrance_cutscene=0x02) # TODO: Investigate and fix (event) script loading.
         # set_spawn_location(Zone.from_name(args.spawn_location))
     if args.start_engine:
         start_engine()
@@ -142,8 +147,8 @@ def main() -> None:
     guy_the_mage()
     # Dev/debug patches (not intended for release):
     # maxim_starts_with_warp()  # dev fix: Maxim begins every game knowing Warp (field teleport)
-    # One asar hook at the new-game handoff: every Warp destination unlocked (dev fix), and --skip-tutorial.
-    apply_new_game_hook(unlock_warps=True, skip_tutorial=args.skip_tutorial)
+    # One asar hook at the new-game handoff: every Warp destination unlocked (dev fix), --skip-tutorial, --skip-intro.
+    apply_new_game_hook(unlock_warps=True, skip_tutorial=args.skip_tutorial, skip_intro=args.skip_intro)
     if args.debug_party:
         max_out_party()
     if args.start_capsule is not None:
