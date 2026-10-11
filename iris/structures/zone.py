@@ -134,6 +134,10 @@ class Chest:
         return bytes([self.slot_id, self.x, self.y, self.chest_type])
 
 
+_moved_blobs: dict[int, int] = {}
+"""Blob start -> bytes allocated, for every blob :func:`move_all_zone_data` copied into the pool."""
+
+
 class ZoneData:
     _cache = Cache[int, Self]()
 
@@ -150,6 +154,9 @@ class ZoneData:
         # does its *previous* slot belong to that pool and need deallocating on the next relocation.
         self._relocated = False
         self._blob_length = self.size + 2  # the 2-byte size prefix + payload, as currently on ROM
+        if pointer in _moved_blobs:  # move_all_zone_data put it in the pool: the next move gives that copy back
+            self._relocated = True
+            self._blob_length = _moved_blobs[pointer]
 
         self._parse_offsets()
         self._parse_npc_positions()
@@ -740,12 +747,15 @@ def move_all_zone_data() -> None:
         blob = read_file.read(length)
         pointer = zone_data_allocator.allocate(length)
         zone_data_allocator.write(pointer, blob)
+        _moved_blobs[pointer] = length
         relocate_pointer_table_entry(
             ZONE_DATA_POINTER_TABLE, index, MapMetaObject.reference_pointer, pointer, encode=address_to_lorom,
         )
         if (zone_data := ZoneData._cache.from_cache(start)) is not None:  # noqa: SLF001
             ZoneData._cache.discard(start)  # noqa: SLF001
             zone_data.start = pointer
+            zone_data._relocated = True  # noqa: SLF001
+            zone_data._blob_length = length  # noqa: SLF001
             ZoneData._cache.to_cache(pointer, zone_data)  # noqa: SLF001
         event_script_allocator.deallocate(start, length)
 
@@ -753,6 +763,7 @@ def move_all_zone_data() -> None:
 @on_new_session
 def reset_zones() -> None:
     ZoneData._cache.clear()  # noqa: SLF001
+    _moved_blobs.clear()
     Zone._cache.clear()  # noqa: SLF001
 
 
