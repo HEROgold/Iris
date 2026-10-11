@@ -1,0 +1,12 @@
+# Cave Bridge B5: touching the orb (tile 01) gives an item once, a check where terrorwave put a guard NPC.
+# At the end of the story the orb's script is empty and flag 0x30 (vanilla's "orb touched") is read by nothing.
+# The item byte is the grant's: the Archipelago world writes its own item there.
+# Applied with iris.structures.event_script.event_patch; class letters are terrorwave's.
+
+EVENT 44-D-01
+0000. 15(30-@100)
+0010. 9E: <POSITION 06>Something glints
+          inside the orb.<END MESSAGE>
+0020. 20(09-01)
+0030. 1A(30)
+0100. 00()

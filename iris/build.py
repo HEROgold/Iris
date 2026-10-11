@@ -125,8 +125,8 @@ class Options:
     """Dev fix: every Warp destination is open from the start. Off for Archipelago, whose logic tracks travel."""
     open_world: bool = False
     """terrorwave's open world: the story at its end, every area open (Iris-Dev#43)."""
-    open_world_npcs: tuple[str, ...] = ()
-    """Open-world NPC patches to add, by name (``patches.open_world.NPCS``). Each needs ``open_world``."""
+    open_world_extras: tuple[str, ...] = ()
+    """Optional open-world patches, by name (``patches.open_world.EXTRAS``). Each needs ``open_world``."""
     archipelago: bool = False
     """Add the overworld Archipelago base patch (config block, AP item); see tools/build_ap_basepatch.py."""
 
@@ -135,7 +135,7 @@ class Options:
         """The options of a parsed command line (see :func:`args.parse_args`)."""
         values = {field.name: getattr(args, field.name) for field in fields(cls) if hasattr(args, field.name)}
         values["game_genie_codes"] = tuple(values["game_genie_codes"])
-        values["open_world_npcs"] = tuple(values["open_world_npcs"])
+        values["open_world_extras"] = tuple(values["open_world_extras"])
         if values["scale_encounters"] is not None:
             low, high = values["scale_encounters"]
             values["scale_encounters"] = (low, high)
@@ -155,13 +155,13 @@ def build(source: Path | bytes, options: Options) -> bytes:
         return output_bytes()
 
     set_rom_name(b"Lufia II (Iris patch)") # For identification purposes.
-    if options.open_world_npcs and not options.open_world:
-        msg = "Open-world NPC patches need open world."
+    if options.open_world_extras and not options.open_world:
+        msg = "Open-world extras need open world."
         raise ValueError(msg)
     if options.archipelago or options.open_world:
         move_all_zone_data()  # event containers need to grow (hint slots, open world), before anything reads ZoneData
     if options.open_world:
-        apply_open_world(options.open_world_npcs)  # replaces whole scripts, so before any patch edits one
+        apply_open_world(options.open_world_extras)  # replaces whole scripts, so before any patch edits one
     if options.archipelago:
         hint_npcs = hint_npc_candidates()  # before any patch changes a script
 

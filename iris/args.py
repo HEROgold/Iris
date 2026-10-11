@@ -60,7 +60,7 @@ class Args(argparse.Namespace):
     game_genie_codes: list[str]
     # Event patches
     open_world: bool
-    open_world_npcs: list[str]
+    open_world_extras: list[str]
     skip_tutorial: bool
     treadool_warp: bool
     # Specific rom patches
@@ -130,16 +130,18 @@ parser.add_argument("--spekkio", action="store_true", help="Apply the Spekkio Lu
 parser.add_argument("--kureji", action="store_true", help="Apply the Kureji Lufia patch.\n" + CANNOT_PATCH_TOGETHER)
 # Event patches
 parser.add_argument("--open-world", "--open_world", dest="open_world", action="store_true", help="Open world: the story at its end and every area open (terrorwave's open-world base).")
-parser.set_defaults(open_world_npcs=[])
-for _npc, _help in (
-    ("secondary-tool-tip", "Secret Skills Cave: an NPC explains R+A+L (--secondary_tool)."),
-    ("capsule-tips", "Foomy Woods: an NPC explains capsule tag and the feeding bonus."),
-    ("tanbel-inn", "Tanbel: an innkeeper NPC."),
-    ("cave-bridge-orb-guard", "Cave Bridge B5: an NPC keeps you from the orb, which crashes the game in open world."),
-    ("egg-key-trader", "Agurio: an NPC trades three Dragon eggs for any key."),
-    ("egg-wishes", "Small Shrine to Dragon Egg: terrorwave's egg wishes."),
+parser.set_defaults(open_world_extras=[])
+for _extra, _help in (  # one flag per patches.open_world.EXTRAS entry
+    ("npc-secondary-tool-tip", "Secret Skills Cave: an NPC explains R+A+L (--secondary_tool)."),
+    ("npc-capsule-tips", "Foomy Woods: an NPC explains capsule tag and the feeding bonus."),
+    ("npc-tanbel-inn", "Tanbel: an innkeeper NPC."),
+    ("npc-cave-bridge-orb-guard", "Cave Bridge B5: terrorwave's NPC keeping you from the orb. Not with --orb-check."),
+    ("npc-egg-key-trader", "Agurio: an NPC trades three Dragon eggs for any key."),
+    ("npc-egg-wishes", "Small Shrine to Dragon Egg: terrorwave's egg wishes."),
+    ("orb-check", "Cave Bridge B5: touching the orb gives an item once."),
+    ("escapable-dungeons", "Escape and Warp work everywhere but the overworld, seafloor, Karlloon Shrine and Daos' Shrine."),
 ):
-    parser.add_argument(f"--npc-{_npc}", dest="open_world_npcs", action="append_const", const=f"npc_{_npc.replace('-', '_')}", help=f"Open world only. {_help}")
+    parser.add_argument(f"--{_extra}", dest="open_world_extras", action="append_const", const=_extra.replace("-", "_"), help=f"Open world only. {_help}")
 parser.add_argument("--skip-tutorial", "--skip_tutorial", dest="skip_tutorial", action="store_true", help="Skip the Secret Skills Cave tutorial: its flags are set at new game and Maxim starts with Reset.")
 # Patch flags
 parser.add_argument("--aggressive-movement", action="store_true", help="Set all monsters to be aggressive.")

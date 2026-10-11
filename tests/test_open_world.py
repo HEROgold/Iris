@@ -9,7 +9,7 @@ from iris.enums.event_scripts import EventClass
 from iris.enums.patches import Patch
 from iris.helpers import files
 from iris.helpers.files import open_rom, session, use
-from iris.patches.open_world import MAX_WORLD_CLOCK, NPCS, apply_open_world
+from iris.patches.open_world import EXTRAS, INESCAPABLE_MAPS, MAP_PROPERTIES, MAX_WORLD_CLOCK, NO_ESCAPE, apply_open_world
 from iris.structures.event_script.codec import render_text
 from iris.structures.event_script.containers import MapEvent, reset_map_events
 from iris.structures.event_script.event_patch import apply_event_patch, apply_event_patch_file, resolve_or_create
@@ -18,6 +18,10 @@ from iris.structures.monster import Monster
 from iris.structures.shop import Shop
 from iris.structures.zone import move_all_zone_data
 from iris.tables import MapEventObject, select, selected
+
+
+ALL_EXTRAS = tuple(name for name in EXTRAS if name != "npc_cave_bridge_orb_guard")
+"""Every extra that goes with the others (the orb guard stands where orb_check puts its item)."""
 
 
 @pytest.fixture(autouse=True)
@@ -75,7 +79,7 @@ def test_overwritten_back_reference_is_repaired(source: bytes) -> None:
 def test_open_world_leaves_no_outside_jumps(source: bytes) -> None:
     """Parsed again after open world moved containers, every script still ends where it did (no stray jumps)."""
     _open(source)
-    apply_open_world(NPCS)
+    apply_open_world(ALL_EXTRAS)
     reset_map_events()
     assert not [script for script in _all_scripts() if script.external_jumps]
 
@@ -92,7 +96,7 @@ def test_jump_target_is_replaced_with_its_jumper(source: bytes) -> None:
 
 @pytest.mark.parametrize("patch", [Patch.VANILLA, Patch.FRUE])
 def test_build(source: bytes, patch: Patch) -> None:
-    rom = build(source, Options(1, selected_patch=patch, open_world=True, open_world_npcs=NPCS))
+    rom = build(source, Options(1, selected_patch=patch, open_world=True, open_world_extras=ALL_EXTRAS))
     assert rom
 
 
@@ -103,10 +107,39 @@ def test_build_with_archipelago(source: bytes) -> None:
 
 def test_npcs_need_open_world(source: bytes) -> None:
     with pytest.raises(ValueError, match="need open world"):
-        build(source, Options(1, selected_patch=Patch.VANILLA, open_world_npcs=NPCS[:1]))
+        build(source, Options(1, selected_patch=Patch.VANILLA, open_world_extras=ALL_EXTRAS[:1]))
 
 
 def test_unknown_npc_is_refused(source: bytes) -> None:
     _open(source)
-    with pytest.raises(ValueError, match="Unknown open-world NPC"):
+    with pytest.raises(ValueError, match="Unknown open-world extras"):
         apply_open_world(["npc_nobody"])
+
+
+def test_orb_guard_and_orb_check_exclude_each_other(source: bytes) -> None:
+    _open(source)
+    with pytest.raises(ValueError, match="can't be used together"):
+        apply_open_world(["npc_cave_bridge_orb_guard", "orb_check"])
+
+
+def test_orb_check_grants_once(source: bytes) -> None:
+    _open(source)
+    apply_open_world(["orb_check"])
+    reset_map_events()
+    opcodes = [ins.opcode for ins in resolve_or_create("44-D-01").instructions]
+    assert opcodes[0] == 0x15  # skip when flag 0x30 is set
+    assert 0x20 in opcodes
+    assert 0x1A in opcodes
+
+
+def test_escapable_dungeons(source: bytes) -> None:
+    _open(source)
+    apply_open_world(["escapable_dungeons"])
+    reset_map_events()
+    for index in range(MapEventObject.count):
+        bits = {
+            int(ins.operands[0]) & NO_ESCAPE
+            for ins in MapEvent.from_index(index).npc_script.instructions
+            if ins.opcode == MAP_PROPERTIES
+        }
+        assert bits <= ({NO_ESCAPE} if index in INESCAPABLE_MAPS else {0}), hex(index)
