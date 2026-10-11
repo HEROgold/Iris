@@ -63,6 +63,7 @@ class Args(argparse.Namespace):
     open_world_extras: list[str]
     leader: str | None
     boss_placement: str
+    boss_strength: str
     skip_tutorial: bool
     treadool_warp: bool
     # Specific rom patches
@@ -134,6 +135,7 @@ parser.add_argument("--kureji", action="store_true", help="Apply the Kureji Lufi
 parser.add_argument("--open-world", "--open_world", dest="open_world", action="store_true", help="Open world: the story at its end and every area open (terrorwave's open-world base).")
 parser.add_argument("--leader", choices=["selan", "guy", "artea", "tia", "dekar", "lexis", "random"], default=None, help="Open world only. This character leads instead of Maxim ('random': picked from the seed).")
 parser.add_argument("--boss-placement", choices=["shuffled", "fixed"], default="shuffled", help="Open world: which boss stands at which boss-NPC spot, shuffled per seed or in story order.")
+parser.add_argument("--boss-strength", choices=["unchanged", "depth", "party"], default="unchanged", help="Open world: bosses keep their stats; each is as strong as the story's boss for its spot (depth); or each scales to the party's average level when the fight starts (party).")
 parser.set_defaults(open_world_extras=[])
 for _extra, _help in (  # one flag per patches.open_world.EXTRAS entry
     ("npc-secondary-tool-tip", "Secret Skills Cave: an NPC explains R+A+L (--secondary_tool)."),

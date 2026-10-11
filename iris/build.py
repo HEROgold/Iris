@@ -54,7 +54,13 @@ from iris.patches.RealCritical import (
 from iris.patches.archipelago.overworld.basepatch import apply_overworld_basepatch
 from iris.patches.archipelago.overworld.hint_npcs import hint_npc_candidates
 from iris.patches.open_world import apply_open_world
-from iris.patches.open_world.bosses import fixed_placement, place_bosses, shuffled_placement
+from iris.patches.open_world.bosses import (
+    fixed_placement,
+    place_bosses,
+    scale_to_depth,
+    scale_to_party,
+    shuffled_placement,
+)
 from iris.patches.open_world.leader import LEADERS, set_leader
 from iris.patches.RealCritical.sprites import bunny_girls, fix_shrine_tile_set
 from iris.structures.item import Item
@@ -132,6 +138,8 @@ class Options:
     """Optional open-world patches, by name (``patches.open_world.EXTRAS``). Each needs ``open_world``."""
     leader: int | None = None
     boss_placement: str = "shuffled"
+    boss_strength: str = "unchanged"
+    """Open world: ``"unchanged"``, ``"depth"`` (each boss as strong as the story's boss for its spot) or ``"party"``."""
     """Open world: which boss stands at which boss-NPC spot, ``"shuffled"`` (per seed) or ``"fixed"`` (story order)."""
     """Open world: the character index (1-6) who leads instead of Maxim."""
     archipelago: bool = False
@@ -174,7 +182,12 @@ def build(source: Path | bytes, options: Options) -> bytes:
         apply_open_world(options.open_world_extras)  # replaces whole scripts, so before any patch edits one
         if options.leader is not None:
             set_leader(options.leader)
-        place_bosses(shuffled_placement(options.seed) if options.boss_placement == "shuffled" else fixed_placement())
+        placement = shuffled_placement(options.seed) if options.boss_placement == "shuffled" else fixed_placement()
+        place_bosses(placement)
+        if options.boss_strength == "depth":
+            scale_to_depth(placement)
+        elif options.boss_strength == "party":
+            scale_to_party()
     if options.archipelago:
         hint_npcs = hint_npc_candidates()  # before any patch changes a script
 

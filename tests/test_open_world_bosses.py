@@ -4,7 +4,9 @@ from collections.abc import Iterator
 
 import pytest
 
+from iris.build import Options, build
 from iris.enums.flags import EventFlag
+from iris.enums.patches import Patch
 from iris.helpers import files
 from iris.helpers.files import open_rom, session, use
 from iris.patches.open_world import apply_open_world
@@ -12,13 +14,16 @@ from iris.patches.open_world.bosses import (
     BOSSES,
     DAOS,
     SPOTS,
+    STAT_DERIVE_CALL,
     _flags_of,
+    boss_monsters,
     fixed_placement,
     place_bosses,
     shuffled_placement,
 )
 from iris.structures.event_script.containers import MapEvent, reset_map_events
 from iris.structures.event_script.event_patch import resolve_or_create
+from iris.structures.monster import Monster
 from iris.structures.zone import move_all_zone_data
 from iris.tables import MapEventObject
 
@@ -85,3 +90,29 @@ def test_boss_flags_are_only_the_bosses(placed: list) -> None:
                 if (index, script.index) in own or script is map_event.npc_script:
                     continue
                 assert not (_flags_of(script.instructions) & flags), (hex(index), script)
+
+
+def test_depth_scaling(source: bytes) -> None:
+    """A boss at a spot deeper than its own story place gets stronger, and the other way round."""
+    rom = session()
+    try:
+        build(source, Options(7, selected_patch=Patch.VANILLA, open_world=True))
+        before = {b.name: Monster.level_from_index(boss_monsters(b)[0]) for b in BOSSES}
+        build(source, Options(7, selected_patch=Patch.VANILLA, open_world=True, boss_strength="depth"))
+        after = {b.name: Monster.level_from_index(boss_monsters(b)[0]) for b in BOSSES}
+    finally:
+        use(rom)
+    placement = shuffled_placement(7)
+    late = next(b for s, b in placement.items() if BOSSES.index(b) > SPOTS.index(s) * len(BOSSES) // len(SPOTS) + 3)
+    assert after[late.name] < before[late.name]
+
+
+def test_party_scaling_hooks_the_monster_loader(source: bytes) -> None:
+    rom = session()
+    try:
+        out = build(source, Options(1, selected_patch=Patch.VANILLA, open_world=True, boss_strength="party"))
+    finally:
+        use(rom)
+    address, vanilla = STAT_DERIVE_CALL
+    assert out[address] == 0x22  # still a JSL, now to scale_boss
+    assert out[address : address + 4] != vanilla

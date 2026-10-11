@@ -16,20 +16,23 @@ Each boss gets a flag no script reads or writes after open world (terrorwave tak
 """
 
 import random
+from pathlib import Path
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 
 from iris.enums.flags import EventFlag
-from iris.helpers.files import on_new_session
+from iris.helpers.files import on_new_session, read_file
 from iris.logger import iris
+from iris.patcher import apply_asm_patch
 from iris.structures.event_script.codec import decode_text, encode_text
 from iris.structures.event_script.containers import MapEvent
 from iris.structures.event_script.event_patch import resolve_or_create
 from iris.structures.event_script.instructions import Address, Instruction
 from iris.structures.event_script.script import EventScript
 from iris.structures.map_meta import MapMeta
+from iris.structures.monster import Monster
 from iris.structures.zone import NPC, Boundary, Zone
-from iris.tables import MapEventObject
+from iris.tables import BossFormationObject, MapEventObject
 
 
 @dataclass(frozen=True)
@@ -300,3 +303,68 @@ def _text(text: str) -> list:
     chunks, _ = decode_text(TEXT_WINDOW, encode_text(text), b"", b"")
     return chunks
 
+
+
+BOSS_FORMATION_SIZE = 6
+"""A boss formation record starts with six monster indexes (0xFF = empty); terrorwave's BossFormationObject."""
+STAT_LIMITS = {
+    "health_points": 0xFFFF, "mana_points": 0xFFFF, "attack": 0xFFFF, "defense": 0xFFFF, "agility": 0xFF,
+    "intelligence": 0xFF, "guts": 0xFF, "magic_resistance": 0xFF, "xp": 0xFFFF, "gold": 0xFFFF,
+}
+"""The monster record's field widths (``tables.MonsterObject``)."""
+MAX_LEVEL = 99
+
+
+def boss_monsters(boss: Boss) -> list[int]:
+    """The monster indexes of ``boss``'s formation."""
+    read_file.seek(BossFormationObject.address + boss.formation * BossFormationObject.reference_pointer)
+    offset = int.from_bytes(read_file.read(BossFormationObject.reference_pointer), "little")
+    read_file.seek(BossFormationObject.address + offset)
+    return [index for index in read_file.read(BOSS_FORMATION_SIZE) if index != 0xFF]
+
+
+def _power(boss: Boss) -> int:
+    return max(Monster.level_from_index(index) for index in boss_monsters(boss))
+
+
+def scale_to_depth(placement: dict[BossSpot, Boss]) -> None:
+    """terrorwave's 'scale': each boss's monsters get the strength the story has at the spots it stands at.
+
+    A boss at a spot is scaled by (level of the boss the story puts there) / (its own level), on every stat and its
+    rewards. A monster in several placed formations (a boss standing at two spots, or soldiers 1-3) gets the mean.
+    """
+    story = fixed_placement()
+    factors: dict[int, list[float]] = {}
+    for spot, boss in placement.items():
+        factor = _power(story[spot]) / _power(boss)
+        for index in boss_monsters(boss):
+            factors.setdefault(index, []).append(factor)
+    for index, values in sorted(factors.items()):
+        factor = sum(values) / len(values)
+        monster = Monster.from_index(index)
+        for name, limit in STAT_LIMITS.items():
+            setattr(monster.stats, name, min(max(getattr(monster.stats, name) * factor, 1), limit))
+        monster.stats.level = min(max(round(monster.stats.level * factor), 1), MAX_LEVEL)
+    if factors:
+        Monster.from_index(next(iter(factors))).write()  # writes the whole monster table
+    iris.info(f"Scaled {len(factors)} boss monsters to their spots' depth.")
+
+
+SCALE_BOSSES_ASM = Path(__file__).parent / "scale_bosses.asm"
+STAT_DERIVE_CALL = (0x00FCDA, bytes.fromhex("22D5F481"))
+"""$81:FCDA, ``JSL $81F4D5`` at the end of the battle's monster loader: the hook scale_bosses.asm replaces."""
+MONSTER_BANK_OPERAND = 0x00FC1A
+"""$81:FC1A, the operand of the loader's ``LDA #$96`` (then PHA : PLB): the bank of the monster records."""
+
+
+def scale_to_party() -> None:
+    """Scripted (boss) battles scale their monsters to the party's average level when the battle loads them."""
+    address, vanilla = STAT_DERIVE_CALL
+    read_file.seek(address)
+    if read_file.read(len(vanilla)) != vanilla:
+        msg = f"The battle monster loader at {address:#x} isn't vanilla; scale_bosses.asm can't hook it."
+        raise ValueError(msg)
+    read_file.seek(MONSTER_BANK_OPERAND)
+    bank = read_file.read(1)[0]
+    apply_asm_patch(SCALE_BOSSES_ASM, defines={"monster_bank": f"${bank:02X}"})
+    iris.info("Boss battles scale to the party's level.")
