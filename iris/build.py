@@ -4,6 +4,7 @@ The CLI (``__main__``), the Archipelago world and the check-ROM scripts all buil
 its own ROM session, which drops every cache of the previous one, so builds in one process don't share state.
 """
 
+import random
 from dataclasses import KW_ONLY, dataclass, fields
 from pathlib import Path
 from typing import Self
@@ -53,6 +54,7 @@ from iris.patches.RealCritical import (
 from iris.patches.archipelago.overworld.basepatch import apply_overworld_basepatch
 from iris.patches.archipelago.overworld.hint_npcs import hint_npc_candidates
 from iris.patches.open_world import apply_open_world
+from iris.patches.open_world.leader import LEADERS, set_leader
 from iris.patches.RealCritical.sprites import bunny_girls, fix_shrine_tile_set
 from iris.structures.item import Item
 from iris.structures.monster import Monster
@@ -127,6 +129,8 @@ class Options:
     """terrorwave's open world: the story at its end, every area open (Iris-Dev#43)."""
     open_world_extras: tuple[str, ...] = ()
     """Optional open-world patches, by name (``patches.open_world.EXTRAS``). Each needs ``open_world``."""
+    leader: int | None = None
+    """Open world: the character index (1-6) who leads instead of Maxim."""
     archipelago: bool = False
     """Add the overworld Archipelago base patch (config block, AP item); see tools/build_ap_basepatch.py."""
 
@@ -136,6 +140,9 @@ class Options:
         values = {field.name: getattr(args, field.name) for field in fields(cls) if hasattr(args, field.name)}
         values["game_genie_codes"] = tuple(values["game_genie_codes"])
         values["open_world_extras"] = tuple(values["open_world_extras"])
+        if args.leader is not None:
+            name = random.Random(args.seed).choice(sorted(LEADERS)) if args.leader == "random" else args.leader
+            values["leader"] = LEADERS[name]
         if values["scale_encounters"] is not None:
             low, high = values["scale_encounters"]
             values["scale_encounters"] = (low, high)
@@ -155,13 +162,15 @@ def build(source: Path | bytes, options: Options) -> bytes:
         return output_bytes()
 
     set_rom_name(b"Lufia II (Iris patch)") # For identification purposes.
-    if options.open_world_extras and not options.open_world:
-        msg = "Open-world extras need open world."
+    if (options.open_world_extras or options.leader is not None) and not options.open_world:
+        msg = "Open-world extras and --leader need open world."
         raise ValueError(msg)
     if options.archipelago or options.open_world:
         move_all_zone_data()  # event containers need to grow (hint slots, open world), before anything reads ZoneData
     if options.open_world:
         apply_open_world(options.open_world_extras)  # replaces whole scripts, so before any patch edits one
+        if options.leader is not None:
+            set_leader(options.leader)
     if options.archipelago:
         hint_npcs = hint_npc_candidates()  # before any patch changes a script
 

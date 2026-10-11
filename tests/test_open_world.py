@@ -14,8 +14,11 @@ from iris.structures.event_script.codec import render_text
 from iris.structures.event_script.containers import MapEvent, reset_map_events
 from iris.structures.event_script.event_patch import apply_event_patch, apply_event_patch_file, resolve_or_create
 from iris.structures.event_script.script import EventScript
+from iris.patches.open_world.leader import OPENING, TOWN_SPRITES, set_leader
+from iris.structures.character import party_flag_of
 from iris.structures.monster import Monster
 from iris.structures.shop import Shop
+from iris.structures.sprites import OverSprite, TownSprite
 from iris.structures.zone import move_all_zone_data
 from iris.tables import MapEventObject, select, selected
 
@@ -143,3 +146,25 @@ def test_escapable_dungeons(source: bytes) -> None:
             if ins.opcode == MAP_PROPERTIES
         }
         assert bits <= ({NO_ESCAPE} if index in INESCAPABLE_MAPS else {0}), hex(index)
+
+
+@pytest.mark.parametrize("leader", [3, 4])  # Artea gets a new town sprite; Tia's party flag isn't index + 1
+def test_leader(source: bytes, leader: int) -> None:
+    """The first scene ends with the leader joining and Maxim leaving; the overworld sprite follows the leader."""
+    _open(source)
+    maxim_over = OverSprite.from_index(0).sprite_index
+    apply_open_world()
+    set_leader(leader)
+    reset_map_events()
+    tail = [(ins.opcode, ins.operands) for ins in resolve_or_create(OPENING).instructions[-6:]]
+    assert tail[0] == (0x15, [party_flag_of(leader), tail[0][1][1]])
+    assert tail[1:5] == [(0x2B, [leader]), (0x1A, [party_flag_of(leader)]), (0x2C, [0]), (0x1B, [party_flag_of(0)])]
+    town = TownSprite.from_pointer(TOWN_SPRITES[leader]).sprite_pointer - TownSprite.from_pointer(TOWN_SPRITES[0]).sprite_pointer
+    assert OverSprite.from_index(0).sprite_index == maxim_over + town
+    exempt = resolve_or_create("03-B-02")  # Elcid's new-game entrance still walks Maxim
+    assert any(ins.opcode == 0x33 and ins.operands[1] == 0 for ins in exempt.instructions)
+
+
+def test_leader_needs_open_world(source: bytes) -> None:
+    with pytest.raises(ValueError, match="need open world"):
+        build(source, Options(1, selected_patch=Patch.VANILLA, leader=3))
