@@ -29,6 +29,10 @@ log = logging.getLogger(f"{iris.name}.EventScript")
 
 # Fallback bound when no later pointer is known (mirrors terrorwave's END sentinels).
 MAX_SCRIPT_LENGTH = 0x8000
+END = 0x00
+"""The END opcode, and the text code ``<END EVENT>``."""
+STOP_LENGTH = 2
+"""END bytes :meth:`EventScript.write` puts after a script that got shorter in place, so a reader stops there."""
 
 
 class EventScript:
@@ -53,6 +57,10 @@ class EventScript:
         # second in-place write's budget doesn't shrink to whatever the *previous* write happened
         # to compile to -- it's always bounded by the real original slot.
         self._slot_size = 0
+        self._used = 0
+        """Bytes from ``pointer`` this script has ever filled: what a shorter rewrite pads, never the whole slot (a
+        slot can run past the script into bytes that aren't its own)."""
+        self._parsed_end = 0
 
     def __repr__(self) -> str:
         return f"EventScript(pointer={self.pointer:#07x}, class={self.event_class.name}, index={self.index})"
@@ -94,6 +102,7 @@ class EventScript:
         self._slot_size = len(self.raw)
         self._pre = self._pre_data()
         self.instructions = self._parse(self.raw)
+        self._used = self._parsed_end
         self._read = True
 
     def _make_address(self, data: bytes) -> Address:
@@ -117,9 +126,12 @@ class EventScript:
     def _parse(self, data: bytes) -> list[Instruction]:  # noqa: C901, PLR0912
         full = data
         instructions: list[Instruction] = []
+        ends: list[int] = []
         try:
             while data:
                 consumed = len(full) - len(data)
+                if self._zero_tail(instructions, data, consumed):
+                    break
                 opcode, data = data[0], data[1:]
                 shape = operand_shape(opcode)
                 operands: list[Operand] = []
@@ -143,11 +155,13 @@ class EventScript:
                         chunk, data = data[:size], data[size:]
                         operands.append(int.from_bytes(chunk, "little"))
                 instructions.append(Instruction(consumed, opcode, operands))
+                ends.append(len(full) - len(data))
                 if opcode == 0x00 and not instructions[:-1]:
                     break
         except (AssertionError, KeyError, IndexError):
             log.warning("Salvaging over-read in script %#07x.", self.pointer)
             instructions = self._trim(instructions)
+        self._parsed_end = ends[len(instructions) - 1] if instructions else 0
         return instructions
 
     def _parse_variable(self, operands: "list[Operand]", data: bytes) -> bytes:
@@ -174,6 +188,29 @@ class EventScript:
                 operands.append(data[0])
                 data = data[1:]
         return data
+
+    @staticmethod
+    def _zero_tail(instructions: list[Instruction], data: bytes, consumed: int) -> bool:
+        """``data`` starts with the padding :meth:`write` leaves after a script that got shorter in place.
+
+        True when the next byte is END, the last instruction ended the event, and no jump lands at or after it. Bytes
+        after the padding can be what the old script's slot held past its last instruction, so they don't count. No
+        vanilla or FRUE script has an END right after an END that nothing jumps past, so unpatched scripts parse as
+        before.
+        """
+        if not instructions or data[0] != END:
+            return False
+        last = instructions[-1]
+        ends = last.opcode == END or any(
+            isinstance(operand, list) and operand and operand[-1].tag == END for operand in last.operands
+        )
+        jumps = (
+            operand.offset
+            for instruction in instructions
+            for operand in instruction.operands
+            if isinstance(operand, Address) and operand.is_local
+        )
+        return ends and all(offset < consumed for offset in jumps)
 
     @staticmethod
     def _trim(instructions: list[Instruction]) -> list[Instruction]:
@@ -219,6 +256,12 @@ class EventScript:
         log.debug(f"Writing EventScript {self.index=} {self.event_class.name} ({len(data)}B) → {self.pointer=:#08x}")
         write_file.seek(self.pointer)
         write_file.write(data)
+        # The old script's last bytes would parse as instructions (stray jumps included) next time the image is read.
+        # An END after the end stops the reader (_zero_tail); two cover a script whose last instruction isn't END. The
+        # rest stays: other scripts may copy text from it with <REPEAT>. One that copied from what was overwritten is
+        # repaired by containers.repair_back_references.
+        write_file.write(bytes([END]) * min(self._used - len(data), STOP_LENGTH))
+        self._used = max(self._used, len(data))
         self.parse_written(data)
 
     def parse_written(self, data: bytes) -> None:

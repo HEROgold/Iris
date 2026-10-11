@@ -23,15 +23,22 @@ from iris.errors import EventFreeSpaceError
 from iris.helpers.files import on_new_session, read_file, restore_pointer, write_file
 from iris.helpers.name import read_as_decompressed_name
 from iris.logger import iris
-from iris.structures.event_script.script import EventScript
+from iris.structures.event_script.instructions import Instruction, TextChunk
+from iris.structures.event_script.script import END, STOP_LENGTH, EventScript
 from iris.tables import MapEventObject
 
 
 log = logging.getLogger(f"{iris.name}.MapEvent")
 
+NPC_SCRIPT_BANK_MASK = 0xFF8000
+"""An NPC-load script's jumps are relative to ``pointer & NPC_SCRIPT_BANK_MASK``: the 32KB bank it sits in."""
+
 EVENT_MAGIC = b"PH"
 EVENT_LIST_COUNT = 6
 EVENT_HEADER_SIZE = 2 + (EVENT_LIST_COUNT * 2)  # magic + six relative pointers
+CONTAINER_END = bytes([END]) * STOP_LENGTH
+"""END bytes after a moved container. Its last script would otherwise be read on into whatever follows it in the pool,
+since no pointer marks where the container ends (see ``EventScript._zero_tail``)."""
 
 EVENT_BANK_LIMIT = 0x200000
 """Event scripts must sit below this file offset (SNES banks $80-$BF). The interpreter sets the data bank to the
@@ -44,14 +51,78 @@ END_NPC_POINTER = 0x3AE4D
 END_EVENT_POINTER = 0x7289E
 
 _all_pointers: list[int] | None = None
+_first_pointers: set[int] = set()
+"""The session's pointers from before any container moved: the old bytes stay, so they still bound the scripts left
+around them (see :func:`get_all_pointers`)."""
 
 
 @on_new_session
+def _new_session() -> None:
+    _first_pointers.clear()
+    reset_map_events()
+
+
 def reset_map_events() -> None:
-    """Forget every parsed map and the script-pointer index."""
+    """Forget every parsed map and the script-pointer index (the session's first pointers are kept)."""
     global _all_pointers  # noqa: PLW0603
     _all_pointers = None
     MapEvent._cache.clear()  # noqa: SLF001
+
+
+def parse_all_map_events() -> None:
+    """Parse every map's scripts now, so :func:`repair_back_references` knows their text from before any write."""
+    for index in range(MapEventObject.count):
+        MapEvent.from_index(index)
+
+
+def repair_back_references() -> list[EventScript]:
+    """Rewrite every parsed, unmodified script whose ``<REPEAT>`` text changed because a write overwrote its source.
+
+    A ``<REPEAT>`` copies text from up to 0x1000 bytes before the script, which can belong to another script or map. A
+    script rewritten in place overwrites those bytes, and the copy then shows other text in the game. Each such script
+    is compiled again from the text it was parsed with (back-references it can no longer use become plain text), in
+    place or by moving its container. That write can overwrite another script's source, so this repeats until nothing
+    changes. Only parsed maps are checked; :meth:`MapEvent.write` parses them all before its first write.
+    """
+    repaired: list[EventScript] = []
+    while True:
+        broken: dict[int, MapEvent] = {}
+        for map_event in list(MapEvent._cache.values()):  # noqa: SLF001
+            for script in map_event._scripts():  # noqa: SLF001
+                if not script.dirty and _copies_changed_text(script):
+                    script._pre = script._pre_data()  # noqa: SLF001 -- the compiler checks back-references against it
+                    script.dirty = True
+                    repaired.append(script)
+                    broken[map_event.index] = map_event
+        if not broken:
+            return repaired
+        for map_event in broken.values():
+            log.info("Map %#04x: text another write overwrote is written out again.", map_event.index)
+            map_event._write()  # noqa: SLF001
+
+
+def _copies_changed_text(script: EventScript) -> bool:
+    if not any(chunk.repeat for chunk in _text_chunks(script.instructions)):
+        return False
+    pre = script._pre_data()  # noqa: SLF001
+    if pre == script._pre:  # noqa: SLF001
+        return False
+    parsed_with, script._pre = script._pre, pre  # noqa: SLF001
+    try:
+        now = script._parse(script.raw)  # noqa: SLF001
+    finally:
+        script._pre = parsed_with  # noqa: SLF001
+    return [chunk.data for chunk in _text_chunks(now)] != [chunk.data for chunk in _text_chunks(script.instructions)]
+
+
+def _text_chunks(instructions: list[Instruction]) -> list[TextChunk]:
+    return [
+        chunk
+        for instruction in instructions
+        for operand in instruction.operands
+        if isinstance(operand, list)
+        for chunk in operand
+    ]
 
 
 class EventList:
@@ -190,8 +261,10 @@ class MapEvent:
         if self._magic != EVENT_MAGIC:
             log.warning("Map %#04x: unexpected event magic %r (expected %r).", self.index, self._magic, EVENT_MAGIC)
 
-        # NPC-load script (referenced by the map record, not by the six-pointer block).
-        self.event_lists.append(EventList(self.base_pointer, self.npc_offset, EventClass.NPC_SCRIPT))
+        # NPC-load script (referenced by the map record, not by the six-pointer block). Its jumps are relative to the
+        # start of its own 32KB bank (terrorwave's Script.base_pointer), which is 0x38000 only until it moves.
+        npc_bank = self.npc_pointer & NPC_SCRIPT_BANK_MASK
+        self.event_lists.append(EventList(npc_bank, self.npc_pointer - npc_bank, EventClass.NPC_SCRIPT))
 
         for i in range(EVENT_LIST_COUNT):
             offset = int.from_bytes(self._header_raw[2 + i * 2 : 4 + i * 2], "little")
@@ -218,8 +291,13 @@ class MapEvent:
             raise ValueError(msg)
 
     def _mark_jump_targets(self) -> None:
-        """Flag every script that another script's non-local jump lands in (see ``EventScript.jumped_into``)."""
+        """Flag every script that another script's non-local jump lands in (see ``EventScript.jumped_into``).
+
+        From the instructions as they are now: once every script jumping into one is replaced, it can be replaced too.
+        """
         scripts = self._scripts()
+        for script in scripts:
+            script.jumped_into = False
         for script in scripts:
             for jump in script.external_jumps:
                 target = script.base_pointer + jump.offset
@@ -280,7 +358,16 @@ class MapEvent:
         would raise), so the whole container relocates as one unit instead -- see write_relocated.
         The map record and the event-list header are otherwise only re-emitted when this container is
         ``dirty`` (see :meth:`mark_dirty`).
+
+        A script written in place can overwrite text another script copies with ``<REPEAT>``, so every map is parsed
+        before the first write and :func:`repair_back_references` writes the scripts it broke again afterwards.
         """
+        parse_all_map_events()
+        self._write()
+        repair_back_references()
+
+    def _write(self) -> None:
+        self._mark_jump_targets()
         if self._needs_relocation():
             self.write_relocated()
             return
@@ -351,7 +438,7 @@ class MapEvent:
         lengths[id(npc_script)] = len(compile_script(npc_script, ignore_pointers=True, compress=True))
 
         table_sizes = [len(event_list.events) * 3 + 1 for event_list in class_lists]
-        total_size = EVENT_HEADER_SIZE + sum(table_sizes) + sum(lengths.values())
+        total_size = EVENT_HEADER_SIZE + sum(table_sizes) + sum(lengths.values()) + len(CONTAINER_END)
         try:
             header_base = event_script_allocator.allocate(total_size)
         except EventFreeSpaceError:
@@ -381,16 +468,14 @@ class MapEvent:
                 cursor += lengths[id(event)]
             event_list.pointer = table_address
             event_list.offset = table_address - header_base
-        # The NPC script's OWN base_pointer must stay header_base, like every other script here:
-        # compile_script resolves its local Address operands as a plain 16-bit value relative to
-        # base_pointer, unrelated to the MapEventObject record's separate bank-extended encoding
-        # (Pass 6 below) -- using the fixed, far-away 0x38000 base here (matching how the *record*
-        # locates the script) blows that 16-bit encoding once the script sits ~header_base away
-        # from 0x38000, i.e. exactly the case relocation into freespace always creates.
-        npc_script.base_pointer = header_base
+        # The game bases an NPC-load script's jumps on the start of the 32KB bank it sits in, not on the event-list
+        # header (terrorwave's Script.base_pointer; vanilla's are all in bank 0x38000). The container is allocated
+        # bank-local, so that is header_base's bank.
+        npc_bank = cursor & NPC_SCRIPT_BANK_MASK
+        npc_script.base_pointer = npc_bank
         npc_script.pointer = cursor
-        npc_script.offset = cursor - header_base
-        self.event_lists[0].base_pointer = header_base
+        npc_script.offset = cursor - npc_bank
+        self.event_lists[0].base_pointer = npc_bank
         self.event_lists[0].pointer = npc_script.pointer
         self.event_lists[0].offset = npc_script.offset
 
@@ -415,9 +500,12 @@ class MapEvent:
             # in-place edit's overflow check (EventScript.write's `_slot_size`) must reflect that,
             # not whatever slack the script happened to have at its old, pre-relocation address.
             script._slot_size = len(data)  # noqa: SLF001 -- this method IS EventScript's relocator
+            script._used = len(data)  # noqa: SLF001
             write_file.seek(script.pointer)
             write_file.write(data)
             script.parse_written(data)
+        write_file.seek(npc_script.pointer + npc_script._used)  # noqa: SLF001 -- the NPC script is laid out last
+        write_file.write(CONTAINER_END)
 
         # Pass 5: write the event-list header (magic + six offsets from header_base).
         write_file.seek(header_base)
@@ -493,5 +581,10 @@ def get_all_pointers() -> list[int]:
         for event_list in map_event.event_lists:
             pointers.add(event_list.pointer)
             pointers.update(event_list.script_pointers())
-    _all_pointers = sorted(pointers)
+    # A moved container leaves its old bytes, and a script that used to end at one of its pointers would otherwise
+    # read on into them: the first pointers still mark where every script that stayed put ends. Moved scripts are
+    # packed in the event pool, which never held scripts, so no first pointer falls inside one.
+    if not _first_pointers:
+        _first_pointers.update(pointers)
+    _all_pointers = sorted(pointers | _first_pointers)
     return _all_pointers
