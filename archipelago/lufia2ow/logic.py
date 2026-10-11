@@ -13,7 +13,7 @@ When a rule isn't certain it asks for more, never less: extra requirements narro
 seed unbeatable.
 
 Names in a requirement are the game's: "Arrow", "Fire arrow" (and later "Ship", "Submarine", "Airship"). The world turns
-each into the item and count that give it under the options (progressive items, the starting Arrow).
+each into the item and count that give it under the options (progressive items).
 """
 
 from dataclasses import dataclass, field

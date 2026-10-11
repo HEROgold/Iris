@@ -47,11 +47,6 @@ class L2OWProcedurePatch(APProcedurePatch, APTokenMixin):
         opcode = 0x21 if item_index & 0x100 else 0x20
         self.write_token(APTokenTypes.WRITE, offset - 1, bytes([opcode, item_index & 0xFF]))
 
-    def write_no_starting_arrow(self) -> None:
-        """Maxim starts without the Arrow: empty the new-game tool slot and his starting tool (key_items.py)."""
-        for offset, value in data.NO_STARTING_ARROW:
-            self.write_token(APTokenTypes.WRITE, offset, value)
-
     def write_hint_npc(self, offset: int, script: bytes) -> None:
         """Overwrite a hint NPC's talk script: its slot in the base ROM, which hints.py fills to the slot's size."""
         self.write_token(APTokenTypes.WRITE, offset, script)

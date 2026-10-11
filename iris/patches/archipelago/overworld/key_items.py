@@ -21,16 +21,6 @@ KEY_ITEM_NAMES = {
 """Slot -> in-game name (at most 12 characters)."""
 
 ENGINE = 449
-NO_STARTING_ARROW = (
-    (0x1AE62, bytes([0x00]), bytes([0xFF])),
-    (0x2B2CA, bytes([0xA9, 0x01]), bytes([0x00, 0x00])),
-)
-"""(headerless offset, vanilla bytes, bytes) that make Maxim start without the Arrow, for the apworld to write per seed.
-
-0x1AE62 is the operand of ``LDA #$00 : STA $0926`` in the new-game initialiser ($83:AE61): tool slot 0 gets tool 0, the
-Arrow; ``$FF`` leaves it empty. 0x2B2CA is the last word of Maxim's starting equipment in his character record ($85:B2CA,
-item 425, the Arrow; terrorwave's ``starting_tool``); 0 is an empty slot, as in his other ones. Not checked in an
-emulator yet."""
 
 
 def apply_key_items() -> None:

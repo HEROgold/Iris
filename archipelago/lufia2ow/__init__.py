@@ -126,14 +126,12 @@ class L2OWWorld(World):
         self.npc_hints = []
 
     def _counts(self) -> dict[str, tuple[str, int] | None]:
-        start = bool(self.options.start_with_arrow)
+        # Maxim always starts with the Arrow: the game assumes at least one tool, and an empty tool list leaves the
+        # opening scene on a black screen (its text box looks up the wrong map object).
         if self.options.arrows == Arrows.option_progressive:
-            arrows = {
-                "Arrow": None if start else ("Progressive Arrow", 1),
-                "Fire arrow": ("Progressive Arrow", 1 if start else 2),
-            }
+            arrows = {"Arrow": None, "Fire arrow": ("Progressive Arrow", 1)}
         else:
-            arrows = {"Arrow": None if start else ("Arrow", 1), "Fire arrow": ("Fire arrow", 1)}
+            arrows = {"Arrow": None, "Fire arrow": ("Fire arrow", 1)}
         if self.options.ship_upgrades == ShipUpgrades.option_progressive:
             ships = {"Ship": ("Progressive Ship", 1), "Submarine": ("Progressive Ship", 2), "Airship": ("Progressive Ship", 3)}
         elif self.options.ship_upgrades == ShipUpgrades.option_separate:
@@ -221,8 +219,8 @@ class L2OWWorld(World):
     def create_items(self) -> None:
         """Lock what stays vanilla, hold back own_stage keys and tools for ``pre_fill``, and pool the rest.
 
-        Items without a vanilla location (ship upgrades, the Arrow when Maxim doesn't start with it) take the place of
-        filler, so the pool stays the size of the locations.
+        Items without a vanilla location (ship upgrades, extra Dragon eggs) take the place of filler, so the pool stays
+        the size of the locations.
         """
         pool: list[Item] = []
         for info in self.location_infos:
@@ -254,9 +252,6 @@ class L2OWWorld(World):
             extra += [("Progressive Ship", Placement.option_anywhere)] * 3
         elif self.options.ship_upgrades == ShipUpgrades.option_separate:
             extra += [(name, Placement.option_anywhere) for name in ("Ship", "Submarine", "Engine")]
-        if not self.options.start_with_arrow:
-            name = "Progressive Arrow" if self.options.arrows == Arrows.option_progressive else "Arrow"
-            extra.append((name, self.options.tool_placement.value))
         if self._egg_goal():
             in_pool = sum(info.vanilla_item == DRAGON_EGG for info in self.location_infos)
             extra += [("Dragon egg", Placement.option_anywhere)] * max(0, self._eggs_needed() - in_pool)
@@ -397,8 +392,6 @@ class L2OWWorld(World):
                 patch.write_grant(location.address, index)
             else:
                 patch.write_chest(location.address - BASE_ID, index)
-        if not self.options.start_with_arrow:
-            patch.write_no_starting_arrow()
         for n, (npc, _, _, texts) in enumerate(self.npc_hints):
             _, _, offset, size = data.HINT_NPCS[npc]
             patch.write_hint_npc(offset, hints.fitted(data.HINT_FLAGS[n], texts, size))

@@ -122,13 +122,6 @@ class Arrows(Choice):
     default = option_progressive
 
 
-class StartWithArrow(DefaultOnToggle):
-    """Maxim starts with the Arrow, as in vanilla. Off: the Arrow (or the first Progressive Arrow) is somewhere in the
-    multiworld; with vanilla Tool Placement you get it at the start from the server."""
-
-    display_name = "Start With Arrow"
-
-
 class HintNpcs(Range):
     """How many townspeople tell you where one of your progression items is: in your world, or which player's world
     and where. Each picks a different item."""
@@ -156,6 +149,5 @@ class L2OWOptions(PerGameCommonOptions):
     useful_items: UsefulItems
     ship_upgrades: ShipUpgrades
     arrows: Arrows
-    start_with_arrow: StartWithArrow
     hint_npcs: HintNpcs
     hint_unlock: HintUnlock
