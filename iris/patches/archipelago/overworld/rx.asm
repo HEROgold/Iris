@@ -19,6 +19,14 @@ MAX_RECEIVED = $0800        ; list room up to the end of the 32KB SRAM: ($F08000
 org $80FFD8
     db $05                  ; SRAM size: 32KB (vanilla $03, 8KB); the RX area lives above the vanilla saves
 
+; Copy protection: at boot the game writes $00 and then $FF to $70:0000 and checks that $70:2000 reads the same, which
+; only holds while 8KB of SRAM mirrors every 8KB. With 32KB it doesn't, and the game resets right after the logos.
+; $71:0000 still mirrors $70:0000 (32KB fills one bank), so compare against that instead, as lufia2ac does.
+org $80809A
+    cmp $710000             ; overwrites CMP $702000
+org $8080A6
+    cmp $710000             ; overwrites CMP $702000
+
 ; main loop
 org $83BC16
     ; DB=$83, x=0, m=1

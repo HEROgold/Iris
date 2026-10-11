@@ -39,6 +39,16 @@ def test_basepatch_writes_the_config_header(vanilla: bytes) -> None:
     assert patched[AP_CONFIG_VERSION_OFFSET] == AP_CONFIG_VERSION
 
 
+def test_basepatch_keeps_the_copy_protection_happy_with_32kb_sram(vanilla: bytes) -> None:
+    """The boot check compares $70:0000 with its 8KB mirror $70:2000; with 32KB of SRAM it must use $71:0000, or the
+    game resets right after the logos."""
+    patched = bsdiff4.patch(vanilla, PATCH_FILE.read_bytes())
+    assert patched[0x7FD8] == 0x05  # 32KB SRAM
+    for offset in (0x009A, 0x00A6):  # $80:809A, $80:80A6
+        assert vanilla[offset : offset + 4] == bytes.fromhex("cf002070")  # CMP $702000
+        assert patched[offset : offset + 4] == bytes.fromhex("cf000071")  # CMP $710000
+
+
 def test_data_module_is_current(vanilla: bytes) -> None:
     assert DATA_FILE.read_text(encoding="utf-8") == render(vanilla), "rerun tools/export_ap_data.py and commit the module"
 
