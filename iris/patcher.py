@@ -223,23 +223,7 @@ def apply_game_genie_codes(*codes: str) -> None:
 
 # TODO: Write a function that can apply SRAM patches.
 
-# TODO: get a event patch's bytecode diff and apply it to the rom.
-# def max_world_clock():
-#     file = Path(__file__).parent/"patches/eventpatch_max_world_clock.txt"
-#     _patch, _validation = event_parser(file)
-#     patch, validation = parser(file)
-# def open_world_base() -> None:
-#     file = Path(__file__).parent/"patches/eventpatch_open_world_base.txt"
-#     _patch, _validation = event_parser(file)
-#     patch, validation = parser(file)
-# def skip_tutorial():
-#     file = Path(__file__).parent/"patches/eventpatch_skip_tutorial.txt"
-#     _patch, _validation = event_parser(file)
-#     patch, validation = parser(file)
-# def treadool_warp():
-#     file = Path(__file__).parent/"patches/eventpatch_treadool_warp.txt"
-#     _patch, _validation = event_parser(file)
-#     patch, validation = parser(file)
+# Event patches (eventpatch_*.txt) are applied by structures.event_script.event_patch.
 
 
 def start_engine() -> None:

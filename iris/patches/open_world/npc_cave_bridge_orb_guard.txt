@@ -1,0 +1,20 @@
+# Ported from absynnonym's terrorwave eventpatch_open_world_base.txt (see ../absynnonym/LICENSE).
+# Applied with iris.structures.event_script.event_patch; class letters are terrorwave's.
+# Cave Bridge B5: an NPC blocks the orb, which crashes the game in open world (cause not found yet).
+# Needs base.txt first: it replaces the map's NPC-load script with base's plus this NPC.
+
+EVENT 44-X-XX
+0000. 74(0B)                         # Set Battle BG
+0002. 69(01)
+0004. 69(09)
+0006. 69(99)
+0100. 68(50-37)
+1008. 4B(17)                         # Preload Music
+100A. 00()                           # End Event
+
+EVENT 44-C-50
+0000. 08: Sorry, if I let
+          you touch this orb,
+          it will crash the
+          game.
+7FFF. 00()

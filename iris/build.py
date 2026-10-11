@@ -52,6 +52,7 @@ from iris.patches.RealCritical import (
 )
 from iris.patches.archipelago.overworld.basepatch import apply_overworld_basepatch
 from iris.patches.archipelago.overworld.hint_npcs import hint_npc_candidates
+from iris.patches.open_world import apply_open_world
 from iris.patches.RealCritical.sprites import bunny_girls, fix_shrine_tile_set
 from iris.structures.item import Item
 from iris.structures.monster import Monster
@@ -122,6 +123,10 @@ class Options:
     zero_gold_command: bool = False
     unlock_warps: bool = True
     """Dev fix: every Warp destination is open from the start. Off for Archipelago, whose logic tracks travel."""
+    open_world: bool = False
+    """terrorwave's open world: the story at its end, every area open (Iris-Dev#43)."""
+    open_world_npcs: tuple[str, ...] = ()
+    """Open-world NPC patches to add, by name (``patches.open_world.NPCS``). Each needs ``open_world``."""
     archipelago: bool = False
     """Add the overworld Archipelago base patch (config block, AP item); see tools/build_ap_basepatch.py."""
 
@@ -130,6 +135,7 @@ class Options:
         """The options of a parsed command line (see :func:`args.parse_args`)."""
         values = {field.name: getattr(args, field.name) for field in fields(cls) if hasattr(args, field.name)}
         values["game_genie_codes"] = tuple(values["game_genie_codes"])
+        values["open_world_npcs"] = tuple(values["open_world_npcs"])
         if values["scale_encounters"] is not None:
             low, high = values["scale_encounters"]
             values["scale_encounters"] = (low, high)
@@ -149,8 +155,14 @@ def build(source: Path | bytes, options: Options) -> bytes:
         return output_bytes()
 
     set_rom_name(b"Lufia II (Iris patch)") # For identification purposes.
+    if options.open_world_npcs and not options.open_world:
+        msg = "Open-world NPC patches need open world."
+        raise ValueError(msg)
+    if options.archipelago or options.open_world:
+        move_all_zone_data()  # event containers need to grow (hint slots, open world), before anything reads ZoneData
+    if options.open_world:
+        apply_open_world(options.open_world_npcs)  # replaces whole scripts, so before any patch edits one
     if options.archipelago:
-        move_all_zone_data()  # the room event containers need to grow (hint slots), before anything reads ZoneData
         hint_npcs = hint_npc_candidates()  # before any patch changes a script
 
     party_toggle_in_elcid(require_found=not options.debug_party)  # event-script demo: Elcid townspeople toggle party join/leave
@@ -166,14 +178,7 @@ def build(source: Path | bytes, options: Options) -> bytes:
         _apply_debug_codes()
     apply_game_genie_codes(*options.game_genie_codes)
 
-    # Apply Event patches
-    # TODO: Implement EventParser
-    # if options.max_world_clock:
-    #     max_world_clock()
-    # if options.open_world_base:
-    #     open_world_base()
-    # if options.treadool_warp:
-    #     treadool_warp()
+    # TODO: treadool_warp is an event patch too (patches/absynnonym); apply it with event_patch.apply_event_patch_file.
 
     _apply_randomizer_patches(options)
 

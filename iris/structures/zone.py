@@ -46,13 +46,15 @@ if TYPE_CHECKING:
 # Be able to determine which items are from what zone.
 @dataclass
 class Boundary:
+    """A rectangle in map tiles. ``east`` and ``south`` are exclusive: a single tile at (x, y) is ``(x, y, x+1, y+1)``."""
+
     west: SupportsIndex
     north: SupportsIndex
-    south: SupportsIndex
     east: SupportsIndex
+    south: SupportsIndex
 
     def __bytes__(self) -> bytes:
-        return bytes([self.west, self.north, self.south, self.east])
+        return bytes([self.west, self.north, self.east, self.south])
 
 
 # TODO: differentiate between NPC and RoamingNPC
@@ -353,6 +355,12 @@ class ZoneData:
         self.exits = list(exits)
         self.dirty = True
         self.parsed_data[EXIT_SECTION] = b"".join(bytes(exit_) for exit_ in exits) + b"\xff"
+
+    def set_tiles(self, tiles: "list[Tile]") -> None:
+        """Replace section 5 (the tile-trigger table) with ``tiles`` (0xFF-terminated)."""
+        self.tiles = list(tiles)
+        self.dirty = True
+        self.parsed_data[TILE_SECTION] = b"".join(bytes(tile) for tile in tiles) + b"\xff"
 
     def set_npcs(self, npcs: "list[NPC]") -> None:
         """Replace section 7 (the NPC-position table) with ``npcs`` (0xFF-terminated)."""

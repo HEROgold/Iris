@@ -59,8 +59,8 @@ class Args(argparse.Namespace):
     # Game Genie Codes
     game_genie_codes: list[str]
     # Event patches
-    max_world_clock: bool
-    open_world_base: bool
+    open_world: bool
+    open_world_npcs: list[str]
     skip_tutorial: bool
     treadool_warp: bool
     # Specific rom patches
@@ -129,8 +129,17 @@ parser.add_argument("--frue", action="store_true", help="Apply the Frue Lufia pa
 parser.add_argument("--spekkio", action="store_true", help="Apply the Spekkio Lufia patch.\n" + CANNOT_PATCH_TOGETHER)
 parser.add_argument("--kureji", action="store_true", help="Apply the Kureji Lufia patch.\n" + CANNOT_PATCH_TOGETHER)
 # Event patches
-parser.add_argument("--max_world_clock", action="store_true")  # TODO: Implement and set default to True
-parser.add_argument("--open_world_base", action="store_true")  # TODO: Implement and set default to True
+parser.add_argument("--open-world", "--open_world", dest="open_world", action="store_true", help="Open world: the story at its end and every area open (terrorwave's open-world base).")
+parser.set_defaults(open_world_npcs=[])
+for _npc, _help in (
+    ("secondary-tool-tip", "Secret Skills Cave: an NPC explains R+A+L (--secondary_tool)."),
+    ("capsule-tips", "Foomy Woods: an NPC explains capsule tag and the feeding bonus."),
+    ("tanbel-inn", "Tanbel: an innkeeper NPC."),
+    ("cave-bridge-orb-guard", "Cave Bridge B5: an NPC keeps you from the orb, which crashes the game in open world."),
+    ("egg-key-trader", "Agurio: an NPC trades three Dragon eggs for any key."),
+    ("egg-wishes", "Small Shrine to Dragon Egg: terrorwave's egg wishes."),
+):
+    parser.add_argument(f"--npc-{_npc}", dest="open_world_npcs", action="append_const", const=f"npc_{_npc.replace('-', '_')}", help=f"Open world only. {_help}")
 parser.add_argument("--skip-tutorial", "--skip_tutorial", dest="skip_tutorial", action="store_true", help="Skip the Secret Skills Cave tutorial: its flags are set at new game and Maxim starts with Reset.")
 # Patch flags
 parser.add_argument("--aggressive-movement", action="store_true", help="Set all monsters to be aggressive.")
@@ -203,8 +212,6 @@ def parse_args(argv: Sequence[str] | None = None) -> Args:
 
 
 def _reject_unimplemented(args: Args) -> None:
-    assert not args.max_world_clock,"EventPatch not implemented."
-    assert not args.open_world_base,"EventPatch not implemented."
     assert not args.custom_spawn_city, "Custom starting location not implemented."
     assert args.spawn_location == "Portravia", "Custom starting location not implemented."
     assert not args.unlock_gift_mode, "Patch not implemented."
@@ -252,8 +259,6 @@ def _check_scale_encounters(low: int, high: int) -> None:
 
 
 def _enable_debug_patches(args: Args) -> None:
-    args.max_world_clock = True
-    args.open_world_base = True
     args.skip_tutorial = True
     args.treadool_warp = True
     args.capsule_feeding_bonus = True
