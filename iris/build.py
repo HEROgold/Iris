@@ -43,6 +43,7 @@ from iris.patches.HEROgold import (
     set_rom_name,
     swap_pierre_danielle_sprites,
 )
+from iris.patches.HEROgold.new_game import INTRO_SPAWN_ENTRANCE
 from iris.patches.HEROgold.start_capsule import start_capsule
 from iris.patches.RealCritical import (
     ac_more_enemies,
@@ -109,6 +110,8 @@ class Options:
     fix_softlocks: bool = False
     foomy_firebird: bool = False
     skip_tutorial: bool = False
+    skip_intro: bool = False
+    """Debug runs: a new game starts in Elcid past the intro scenes, with their flags set. Implies ``skip_tutorial``."""
     game_genie_codes: tuple[str, ...] = ()
     scale_encounters: tuple[int, int] | None = None
     start_capsule: int | None = None
@@ -271,7 +274,10 @@ def _apply_randomizer_patches(options: Options) -> None:
     for option, patch in _RANDOMIZER_PATCHES:
         if getattr(options, option):
             apply_absynnonym_patch(patch)
-    if options.custom_spawn_city:
+    if options.skip_intro:
+        # Elcid entrance 3 instead of 2, so the opening scene in Tia's shop never loads; the hook sets its flags.
+        set_spawn_location(Zone.from_name("Elcid"), entrance_cutscene=INTRO_SPAWN_ENTRANCE)
+    elif options.custom_spawn_city:
         set_spawn_location(Zone.from_name("Elcid"), entrance_cutscene=0x02) # TODO: Investigate and fix (event) script loading.
         # set_spawn_location(Zone.from_name(options.spawn_location))
     if options.start_engine:
@@ -283,11 +289,12 @@ def _apply_randomizer_patches(options: Options) -> None:
 
 def _apply_new_game(options: Options) -> None:
     # One asar hook at the new-game handoff: every Warp destination unlocked (dev fix, unless unlock_warps is off),
-    # --skip-tutorial and the start items.
+    # --skip-tutorial, --skip-intro and the start items. The tutorial sits between the intro scenes, so --skip-intro skips it too.
     start_items = [(Item.from_index(index), quantity) for index, quantity in options.start_items]
     apply_new_game_hook(
         unlock_warps=options.unlock_warps,
-        skip_tutorial=options.skip_tutorial,
+        skip_tutorial=options.skip_tutorial or options.skip_intro,
+        skip_intro=options.skip_intro,
         start_items=start_items,
         clear_ap_rx=options.archipelago,
     )

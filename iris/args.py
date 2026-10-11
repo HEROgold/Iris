@@ -65,6 +65,7 @@ class Args(argparse.Namespace):
     boss_placement: str
     boss_strength: str
     skip_tutorial: bool
+    skip_intro: bool
     treadool_warp: bool
     # Specific rom patches
     aggressive_movement: bool
@@ -149,6 +150,13 @@ for _extra, _help in (  # one flag per patches.open_world.EXTRAS entry
 ):
     parser.add_argument(f"--{_extra}", dest="open_world_extras", action="append_const", const=_extra.replace("-", "_"), help=f"Open world only. {_help}")
 parser.add_argument("--skip-tutorial", "--skip_tutorial", dest="skip_tutorial", action="store_true", help="Skip the Secret Skills Cave tutorial: its flags are set at new game and Maxim starts with Reset.")
+parser.add_argument(
+    "--skip-intro", "--skip_intro", dest="skip_intro", action="store_true",
+    help=(
+        "Debug runs: skip the Elcid intro (Tia's shop, dinner and \"Bad news\" scenes). "
+        "A new game starts in Elcid with their flags set. Implies --skip-tutorial."
+    ),
+)
 # Patch flags
 parser.add_argument("--aggressive-movement", action="store_true", help="Set all monsters to be aggressive.")
 parser.add_argument("--passive-movement", action="store_true", help="Set all monsters to be passive.")
@@ -216,6 +224,9 @@ def parse_args(argv: Sequence[str] | None = None) -> Args:
         _check_scale_encounters(*args.scale_encounters)
     if args.debug:
         _enable_debug_patches(args)
+    if args.skip_intro:
+        # The tutorial sits between Tia's shop scene and her dinner scene, so skipping the intro skips it too.
+        args.skip_tutorial = True
     return args
 
 

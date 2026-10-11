@@ -6,7 +6,7 @@ import pytest
 
 from iris.helpers.addresses import address_from_lorom
 from iris.helpers.files import write_file
-from iris.patches.HEROgold.new_game import EVENT_FLAGS, TUTORIAL_FLAGS, apply_new_game_hook
+from iris.patches.HEROgold.new_game import EVENT_FLAGS, INTRO_FLAGS, TUTORIAL_FLAGS, apply_new_game_hook
 from tests.reset_file import reset_file
 
 
@@ -73,6 +73,26 @@ def test_skip_tutorial_teaches_maxim_reset_with_the_games_own_routine() -> None:
 def test_tutorial_flags_match_the_cave_events() -> None:
     # 0x15 finished tutorial, 0x77 Tia's cave scene seen, 0xAC Reset lesson done, then the cave's trigger-tile lessons.
     assert set(TUTORIAL_FLAGS) == {0x15, 0x77, 0xAC, 0x9E, 0x9F, 0xA0, 0xA1, 0xA2, 0xA3, 0xAB}
+
+
+def test_skip_intro_sets_every_intro_flag_and_only_those() -> None:
+    apply_new_game_hook(unlock_warps=False, skip_intro=True)
+    hook = _hook()
+    for flag in INTRO_FLAGS:
+        assert _sets_flag(hook, flag), hex(flag)
+    assert not any(_sets_flag(hook, flag) for flag in TUTORIAL_FLAGS)
+    assert _rejoins_vanilla(hook)
+
+
+def test_without_skip_intro_no_intro_flag_is_set() -> None:
+    apply_new_game_hook(unlock_warps=True, skip_tutorial=True)
+    hook = _hook()
+    assert not any(_sets_flag(hook, flag) for flag in INTRO_FLAGS)
+
+
+def test_intro_flags_match_the_elcid_events() -> None:
+    # 0x01 set by Tia's shop scene (04-A-01), 0x0A by 03-A-02, 0x16 by Tia's dinner (04-C-01), 0x96 by "Bad news" (03-C-01).
+    assert set(INTRO_FLAGS) == {0x01, 0x0A, 0x16, 0x96}
 
 
 def test_start_items_go_through_the_games_add_item_routine() -> None:
