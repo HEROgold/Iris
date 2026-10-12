@@ -13,9 +13,6 @@ dependencies = [
     "pillow>=10.0.0",
 ]
 
-[project.scripts]
-iris = "iris.__main__:cli"
-
 [dependency-groups]
 dev = [
     "bsdiff4>=1.2",
