@@ -21,12 +21,15 @@ Branch `ap/open-world`, worktree `C:\Users\marti\Documents\GitHub\Iris-src-read-
 
 - Orb crash: done, not an Iris bug (1df5ea9, Mesen). `orb_check` makes the orb an item check.
 - [x] Decisions asked (2026-10-12), recorded in the prompts file
-- [ ] Prompt 1: open-world base patch, data export, `open_world` option
+- [x] Prompt 1: open-world base patch, data export, `open_world` option
   - [x] `tools/build_ap_basepatch.py`: `OPEN_WORLD_OPTIONS` -> `basepatch_open_world.bsdiff4`; default writes both, `--check` checks both
   - [x] `tools/export_ap_data.py`: `data_open_world.py` (data.py content + boss NPC operand offsets, BOSSES/DAOS, spot order)
   - [x] `tests/test_ap_export.py`: both pairs current; boss operand offsets read back
-  - [ ] apworld: `open_world` Toggle; base patch + data module per world instance
-  - [ ] Linear `basepatch.bsdiff4`/`data.py` byte-identical; tests green; committed
+  - [x] apworld: `open_world` Toggle; base patch + data module per world instance
+  - [x] Linear `basepatch.bsdiff4`/`data.py` byte-identical; tests green; committed
+  - Note: open world replaces 13 story scripts with grant-less ones (14 grants), so `data_open_world.GRANTS` has 30
+    rows and all 12 current grant locations drop out for open-world players (`locations.grant_offsets`).
+    Boss reward grants are only in `BOSS_NPCS`, not in `GRANTS`.
 - [ ] Prompt 2: open-world region map (ship, submarine, airship)
 - [ ] Prompt 3: characters, capsules, maidens as items; boss NPCs and the orb as locations
 - [ ] Prompt 4: boss placement and boss strength options (tokens)

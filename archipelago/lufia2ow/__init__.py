@@ -9,6 +9,7 @@ import base64
 import os
 import re
 from collections.abc import Callable
+from types import ModuleType
 from typing import Any, ClassVar
 
 import settings
@@ -16,7 +17,7 @@ from BaseClasses import CollectionState, Item, ItemClassification, Location, Mul
 from Fill import fill_restrictive
 from worlds.AutoWorld import WebWorld, World
 
-from . import data, hints
+from . import data, data_open_world, hints
 from .client import L2OWSNIClient  # noqa: F401 - importing it registers the SNI client
 from .items import (
     BASE_ID,
@@ -32,7 +33,7 @@ from .items import (
     L2OWItem,
     item_name_to_id,
 )
-from .locations import LOCATIONS, L2OWLocation, LocationInfo, location_name_to_id
+from .locations import LOCATIONS, L2OWLocation, LocationInfo, grant_offsets, location_name_to_id
 from .logic import (
     EGG_SHRINE_STAGE,
     EGG_WISH_VARIABLE,
@@ -90,6 +91,10 @@ class L2OWWorld(World):
     item_name_to_id = item_name_to_id
     location_name_to_id = location_name_to_id
     auth: bytes
+    data: ModuleType
+    """``data`` or ``data_open_world``: the ROM data of this player's base patch (players can mix them)."""
+    grant_offsets: dict[int, int]
+    """Grant location id -> offset of its item byte in this player's base ROM."""
     stages: list[Stage]
     """The stages up to and including the goal's."""
     location_infos: list[LocationInfo]
@@ -116,7 +121,13 @@ class L2OWWorld(World):
         last = next(index for index, stage in enumerate(STAGES) if stage.name == goal.stage)
         self.stages = STAGES[: last + 1]
         names = {stage.name for stage in self.stages}
-        self.location_infos = [info for info in LOCATIONS if self._stage_of(info.map_index, info.grant).name in names]
+        self.data = data_open_world if self.options.open_world else data
+        self.grant_offsets = grant_offsets(self.data)
+        self.location_infos = [
+            info for info in LOCATIONS
+            if self._stage_of(info.map_index, info.grant).name in names
+            and (info.grant is None or info.code in self.grant_offsets)  # open world drops some story grants
+        ]
         self.counts = self._counts()
         for kind, placement in ((KEYS, self.options.key_placement), (TOOLS, self.options.tool_placement)):
             if placement == Placement.option_own_world:
@@ -333,7 +344,7 @@ class L2OWWorld(World):
 
     def post_fill(self) -> None:
         """Pick the hint NPCs and what each one tells: a different progression item of this world each."""
-        count = min(self.options.hint_npcs.value, len(data.HINT_FLAGS), len(data.HINT_NPCS))
+        count = min(self.options.hint_npcs.value, len(self.data.HINT_FLAGS), len(self.data.HINT_NPCS))
         spots = [
             location for location in self.multiworld.get_locations()
             if location.item is not None and location.address is not None and location.item.player == self.player
@@ -341,7 +352,7 @@ class L2OWWorld(World):
         ]
         spots.sort(key=lambda location: (location.player, location.address))
         chosen = self.random.sample(spots, min(count, len(spots)))
-        npcs = self.random.sample(range(len(data.HINT_NPCS)), len(chosen))
+        npcs = self.random.sample(range(len(self.data.HINT_NPCS)), len(chosen))
         self.npc_hints = [
             (npc, location.player, location.address, self._hint_texts(location))
             for npc, location in zip(npcs, chosen, strict=True)
@@ -372,7 +383,7 @@ class L2OWWorld(World):
             "goal_wishes": self.options.egg_wishes.value if self._egg_goal() else 0,
             "goal_wish_variable": EGG_WISH_VARIABLE,
             "hint_unlock": bool(self.options.hint_unlock),
-            "npc_hints": {data.HINT_FLAGS[n]: [player, address] for n, (_, player, address, _) in enumerate(self.npc_hints)},
+            "npc_hints": {self.data.HINT_FLAGS[n]: [player, address] for n, (_, player, address, _) in enumerate(self.npc_hints)},
         }
 
     def get_filler_item_name(self) -> str:
@@ -380,21 +391,20 @@ class L2OWWorld(World):
 
     def generate_output(self, output_directory: str) -> None:
         patch = L2OWProcedurePatch(player=self.player, player_name=self.player_name)
-        patch.write_file("basepatch.bsdiff4", base_patch())
-        grants = {info.code for info in LOCATIONS if info.grant is not None}
+        patch.write_file("basepatch.bsdiff4", base_patch(bool(self.options.open_world)))
         for location in self.get_locations():
             if location.address is None or location.item is None:
                 continue
             item = location.item
             own = item.player == self.player and item.code is not None
-            index = item.code - BASE_ID if own else data.AP_ITEM_INDEX
-            if location.address in grants:
-                patch.write_grant(location.address, index)
+            index = item.code - BASE_ID if own else self.data.AP_ITEM_INDEX
+            if location.address in self.grant_offsets:
+                patch.write_grant(self.grant_offsets[location.address], index)
             else:
                 patch.write_chest(location.address - BASE_ID, index)
         for n, (npc, _, _, texts) in enumerate(self.npc_hints):
-            _, _, offset, size = data.HINT_NPCS[npc]
-            patch.write_hint_npc(offset, hints.fitted(data.HINT_FLAGS[n], texts, size))
+            _, _, offset, size = self.data.HINT_NPCS[npc]
+            patch.write_hint_npc(offset, hints.fitted(self.data.HINT_FLAGS[n], texts, size))
         patch.write_auth(self.auth)
         patch.write_file("tokens.bin", patch.get_token_binary())
         out_name = f"{self.multiworld.get_out_file_name_base(self.player)}{patch.patch_file_ending}"

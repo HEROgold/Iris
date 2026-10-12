@@ -3,7 +3,7 @@ encounter scaling, fixes) are chosen when building the ROM and don't touch logic
 
 from dataclasses import dataclass
 
-from Options import Choice, DefaultOnToggle, PerGameCommonOptions, Range
+from Options import Choice, DefaultOnToggle, PerGameCommonOptions, Range, Toggle
 
 from . import data
 
@@ -138,8 +138,18 @@ class HintUnlock(DefaultOnToggle):
     display_name = "Hint Unlock"
 
 
+class OpenWorld(Toggle):
+    """Open world: the whole map is open from the start, and boss NPCs guard the dungeons (Iris's open world).
+
+    For now this only switches the base patch; routing still follows the linear story.
+    """
+
+    display_name = "Open World"
+
+
 @dataclass
 class L2OWOptions(PerGameCommonOptions):
+    open_world: OpenWorld
     key_placement: KeyPlacement
     tool_placement: ToolPlacement
     story_rewards: StoryRewards

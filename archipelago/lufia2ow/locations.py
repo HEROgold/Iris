@@ -4,6 +4,7 @@ Chest id = BASE_ID + chest index; grant id = GRANT_BASE + its row in ``data.GRAN
 Egg shrine's wishes stay vanilla (see ``logic``); blue chests come with Iris-Dev#21.
 """
 
+from types import ModuleType
 from typing import NamedTuple
 
 from BaseClasses import Location
@@ -66,6 +67,26 @@ LOCATIONS = _locations()
 location_name_to_id = {location.name: location.code for location in LOCATIONS}
 GRANT_FLAGS = {info.code: data.GRANTS[info.code - GRANT_BASE][5][0] for info in LOCATIONS if info.grant is not None}
 """Grant location id -> the event flag its script sets, which the client reads as the check."""
+
+
+def grant_offsets(module: ModuleType) -> dict[int, int]:
+    """Grant location id -> the offset of its item byte in ``module`` (``data`` or ``data_open_world``).
+
+    A grant is the n-th grant of its script in both modules. Open world replaces some story scripts with ones that grant
+    nothing; their grants are missing from ``data_open_world.GRANTS`` and from this map.
+    """
+
+    def keyed(rows: list) -> dict[tuple[int, str, int], tuple[int, int]]:
+        seen: dict[tuple[int, str], int] = {}
+        out = {}
+        for row, (map_index, signature, offset, *_) in enumerate(rows):
+            n = seen.get((map_index, signature), 0)
+            seen[map_index, signature] = n + 1
+            out[map_index, signature, n] = (row, offset)
+        return out
+
+    offsets = {key: offset for key, (_, offset) in keyed(module.GRANTS).items()}
+    return {GRANT_BASE + row: offsets[key] for key, (row, _) in keyed(data.GRANTS).items() if key in offsets}
 
 
 class L2OWLocation(Location):

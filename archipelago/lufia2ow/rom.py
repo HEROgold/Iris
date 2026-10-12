@@ -10,7 +10,6 @@ from worlds.Files import APProcedurePatch, APTokenMixin, APTokenTypes
 
 from . import data
 from .items import GAME
-from .locations import GRANT_BASE
 
 
 US_MD5 = "6efc477d6203ed2b3b9133c1cd9e9c5d"
@@ -41,9 +40,11 @@ class L2OWProcedurePatch(APProcedurePatch, APTokenMixin):
         self.write_token(APTokenTypes.WRITE, record, bytes([(misc1 & ~ITEM_HIGH_BIT) | high]))
         self.write_token(APTokenTypes.WRITE, record + 2, bytes([item_index & 0xFF]))
 
-    def write_grant(self, location: int, item_index: int) -> None:
-        """Make a script grant give ``item_index``: opcode 0x20 gives items below 0x100, 0x21 gives 0x100 + its byte."""
-        _, _, offset, _, _, _ = data.GRANTS[location - GRANT_BASE]
+    def write_grant(self, offset: int, item_index: int) -> None:
+        """Make the script grant whose item byte is at ``offset`` (``locations.grant_offsets``) give ``item_index``.
+
+        Opcode 0x20 gives items below 0x100, 0x21 gives 0x100 + its byte.
+        """
         opcode = 0x21 if item_index & 0x100 else 0x20
         self.write_token(APTokenTypes.WRITE, offset - 1, bytes([opcode, item_index & 0xFF]))
 
@@ -55,10 +56,16 @@ class L2OWProcedurePatch(APProcedurePatch, APTokenMixin):
         self.write_token(APTokenTypes.WRITE, data.CONFIG["AP_CONFIG_AUTH_OFFSET"], auth.ljust(AUTH_SIZE, b"\0"))
 
 
-def base_patch() -> bytes:
-    patch = pkgutil.get_data(__name__, "basepatch.bsdiff4")
+BASE_PATCHES = {False: "basepatch.bsdiff4", True: "basepatch_open_world.bsdiff4"}
+"""Base patch file per open_world: the linear game, or open world (data_open_world.py describes its ROM)."""
+
+
+def base_patch(open_world: bool = False) -> bytes:
+    """The base patch's bytes; the patch file always stores it as ``basepatch.bsdiff4``, which ``procedure`` applies."""
+    name = BASE_PATCHES[open_world]
+    patch = pkgutil.get_data(__name__, name)
     if patch is None:
-        msg = "basepatch.bsdiff4 is missing from the world package."
+        msg = f"{name} is missing from the world package."
         raise FileNotFoundError(msg)
     return patch
 
