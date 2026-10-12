@@ -56,8 +56,8 @@ Branch `ap/open-world`, worktree `C:\Users\marti\Documents\GitHub\Iris-src-read-
   - [x] Seeds: linear/open/mixed + open shuffled+by_depth; linear spoiler unchanged; commit
   - [x] Findings in step3-next-prompts.md
 - [ ] Prompt 5: leader and extras as per-seed options (token variants, else documented Iris flags)
-  - [ ] 5.1 Diff each leader and each extra against the plain open-world base; decide token-able or not
-  - [ ] 5.2 ROM-side room in the open-world base for variants that need it (linear base unchanged, CLI unchanged)
+  - [x] 5.1 Diff each leader and each extra against the plain open-world base; decide token-able or not
+  - [x] 5.2 ROM-side room in the open-world base for variants that need it (linear base unchanged, CLI unchanged)
   - [ ] 5.3 Export the shipped variant diffs to data_open_world.py; composition tests (Iris side)
   - [ ] 5.4 apworld options (Leader + shipped extras), tokens in generate_output, leader pool, orb location if shipped
   - [ ] 5.5 apworld tests (tokens per option, pool fits per leader, orb location)

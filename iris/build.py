@@ -181,7 +181,7 @@ def build(source: Path | bytes, options: Options) -> bytes:
     if options.archipelago or options.open_world:
         move_all_zone_data()  # event containers need to grow (hint slots, open world), before anything reads ZoneData
     if options.open_world:
-        apply_open_world(options.open_world_extras)  # replaces whole scripts, so before any patch edits one
+        apply_open_world(options.open_world_extras, reserve=options.archipelago)  # replaces whole scripts, so before any patch edits one
         if options.leader is not None:
             set_leader(options.leader)
         placement = shuffled_placement(options.seed) if options.boss_placement == "shuffled" else fixed_placement()

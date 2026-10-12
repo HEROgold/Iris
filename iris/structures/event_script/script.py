@@ -61,6 +61,12 @@ class EventScript:
         """Bytes from ``pointer`` this script has ever filled: what a shorter rewrite pads, never the whole slot (a
         slot can run past the script into bytes that aren't its own)."""
         self._parsed_end = 0
+        self.min_slot = 0
+        """The size of this script's biggest version (``MapEvent.reserve``), 0 when it has none: the open-world extras
+        replace some scripts with versions of other sizes, and the base ROM keeps room for the biggest."""
+        self.slack = 0
+        """Bytes a relocated container lays out after this script: :attr:`min_slot` less the size of the version it
+        has now. Whatever later patches add to the script, it keeps the same slot whichever version it has."""
 
     def __repr__(self) -> str:
         return f"EventScript(pointer={self.pointer:#07x}, class={self.event_class.name}, index={self.index})"

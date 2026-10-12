@@ -102,6 +102,7 @@ def hint_npc_candidates() -> list[HintNpc]:
                 if script.event_class == EventClass.REFERENCED
                 and script.index >= TALK_SCRIPT_START
                 and not script.jumped_into
+                and not script.min_slot  # an open-world extra's script: it may or may not be there (Iris-Dev#43)
                 and len(script.raw) >= MIN_SIZE
                 and _plain_text(script.raw)
             )

@@ -15,13 +15,14 @@ Dialogue still calls the hero ``$MAXIM$``.
 from pathlib import Path
 
 from iris.helpers.addresses import address_to_lorom
-from iris.helpers.files import write_file
+from iris.helpers.files import on_new_session, write_file
 from iris.logger import iris
 from iris.rom_space.pool import pool
 from iris.structures.character import party_flag_of
 from iris.structures.event_script.containers import MapEvent
 from iris.structures.event_script.event_patch import resolve_or_create
 from iris.structures.event_script.instructions import Address, Instruction
+from iris.structures.event_script.script import EventScript
 from iris.structures.sprites import OverPallette, OverSprite, TownSprite
 from iris.tables import MapEventObject, OverPaletteObject, OverSpriteObject
 
@@ -42,6 +43,25 @@ CHARACTER_OPERAND = {0x33: 1, 0x86: 0, 0x8C: 0}
 JOIN, LEAVE, SET_FLAG, CLEAR_FLAG, BRANCH_ON_FLAG = 0x2B, 0x2C, 0x1A, 0x1B, 0x15
 
 
+_imported: dict[int, int] = {}
+"""Character -> where :func:`reserve_leader_room` put its new town sprite in this session."""
+
+
+@on_new_session
+def _reset() -> None:
+    _imported.clear()
+
+
+def reserve_leader_room() -> None:
+    """Room for any leader, so :func:`set_leader` afterwards only changes bytes in place (the Archipelago open-world
+    base, whose leader is a per-seed diff, Iris-Dev#43). The new Artea and Lexis sprites go in (unused until one of
+    them leads), and the opening gets its party swap with Maxim as the leader, which the game skips: Maxim is in the
+    party by then."""
+    for character in NEW_SPRITES:
+        _imported[character] = _write_sprite(character)
+    _swap_new_game_party(MAXIM)
+
+
 def set_leader(leader: int) -> None:
     """Make character ``leader`` (1-6) lead from the new game on."""
     if leader not in LEADERS.values():
@@ -55,12 +75,17 @@ def set_leader(leader: int) -> None:
     _swap_new_game_party(leader)
 
 
-def _import_town_sprite(character: int) -> None:
+def _write_sprite(character: int) -> int:
     data = (Path(__file__).parent / NEW_SPRITES[character]).read_bytes()
     assert len(data) == SPRITE_SIZE
     at = pool().alloc(SPRITE_SIZE)
     write_file.seek(at)
     write_file.write(data)
+    return at
+
+
+def _import_town_sprite(character: int) -> None:
+    at = _imported[character] if character in _imported else _write_sprite(character)
     sprite = TownSprite.from_pointer(TOWN_SPRITES[character])
     sprite.sprite_pointer = address_to_lorom(at)
     sprite.write()
@@ -103,8 +128,19 @@ def _replace_leader_in_events(leader: int) -> None:
 
 
 def _swap_new_game_party(leader: int) -> None:
-    """At the end of the first scene, before its END (after it sets Maxim's party flag): the leader joins, Maxim leaves."""
+    """At the end of the first scene, before its END (after it sets Maxim's party flag): the leader joins, Maxim leaves.
+
+    If the swap is there already (:func:`reserve_leader_room`), only its character and flags change.
+    """
     script = resolve_or_create(OPENING)
+    swap = _existing_swap(script)
+    if swap is not None:
+        branch, join, set_flag = swap
+        branch.operands[0] = set_flag.operands[0] = party_flag_of(leader)
+        join.operands[0] = leader
+        script.dirty = True
+        MapEvent.from_index(int(OPENING[:2], 16)).write()
+        return
     # Room for new lines: every line and local jump target times 0x10 (lines are labels; the compiler lays out bytes).
     for instruction in script.instructions:
         instruction.line *= 0x10
@@ -127,3 +163,14 @@ def _swap_new_game_party(leader: int) -> None:
     script.instructions[index:index] = swap
     script.dirty = True
     MapEvent.from_index(int(OPENING[:2], 16)).write()
+
+
+SWAP_OPCODES = (BRANCH_ON_FLAG, JOIN, SET_FLAG, LEAVE, CLEAR_FLAG, END)
+
+
+def _existing_swap(script: EventScript) -> tuple[Instruction, Instruction, Instruction] | None:
+    """The branch, join and set-flag instructions of a party swap that ends ``script``, if it has one."""
+    tail = script.instructions[-len(SWAP_OPCODES) :]
+    if tuple(instruction.opcode for instruction in tail) != SWAP_OPCODES:
+        return None
+    return tail[0], tail[1], tail[2]

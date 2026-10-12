@@ -153,6 +153,8 @@ class ZoneData:
         # True once write_relocated has moved this blob into the shared freespace pool -- only then
         # does its *previous* slot belong to that pool and need deallocating on the next relocation.
         self._relocated = False
+        self._capacity = 0
+        """Bytes :meth:`reserve` set aside at ``start``; 0 when nothing is reserved."""
         self._blob_length = self.size + 2  # the 2-byte size prefix + payload, as currently on ROM
         if pointer in _moved_blobs:  # move_all_zone_data put it in the pool: the next move gives that copy back
             self._relocated = True
@@ -409,16 +411,19 @@ class ZoneData:
         deallocated.
         """
         blob = self.rebuild()
-        if self._relocated:
-            zone_data_allocator.deallocate(self.start, self._blob_length)
-        pointer = zone_data_allocator.allocate(len(blob))
+        if self._capacity >= len(blob):  # reserved: stay in the slot reserve() gave it
+            pointer = self.start
+        else:
+            if self._relocated:
+                zone_data_allocator.deallocate(self.start, self._blob_length)
+            pointer = zone_data_allocator.allocate(len(blob))
         zone_data_allocator.write(pointer, blob)
         relocate_pointer_table_entry(ZONE_DATA_POINTER_TABLE, map_index, 3, pointer, encode=address_to_lorom)
         self.start = pointer
         self.data = blob[2:]
         self.size = len(blob) - 2
         self._parse_offsets()  # the in-place layout check must see the new offset table
-        self._blob_length = len(blob)
+        self._blob_length = max(len(blob), self._capacity)
         self._relocated = True
         self.dirty = False
         # Re-register under the new pointer: from_pointer's cache is keyed by construction-time
@@ -426,6 +431,19 @@ class ZoneData:
         # MapMeta.write() on an already-relocated zone) would miss the cache and parse a second,
         # separate instance of the same blob instead of reusing this in-memory object.
         self._cache.to_cache(pointer, self)
+
+    def reserve(self, map_index: int, extra: int) -> None:
+        """Relocate this blob into a slot ``extra`` bytes bigger (zero-filled) and keep it there: a later
+        :meth:`write_relocated` that fits stays at the same address (the Archipelago open world's variants, Iris-Dev#43).
+        """
+        capacity = len(self.rebuild()) + extra
+        if self._relocated:
+            zone_data_allocator.deallocate(self.start, self._blob_length)
+        self.start = zone_data_allocator.allocate(capacity)
+        self._capacity = self._blob_length = capacity
+        self._relocated = True
+        zone_data_allocator.write(self.start, bytes(capacity))
+        self.write_relocated(map_index)
 
     def write_section18_inplace(self) -> None:
         """Write section 18 back at its current location (only valid when its length is unchanged)."""

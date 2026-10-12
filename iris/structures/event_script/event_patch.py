@@ -59,9 +59,61 @@ def apply_event_patch(text: str) -> None:
             seen.add(signature)
             maps.add(int(signature.split("-")[0], 16))
         script_lines.append(raw_line)
-    parse_dump("\n".join(script_lines), resolve=resolve_or_create)
+    replaced: list[EventScript] = []
+
+    def resolve(signature: str) -> EventScript:
+        script = resolve_or_create(signature)
+        replaced.append(script)
+        return script
+
+    parse_dump("\n".join(script_lines), resolve=resolve)
+    _update_slack(replaced)
     for map_index in sorted(maps):
         _write_map(map_index)
+
+
+def _update_slack(scripts: Iterable[EventScript]) -> None:
+    """A script with room for its biggest version (``EventScript.min_slot``) now has another: its slack is the rest."""
+    from iris.structures.event_script.compiler import compile_script  # noqa: PLC0415
+
+    for script in scripts:
+        if script.min_slot:
+            size = len(compile_script(script, ignore_pointers=True, compress=True))
+            script.slack = max(0, script.min_slot - size)
+
+
+def measure_event_patch(text: str) -> tuple[dict[str, int], dict[int, int]]:
+    """What applying ``text`` would take, without changing anything: the compiled size (compressed, as a relocated
+    container lays it out) of every script it replaces, by signature, and how many ``!npc`` lines it has per map."""
+    from iris.structures.event_script.compiler import compile_script  # noqa: PLC0415
+
+    npcs: dict[int, int] = {}
+    script_lines: list[str] = []
+    for raw_line in text.splitlines():
+        line = _COMMENT.sub("", raw_line).strip()
+        if line.startswith("!npc"):
+            map_index = int(line.split()[-1].split(":")[0], 16)
+            npcs[map_index] = npcs.get(map_index, 0) + 1
+        elif not line.startswith("!"):
+            script_lines.append(raw_line)
+    scratch: dict[str, EventScript] = {}
+
+    def resolve(signature: str) -> EventScript:
+        _, letter, index_text = signature.upper().split("-")
+        if letter == "X":
+            script = EventScript(0, 0, -1, EventClass.NPC_SCRIPT)
+        else:
+            script = EventScript(0, 0, int(index_text, 16), _TERRORWAVE_CLASSES[letter])
+        script._read = True  # noqa: SLF001 -- never read from ROM
+        scratch[signature.upper()] = script
+        return script
+
+    parse_dump("\n".join(script_lines), resolve=resolve)
+    sizes = {
+        signature: len(compile_script(script, ignore_pointers=True, compress=True))
+        for signature, script in scratch.items()
+    }
+    return sizes, npcs
 
 
 def resolve_or_create(signature: str) -> EventScript:

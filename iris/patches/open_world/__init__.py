@@ -11,8 +11,12 @@ from functools import partial
 from pathlib import Path
 
 from iris.logger import iris
+from iris.patches.open_world.leader import reserve_leader_room
+from iris.structures.event_script.compiler import compile_script
 from iris.structures.event_script.containers import MapEvent
-from iris.structures.event_script.event_patch import apply_event_patch_file
+from iris.structures.event_script.event_patch import apply_event_patch_file, measure_event_patch, resolve_or_create
+from iris.structures.event_script.instructions import Instruction
+from iris.structures.zone import NPC, Boundary, Zone
 from iris.tables import MapEventObject
 
 
@@ -64,8 +68,51 @@ the orb doesn't crash the game in Iris (checked in Mesen), so the guard is only 
 EXCLUSIVE = (frozenset(("npc_cave_bridge_orb_guard", "orb_check")),)
 
 
-def apply_open_world(extras: Iterable[str] = ()) -> None:
-    """Move every map to its end-of-story state, open the world, then apply the chosen ``extras`` (from :data:`EXTRAS`)."""
+END = 0x00
+NPC_SIZE = len(bytes(NPC(1, 0, 0, Boundary(0, 0, 1, 1), 0)))
+
+
+def reserve_extras_room() -> None:
+    """Give every map an event-patch extra touches room for it, so applying the extra later changes bytes in place.
+
+    For the Archipelago open-world base patch (Iris-Dev#43), whose extras are per-seed byte diffs on top of it: each such
+    map's event container moves into a block of its own where every script the extras replace has a slot big enough
+    for its biggest version (theirs or the one already there) (the scripts they add exist as an empty ``END``), and its ZoneData gets room for the NPCs
+    they add. Without this an extra grows its container, which moves to wherever the pool has room, and everything
+    allocated after it moves too. Nothing changes in the game: the added scripts belong to NPCs that aren't there.
+    """
+    sizes: dict[str, int] = {}
+    npcs: dict[int, int] = {}
+    for name in EXTRAS:
+        path = OPEN_WORLD / f"{name}.txt"
+        if not path.exists():
+            continue
+        patch_sizes, patch_npcs = measure_event_patch(path.read_text(encoding="utf-8"))
+        for signature, size in patch_sizes.items():
+            sizes[signature] = max(sizes.get(signature, 0), size)
+        for map_index, count in patch_npcs.items():
+            npcs[map_index] = npcs.get(map_index, 0) + count
+    for map_index in sorted({int(signature[:2], 16) for signature in sizes}):
+        for signature, size in sizes.items():
+            if int(signature[:2], 16) != map_index:
+                continue
+            script = resolve_or_create(signature)
+            if not script.instructions:
+                script.instructions = [Instruction(0, END, [])]
+            current = len(compile_script(script, ignore_pointers=True, compress=True))
+            script.min_slot = max(script.min_slot, size, current)
+            script.slack = script.min_slot - current
+        MapEvent.from_index(map_index).reserve()
+        if map_index in npcs:
+            Zone.from_index(map_index).data.reserve(map_index, npcs[map_index] * NPC_SIZE)
+
+
+def apply_open_world(extras: Iterable[str] = (), *, reserve: bool = False) -> None:
+    """Move every map to its end-of-story state, open the world, then apply the chosen ``extras`` (from :data:`EXTRAS`).
+
+    With ``reserve`` (the Archipelago open-world base), the ROM gets room for every extra and every leader first
+    (:func:`reserve_extras_room`, ``leader.reserve_leader_room``), so each of them is a small in-place diff.
+    """
     chosen = set(extras)
     unknown = chosen - EXTRAS.keys()
     if unknown:
@@ -78,6 +125,9 @@ def apply_open_world(extras: Iterable[str] = ()) -> None:
     iris.info("Applying open world.")
     apply_event_patch_file(MAX_WORLD_CLOCK)
     apply_event_patch_file(OPEN_WORLD / "base.txt")
+    if reserve:
+        reserve_extras_room()
+        reserve_leader_room()
     for name, apply in EXTRAS.items():  # in a fixed order, whatever order they were asked in
         if name in chosen:
             apply()

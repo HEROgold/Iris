@@ -220,6 +220,10 @@ class MapEvent:
         self.event_lists: list[EventList] = []
         self.dirty = False
         self._read = False
+        self._block: tuple[int, int] | None = None
+        """``(start, size)`` of the block :meth:`reserve` relocated this container into; a later relocation that fits
+        reuses it."""
+        self._force_relocation = False
         self._gen_lists()
 
     def __repr__(self) -> str:
@@ -377,10 +381,24 @@ class MapEvent:
         for event_list in self.event_lists:
             event_list.write()
 
+    def reserve(self) -> None:
+        """Relocate this container now into a block of its own and keep it there.
+
+        Every script gets its ``slack`` bytes after it, so a later write of another version (up to ``min_slot``)
+        relocates into this same block with every script where it was: only the changed scripts' bytes differ. Used to
+        build a base ROM that per-seed variants patch in place (the Archipelago open world, Iris-Dev#43).
+        """
+        self._force_relocation = True
+        self._block = None
+        self.write()
+        self._force_relocation = False
+
     def _needs_relocation(self) -> bool:
         """True if any dirty script's recompiled bytes would overflow its original slot, compressed or not."""
         from iris.structures.event_script.compiler import compile_script  # noqa: PLC0415
 
+        if self._force_relocation:
+            return True
         for event_list in self.event_lists:
             for event in event_list.events:
                 if not event.dirty:
@@ -420,7 +438,6 @@ class MapEvent:
         layout can be decided before any address is known, then everything recompiled for real once
         it is.
         """
-        from iris.helpers.freespace import event_script_allocator  # noqa: PLC0415
         from iris.structures.event_script.compiler import compile_script  # noqa: PLC0415
 
         self._check_relocatable()
@@ -434,11 +451,23 @@ class MapEvent:
         lengths: dict[int, int] = {}
         for event_list in class_lists:
             for event in event_list.events:
-                lengths[id(event)] = len(compile_script(event, ignore_pointers=True, compress=True))
-        lengths[id(npc_script)] = len(compile_script(npc_script, ignore_pointers=True, compress=True))
+                lengths[id(event)] = len(compile_script(event, ignore_pointers=True, compress=True)) + event.slack
+        lengths[id(npc_script)] = len(compile_script(npc_script, ignore_pointers=True, compress=True)) + npc_script.slack
 
         table_sizes = [len(event_list.events) * 3 + 1 for event_list in class_lists]
         total_size = EVENT_HEADER_SIZE + sum(table_sizes) + sum(lengths.values()) + len(CONTAINER_END)
+        reserving = self._force_relocation or self._block is not None
+        if self._block is not None and total_size <= self._block[1]:
+            header_base = self._block[0]
+        else:
+            header_base = self._allocate(total_size)
+            if reserving:
+                self._block = (header_base, total_size)
+        self._lay_out(header_base, class_lists, lengths)
+
+    def _allocate(self, total_size: int) -> int:
+        from iris.helpers.freespace import event_script_allocator  # noqa: PLC0415
+
         try:
             header_base = event_script_allocator.allocate(total_size)
         except EventFreeSpaceError:
@@ -452,7 +481,13 @@ class MapEvent:
             event_script_allocator.deallocate(header_base, total_size)
             msg = f"Map {self.index:#04x}: the event pool handed out {header_base:#x}, outside banks $80-$BF."
             raise EventFreeSpaceError(msg)
+        return header_base
 
+    def _lay_out(self, header_base: int, class_lists: "list[EventList]", lengths: dict[int, int]) -> None:
+        from iris.structures.event_script.compiler import compile_script  # noqa: PLC0415
+
+        npc_script = self.npc_script
+        table_sizes = [len(event_list.events) * 3 + 1 for event_list in class_lists]
         # Pass 2: assign every final address now that the full layout size is known.
         cursor = header_base + EVENT_HEADER_SIZE
         table_addresses: list[int] = []
@@ -496,15 +531,16 @@ class MapEvent:
         # resolve correctly) and write every script, dirty or not.
         for script in [event for event_list in class_lists for event in event_list.events] + [npc_script]:
             data = compile_script(script, script_pointer=script.pointer, compress=True)
-            # Scripts are packed with zero slack in the new layout (see docstring); a later
-            # in-place edit's overflow check (EventScript.write's `_slot_size`) must reflect that,
-            # not whatever slack the script happened to have at its old, pre-relocation address.
-            script._slot_size = len(data)  # noqa: SLF001 -- this method IS EventScript's relocator
+            # Scripts are packed with zero slack in the new layout (see docstring) unless they reserve room
+            # (EventScript.slack, padded with END); a later in-place edit's overflow check (EventScript.write's
+            # `_slot_size`) must reflect that, not whatever slack the script had at its old address.
+            slot = lengths[id(script)]
+            script._slot_size = slot  # noqa: SLF001 -- this method IS EventScript's relocator
             script._used = len(data)  # noqa: SLF001
             write_file.seek(script.pointer)
-            write_file.write(data)
+            write_file.write(data + bytes([END]) * (slot - len(data)))
             script.parse_written(data)
-        write_file.seek(npc_script.pointer + npc_script._used)  # noqa: SLF001 -- the NPC script is laid out last
+        write_file.seek(npc_script.pointer + lengths[id(npc_script)])  # the NPC script is laid out last
         write_file.write(CONTAINER_END)
 
         # Pass 5: write the event-list header (magic + six offsets from header_base).
