@@ -1,10 +1,11 @@
 """Export the plain data the Archipelago world needs, as a module that imports without a ROM (Iris-Dev#7).
 
-``iris/lookups/`` reads the ROM at import, which the apworld can't do. This writes ``archipelago/lufia2ow/data.py``:
-only literals, so it imports on Archipelago's Python with nothing else installed. Run from the repo root::
+``iris/lookups/`` reads the ROM at import, which the apworld can't do. This writes ``archipelago/lufia2ow/data.py``
+(the linear base patch) and ``data_open_world.py`` (the open-world base patch, plus its boss NPCs): only literals, so
+they import on Archipelago's Python with nothing else installed. Run from the repo root::
 
-    python tools/export_ap_data.py --file <vanilla-rom>          # write archipelago/lufia2ow/data.py
-    python tools/export_ap_data.py --file <vanilla-rom> --check  # exit 1 if the committed module is stale
+    python tools/export_ap_data.py --file <vanilla-rom>          # write both modules
+    python tools/export_ap_data.py --file <vanilla-rom> --check  # exit 1 if a committed module is stale
 
 Most of it comes from the vanilla ROM. What the base patch moves comes from the built base ROM instead: the hint slots
 (``hint_npcs.make_hint_slots``) and the grants, whose scripts move with their map's event container.
@@ -19,13 +20,26 @@ from pprint import pformat
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from iris import constants
-from iris.build import build
+from iris.build import Options, build
 from iris.enums.flags import GOAL_FLAG, EventFlag, Usability
 from iris.enums.patches import Patch
 from iris.helpers.files import open_rom, read_file
 from iris.patches.archipelago.overworld.ap_item import AP_ITEM_INDEX
 from iris.patches.archipelago.overworld.hint_npcs import HINT_FLAGS, hint_slots
 from iris.patches.archipelago.overworld.key_items import KEY_ITEM_NAMES
+from iris.patches.open_world.bosses import (
+    BOSS_BATTLE,
+    BOSSES,
+    DAOS,
+    FINAL_SPOT,
+    ITEM,
+    LOAD_NPC,
+    MUSIC,
+    PLACEHOLDER_ITEM,
+    SPOTS,
+    Boss,
+    placed_bosses,
+)
 from iris.structures.chest import PointerChest
 from iris.structures.chest_location import CHEST_MAP
 from iris.structures.chest_names import CHEST_NAMES
@@ -36,11 +50,14 @@ from iris.structures.key_doors import key_doors
 from iris.structures.zone import Zone
 from iris.structures.zone_data_pointers import zone_data_pointers
 from iris.tables import ChestObject, ItemObject, select
-from tools.build_ap_basepatch import OPTIONS, vanilla_image
+from iris.structures.event_script.script import EventScript
+from tools.build_ap_basepatch import OPEN_WORLD_OPTIONS, OPTIONS, vanilla_image
 from tools.dump_item_grants import GRANT_OPS, collect
 
 
 DATA_FILE = Path(__file__).resolve().parent.parent / "archipelago" / "lufia2ow" / "data.py"
+OPEN_WORLD_DATA_FILE = DATA_FILE.with_name("data_open_world.py")
+MODULES = ((DATA_FILE, OPTIONS), (OPEN_WORLD_DATA_FILE, OPEN_WORLD_OPTIONS))
 
 TOOLS = range(423, 428)
 """Hook, Bomb, Arrow, Fire arrow, Hammer."""
@@ -104,26 +121,71 @@ def _hint_npcs() -> list[tuple[int, str, int, int]]:
 
 type Grant = tuple[int, str, int, int, int, tuple[int, ...]]
 type HintSlot = tuple[int, str, int, int]
+type BossRow = tuple[str, int, int, str, int, int, int, tuple[int, ...]]
 
 
-def _moved(grants: list[Grant]) -> list[Grant]:
+def _script(map_index: int, signature: str) -> EventScript:
+    map_event = MapEvent.from_index(map_index)
+    map_event.read()
+    return next(
+        script for event_list in map_event.event_lists for script in event_list.events
+        if _signature(map_index, script) == signature
+    )
+
+
+def _boss_npcs(rom: bytes) -> list[BossRow]:
+    """(spot, map, flag, talk signature, sprite offset, bgm offset, formation offset, reward item offsets) per boss NPC.
+
+    Each offset is that of a one-byte operand in ``rom``: the boss's sprite in the map's NPC-load script, the boss
+    music and the boss formation in the talk script, and the item of each reward grant (its count byte follows).
+    """
+    rows = []
+    for npc in placed_bosses():
+        map_event = MapEvent.from_index(npc.spot.map_index)
+        map_event.read()
+        load = map_event.npc_script
+        sprite = next(
+            load.pointer + ins.line + 2 for ins in load.instructions
+            if ins.opcode == LOAD_NPC and list(ins.operands) == [npc.npc_slot, npc.boss.sprite]
+        )
+        talk = _script(npc.spot.map_index, npc.signature)
+        operand = {
+            opcode: [talk.pointer + ins.line + 1 for ins in talk.instructions if ins.opcode == opcode]
+            for opcode in (MUSIC, BOSS_BATTLE, ITEM)
+        }
+        rewards = tuple(operand[ITEM])
+        row = (npc.spot.name, npc.spot.map_index, npc.flag, npc.signature, sprite,
+               operand[MUSIC][0], operand[BOSS_BATTLE][0], rewards)
+        expected = [(sprite, npc.boss.sprite), (row[5], npc.boss.bgm), (row[6], npc.boss.formation)]
+        expected += [(offset, PLACEHOLDER_ITEM) for offset in rewards]
+        if len(rewards) != npc.spot.rewards or any(rom[offset] != value for offset, value in expected):
+            msg = f"The {npc.spot.name} boss NPC's operands don't read back from the base ROM."
+            raise ValueError(msg)
+        rows.append(row)
+    return rows
+
+
+def _boss(boss: Boss) -> tuple[str, int, int, int]:
+    return boss.name, boss.sprite, boss.formation, boss.bgm
+
+
+def _moved(grants: list[Grant], *, open_world: bool) -> list[Grant]:
     """``grants`` (from the vanilla ROM) with the offsets of their item bytes in the active session.
 
     A grant is the n-th grant instruction of its script; the script is found again by its signature, which moving its
-    container doesn't change.
+    container doesn't change. Open world replaces some story scripts with ones that grant nothing (13 scripts, 14
+    grants); those grants are left out. It adds no grant of its own besides the boss rewards (``BOSS_NPCS``).
     """
     out = []
     order: dict[tuple[int, str], int] = {}
     for map_index, signature, _, item, count, flags in grants:
         n = order.get((map_index, signature), 0)
         order[map_index, signature] = n + 1
-        map_event = MapEvent.from_index(map_index)
-        map_event.read()
-        script = next(
-            script for event_list in map_event.event_lists for script in event_list.events
-            if _signature(map_index, script) == signature
-        )
-        instruction = [ins for ins in script.instructions if ins.opcode in GRANT_OPS][n]
+        script = _script(map_index, signature)
+        script_grants = [ins for ins in script.instructions if ins.opcode in GRANT_OPS]
+        if open_world and not script_grants:
+            continue
+        instruction = script_grants[n]
         if GRANT_OPS[instruction.opcode] + int(instruction.operands[0]) != item:
             msg = f"Grant {n} of {signature} gives {instruction.operands[0]} in the base ROM, not item {item}."
             raise ValueError(msg)
@@ -131,22 +193,24 @@ def _moved(grants: list[Grant]) -> list[Grant]:
     return out
 
 
-def _from_base_rom(vanilla: bytes, grants: list[Grant]) -> tuple[list[Grant], list[HintSlot]]:
+def _from_base_rom(
+    vanilla: bytes, grants: list[Grant], options: Options
+) -> tuple[list[Grant], list[HintSlot], list[BossRow]]:
     """Where ``grants`` and the hint slots are in the base ROM Iris builds: the base patch moves event containers.
 
     Read from the build's own session, where every moved script was parsed again from its new bytes. Parsing the built
     ROM afresh would not do: a script's end is found from the next known pointer, and a moved neighbour no longer
     marks it, so a parse runs on into the neighbour's old bytes and finds its grants there too.
     """
-    build(vanilla, OPTIONS)
-    return _moved(grants), _hint_npcs()
+    rom = build(vanilla, options)
+    return _moved(grants, open_world=options.open_world), _hint_npcs(), _boss_npcs(rom)
 
 
-def render(vanilla: bytes) -> str:
-    """The module's text, from the vanilla US ROM ``vanilla`` and the base ROM Iris builds from it."""
+def render(vanilla: bytes, options: Options = OPTIONS) -> str:
+    """The module's text, from the vanilla US ROM ``vanilla`` and the base ROM Iris builds from it with ``options``."""
     select(Patch.VANILLA)
     open_rom(vanilla)
-    grants, hint_npcs = _from_base_rom(vanilla, _grants())
+    grants, hint_npcs, boss_npcs = _from_base_rom(vanilla, _grants(), options)
     select(Patch.VANILLA)
     open_rom(vanilla)
     ap_constants = {name: getattr(constants, name) for name in dir(constants) if name.startswith("AP_")}
@@ -180,6 +244,22 @@ def render(vanilla: bytes) -> str:
         "# The config block (docs/ap/config_block.md).",
         f"CONFIG = {pformat(ap_constants, width=120)}",
     ]
+    if options.open_world:
+        sections += [
+            "",
+            "# Open world, fixed boss placement. Boss spots in story order: (name, map, rewards); FINAL_SPOT is Daos's.",
+            f"BOSS_SPOTS = {pformat([(spot.name, spot.map_index, spot.rewards) for spot in SPOTS], width=120)}",
+            f"FINAL_SPOT = {(FINAL_SPOT.name, FINAL_SPOT.map_index, FINAL_SPOT.rewards)!r}\n",
+            "# Bosses in story order: (name, sprite, formation, bgm). DAOS always guards FINAL_SPOT.",
+            f"BOSSES = {pformat([_boss(boss) for boss in BOSSES], width=120)}",
+            f"DAOS = {_boss(DAOS)!r}\n",
+            "# Boss NPCs as the base patch places them, Daos last: (spot, map, flag set when beaten, talk signature,",
+            "# offset of the sprite byte in the map's NPC-load script, offsets of the bgm and formation bytes in the talk",
+            "# script, offsets of each reward grant's item byte). A reward is opcode 0x20 [item, 1] giving",
+            "# PLACEHOLDER_ITEM in the base patch; these grants are not in GRANTS.",
+            f"PLACEHOLDER_ITEM = {PLACEHOLDER_ITEM:#04x}",
+            f"BOSS_NPCS = {pformat(boss_npcs, width=120)}",
+        ]
     return "\n".join(sections) + "\n"
 
 
@@ -188,16 +268,19 @@ def main() -> int:
     parser.add_argument("--file", type=Path, required=True, help="The vanilla US ROM (headered or not).")
     parser.add_argument("--check", action="store_true", help="Fail if the committed module is stale.")
     args = parser.parse_args()
-    text = render(vanilla_image(args.file))
-
-    if args.check:
-        current = DATA_FILE.exists() and DATA_FILE.read_text(encoding="utf-8") == text
-        print(f"{DATA_FILE.name} is {'current' if current else 'stale: rerun tools/export_ap_data.py and commit it'}.")
-        return 0 if current else 1
-
-    DATA_FILE.write_text(text, encoding="utf-8", newline="\n")
-    print(f"Wrote {DATA_FILE}.")
-    return 0
+    vanilla = vanilla_image(args.file)
+    stale = 0
+    for data_file, options in MODULES:
+        text = render(vanilla, options)
+        if args.check:
+            current = data_file.exists() and data_file.read_text(encoding="utf-8") == text
+            state = "current" if current else "stale: rerun tools/export_ap_data.py and commit it"
+            print(f"{data_file.name} is {state}.")
+            stale += not current
+        else:
+            data_file.write_text(text, encoding="utf-8", newline="\n")
+            print(f"Wrote {data_file}.")
+    return 1 if stale else 0
 
 
 if __name__ == "__main__":
