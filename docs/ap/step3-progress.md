@@ -60,7 +60,7 @@ Branch `ap/open-world`, worktree `C:\Users\marti\Documents\GitHub\Iris-src-read-
   - [x] 5.2 ROM-side room in the open-world base for variants that need it (linear base unchanged, CLI unchanged)
   - [x] 5.3 Export the shipped variant diffs to data_open_world.py; composition tests (Iris side)
   - [x] 5.4 apworld options (Leader + shipped extras), tokens in generate_output, leader pool, orb location if shipped
-  - [ ] 5.5 apworld tests (tokens per option, pool fits per leader, orb location)
+  - [x] 5.5 apworld tests (tokens per option, pool fits per leader, orb location)
   - [ ] 5.6 Generate linear/open/mixed/leader+extras seeds; linear spoiler differs only in option lines
   - [ ] 5.7 setup_en.md: apworld options vs Iris-only flags; findings in step3-next-prompts.md
 
