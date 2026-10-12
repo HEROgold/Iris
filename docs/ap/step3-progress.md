@@ -47,14 +47,14 @@ Branch `ap/open-world`, worktree `C:\Users\marti\Documents\GitHub\Iris-src-read-
   - [x] Tests (apworld + Iris), linear/open/mixed seeds, linear spoiler unchanged; commit
   - [x] Findings in step3-next-prompts.md
 - Hold lifted: the code-region work landed as 8fa74ae (both base patches rebuilt, all checks green).
-- [ ] Prompt 4: boss placement and boss strength options (tokens)
+- [x] Prompt 4: boss placement and boss strength options (tokens)
   - [x] Baseline linear spoiler (seed 12345) saved before any change
   - [x] export_ap_data: boss power levels in data_open_world; data/base patches --check; Iris export test
   - [x] options.py: BossPlacement (fixed/shuffled), BossStrength (unchanged/party_level/by_depth)
   - [x] __init__.py/rom.py: shuffled placement (sprite/bgm/formation bytes), spoiler, strength tokens
   - [x] apworld tests (tokens per choice, shuffle multiset, by_depth fixed levels)
-  - [ ] Seeds: linear/open/mixed + open shuffled+by_depth; linear spoiler unchanged; commit
-  - [ ] Findings in step3-next-prompts.md
+  - [x] Seeds: linear/open/mixed + open shuffled+by_depth; linear spoiler unchanged; commit
+  - [x] Findings in step3-next-prompts.md
 - [ ] Prompt 5: leader and extras as per-seed options (token variants, else documented Iris flags)
 
 ## Generation testing in upstream Archipelago (set up in prompt 2, reuse it)

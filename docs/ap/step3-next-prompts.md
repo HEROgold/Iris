@@ -171,3 +171,26 @@ tested checkpoint (no push), so a session that stops midway can resume with "con
 - While prompt 3 ran, someone else had uncommitted Iris changes in this worktree (new_game.asm, rx.asm,
   scale_bosses.asm, constants.py, patcher.py, ...). In that working tree asar fails with "Define 'code' wasn't
   found". The `--check`s and `tests/test_ap_export.py` pass on a clean `git archive HEAD`.
+
+## Findings from prompt 4 (commits f2fa3c7..HEAD)
+
+- Export: `data_open_world.BOSSES` and `DAOS` rows are now (name, sprite, formation, bgm, power); power is
+  `bosses._power` (highest vanilla level of the formation's monsters). Many late bosses share power 50 (Gades 1-4,
+  Amon, Erim, Daos, Tank, the dragons, ...), so by_depth barely changes late-game bosses among themselves; it mostly
+  lifts early bosses placed late and lowers late ones placed early. `tests/test_ap_export.py` checks power against
+  `_power`. `data.py` and both base patches stayed current (no ROM change).
+- apworld `bosses.py`: `fixed_placement()`, `shuffled_placement(rng)` (Iris's algorithm on `self.random`),
+  `depth_levels(placement)` (39 bytes, mean story power per formation byte, clamped 1-99, Daos and unplaced = 0).
+  `self.boss_placement` (list of `BOSSES` rows per `BOSS_SPOTS` spot; empty in linear) is set in `generate_early`
+  after `_open_world_options()`. fixed draws no random numbers, so fixed open seeds are unchanged.
+- Options `boss_placement` (fixed/shuffled) and `boss_strength` (unchanged/party_level/by_depth) are open-world only;
+  linear ignores them and writes no boss tokens. Open world always writes the `AP_OPT_BOSS_STRENGTH` byte
+  (`write_boss_strength`), levels only for by_depth; shuffled writes sprite/bgm/formation per spot (`write_boss`),
+  Daos's row never. `write_spoiler` lists "Boss placement (<player>, <choice>)" for open-world players.
+- Seed 12345: the linear spoiler differs from the pre-change one only by the two new option lines in the options
+  section ("Boss Placement: Fixed", "Boss Strength: Unchanged"); playthrough and placements are identical. Open and
+  mixed are identical to prompt 3's apart from those lines and the boss placement section. Shuffled + by_depth
+  (`l2ow_players/bosses`) and variants generate. Not tried in an emulator.
+- For prompt 5: the token pattern is `L2OWProcedurePatch.write_*` in `rom.py` plus a `_write_*` call from
+  `generate_output` under `if self.options.open_world`; a test can record `write_token` calls (see
+  `test/test_open_world_bosses.py`'s `TokenTest.tokens()`). Upstream lufia2ow tests: 84 pass.
