@@ -14,7 +14,7 @@ from iris.structures.event_script.instructions import Address
 from iris.structures.zone import Boundary, Zone, move_all_zone_data
 
 
-PATCHES = Path(__file__).parents[1] / "iris" / "patches" / "absynnonym"
+PATCHES = Path(__file__).parents[1] / "src" / "iris" / "patches" / "absynnonym"
 SKILLS_CAVE = 0x05
 OVERWORLD = 0x00
 

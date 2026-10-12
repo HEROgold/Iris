@@ -1,0 +1,27 @@
+[project]
+name = "iris"
+version = "0.1.0"
+description = "A Lufia II: Rise of the Sinistrals randomizer/patching toolkit."
+readme = "README.md"
+license = "MIT"
+authors = [
+    { name = "HEROgold" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "bitstring>=4.2.3",
+    "pillow>=10.0.0",
+]
+
+[project.scripts]
+iris = "iris.__main__:cli"
+
+[dependency-groups]
+dev = [
+    "bsdiff4>=1.2",
+    "pytest>=8",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.32,<0.12.0"]
+build-backend = "uv_build"

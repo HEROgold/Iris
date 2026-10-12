@@ -1,4 +1,4 @@
-"""Zip archipelago/lufia2ow into lufia2ow.apworld, for Archipelago's custom_worlds folder.
+"""Zip the lufia2ow world (the submodule next to this repo in Iris-Dev) into lufia2ow.apworld, for Archipelago's custom_worlds folder.
 
 Run tools/build_ap_basepatch.py and tools/export_ap_data.py first (or with --check) so the vendored base patch and data
 are current. Usage::
@@ -13,7 +13,7 @@ import zipfile
 from pathlib import Path
 
 
-WORLD = Path(__file__).resolve().parent.parent / "archipelago" / "lufia2ow"
+WORLD = Path(__file__).resolve().parents[2] / "lufia2ow"
 SKIP = {"__pycache__"}
 MANIFEST = "archipelago.json"
 CONTAINER_VERSION = 7
@@ -36,7 +36,7 @@ def build(out_dir: Path) -> Path:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--out", type=Path, default=WORLD.parent / "dist", help="Where to write the .apworld.")
+    parser.add_argument("--out", type=Path, default=Path(__file__).resolve().parents[1] / "dist", help="Where to write the .apworld.")
     parser.add_argument("--install", type=Path, help="An Archipelago install; the .apworld is copied to its custom_worlds.")
     args = parser.parse_args()
     target = build(args.out)

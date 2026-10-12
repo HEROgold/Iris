@@ -1,6 +1,6 @@
 """Export the plain data the Archipelago world needs, as a module that imports without a ROM (Iris-Dev#7).
 
-``iris/lookups/`` reads the ROM at import, which the apworld can't do. This writes ``archipelago/lufia2ow/data.py``
+``src/iris/lookups/`` reads the ROM at import, which the apworld can't do. This writes ``../lufia2ow/data.py``
 (the linear base patch) and ``data_open_world.py`` (the open-world base patch, plus its boss NPCs): only literals, so
 they import on Archipelago's Python with nothing else installed. Run from the repo root::
 
@@ -19,7 +19,7 @@ from pathlib import Path
 from pprint import pformat
 
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path[:0] = [str(Path(__file__).resolve().parents[1]), str(Path(__file__).resolve().parents[1] / "src")]
 
 from iris import constants
 from iris.build import Options, build
@@ -61,7 +61,7 @@ from tools.build_ap_basepatch import OPEN_WORLD_OPTIONS, OPTIONS, vanilla_image
 from tools.dump_item_grants import GRANT_OPS, SET_FLAG, collect
 
 
-DATA_FILE = Path(__file__).resolve().parent.parent / "archipelago" / "lufia2ow" / "data.py"
+DATA_FILE = Path(__file__).resolve().parents[2] / "lufia2ow" / "data.py"
 OPEN_WORLD_DATA_FILE = DATA_FILE.with_name("data_open_world.py")
 MODULES = ((DATA_FILE, OPTIONS), (OPEN_WORLD_DATA_FILE, OPEN_WORLD_OPTIONS))
 

@@ -11,7 +11,7 @@ there is however still plenty of time to review Pr's of fix some issues.
 
 Most of this project/toolkit is in a usable state.
 With Iris it should be quite quick to make custom (data related) patches.
-(see iris/patches/custom.py for examples)
+(see src/iris/patches/custom.py for examples)
 
 ## Supported patches
 

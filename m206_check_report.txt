@@ -1,6 +1,0 @@
-map 3: 0x9bfbd -> 0x320000 ($E48000), 7 exits, 13 NPCs, 0 chests
-  chests: []
-map 4: 0x95bf8 -> 0x32020d ($E4820D), 6 exits, 11 NPCs, 0 chests
-  chests: []
-map 6: 0x936ae -> 0x3204a3 ($E484A3), 5 exits, 16 NPCs, 3 chests
-  chests: [Chest(slot_id=0, x=47, y=4, chest_type=3), Chest(slot_id=1, x=19, y=38, chest_type=3), Chest(slot_id=2, x=18, y=3, chest_type=3)]

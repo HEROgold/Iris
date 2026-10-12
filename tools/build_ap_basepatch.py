@@ -5,7 +5,7 @@ writes seed-dependent bytes on top, as tokens. There are two: the linear game (`
 (``basepatch_open_world.bsdiff4``: fixed boss placement, no extras, no leader, boss strength set by the world's tokens).
 Run from the repo root::
 
-    python tools/build_ap_basepatch.py --file <vanilla-rom>           # write both patches to archipelago/lufia2ow/
+    python tools/build_ap_basepatch.py --file <vanilla-rom>           # write both patches to ../lufia2ow/
     python tools/build_ap_basepatch.py --file <vanilla-rom> --check   # exit 1 if a committed patch is stale
 
 ``--check`` applies the committed patch to the vanilla ROM and compares it with a fresh build, so it doesn't depend
@@ -21,14 +21,15 @@ from pathlib import Path
 import bsdiff4
 
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path[:0] = [str(Path(__file__).resolve().parents[1]), str(Path(__file__).resolve().parents[1] / "src")]
 
 from iris.api.rom import CART_SIZE_20MBIT, Rom
 from iris.build import Options, build
 from iris.enums.patches import Patch
 
 
-WORLD_DIR = Path(__file__).resolve().parent.parent / "archipelago" / "lufia2ow"
+WORLD_DIR = Path(__file__).resolve().parents[2] / "lufia2ow"
+"""The lufia2ow world, the submodule next to this repo in Iris-Dev."""
 PATCH_FILE = WORLD_DIR / "basepatch.bsdiff4"
 OPEN_WORLD_PATCH_FILE = WORLD_DIR / "basepatch_open_world.bsdiff4"
 US_MD5 = "6efc477d6203ed2b3b9133c1cd9e9c5d"

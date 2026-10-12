@@ -21,9 +21,14 @@ def main(argv: Sequence[str] | None = None) -> Args:
     return args
 
 
-if __name__ == "__main__":
+def cli() -> None:
+    """The ``iris`` command: build the ROM from the command line and write it."""
     options = main()
     save(output_path(files.original_file, options.seed))  # the one disk write of the run
+
+
+if __name__ == "__main__":
+    cli()
 
 # TODO: Implement the following:
 # Create own rom extractor, which can and should extract data from the rom. > well on its way
