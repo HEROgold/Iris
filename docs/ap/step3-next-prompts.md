@@ -114,3 +114,24 @@ tested checkpoint (no push), so a session that stops midway can resume with "con
   `MODULES` and `rom.BASE_PATCHES`.
 - No real AP generation ran: `GitHub\Archipelago` is an old LoL fork. The user chose a fresh upstream clone at
   `C:\Users\marti\Documents\GitHub\Archipelago-upstream` for generation tests (2026-10-12).
+
+## Findings from prompt 2
+
+- Open-world regions are `logic.OPEN_AREAS` (one region per travel area, each entered from its `parent`): "Elcid to
+  Aleyn" (maps 0x02-0x5F, on foot), "Sea" (Ship), "Seafloor" (Submarine), "Chaed and Dragon Mountain" (Submarine or
+  airship), "Gratze" (Submarine, airship, or Bomb+Hook+Dankirk key), "Sky" (airship), "Shrine of Daos" (Sky +
+  Submarine). `logic.area_of_map(map)` gives a map's area, so a boss spot's region is `area_of_map(spot map)`; the boss
+  spot maps 0xED (darbi_shrine) and 0xEF (zeppy_cave) already have areas. Locations keep their map's tool/key rule
+  through `logic.OPEN_MAP_RULES`.
+- Travel needs are terrorwave's `tables/requirements.txt`; terrorwave starts on the Ship, so "needs the Ship" for all
+  maps from 0x60 is ours (the story only reaches them after Aleyn). Door key/Shrine key gate nothing in open world
+  (terrorwave's useless_keys; the Door key isn't even in the open-world pool). Worth an emulator check: that Elcid to
+  Aleyn really is walkable without the Ship in Iris's open world.
+- terrorwave's Daos spot also needs the three maidens, all tools and all keys; only the Submarine/airship part is in
+  the logic now. Prompt 3: gate "Shrine of Daos" (or the "Defeat Daos" event location) on the maiden items.
+- In open world the world rewrites options in `generate_early`: own_stage -> own_world (keys/tools), ship_upgrades
+  vanilla -> progressive; a goal outside `logic.OPEN_GOALS` (daos, dragon_eggs) raises OptionError. No Merix egg in
+  open world (its grant is gone), so the eggs goal pools 8 per wish. With open world all areas are always in.
+- The open-world pool is the chests' vanilla items plus the ship items; each extra item drops one filler
+  (`_drop_filler`), so adding boss reward locations and character/capsule/maiden items in prompt 3 must keep
+  `len(itempool) == empty locations` (test `test_pool_fits_locations`).

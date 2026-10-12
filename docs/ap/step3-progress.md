@@ -30,14 +30,38 @@ Branch `ap/open-world`, worktree `C:\Users\marti\Documents\GitHub\Iris-src-read-
   - Note: open world replaces 13 story scripts with grant-less ones (14 grants), so `data_open_world.GRANTS` has 30
     rows and all 12 current grant locations drop out for open-world players (`locations.grant_offsets`).
     Boss reward grants are only in `BOSS_NPCS`, not in `GRANTS`.
-- [ ] Prompt 2: open-world region map (ship, submarine, airship)
+- [x] Prompt 2: open-world region map (ship, submarine, airship)
   - [x] logic.py: open-world areas (travel + key/tool rules) from terrorwave's requirements.txt
   - [x] __init__.py: open-world regions/goal; linear unchanged
   - [x] options: goals (daos, dragon_eggs only), own_stage -> own_world, ship vanilla -> progressive, docs
   - [x] Pool fits the locations in open world (no grants, no Merix egg)
-  - [ ] Upstream clone set up (commands below); linear, open-world and mixed seeds generate
-  - [ ] archipelago/lufia2ow/test/ (WorldTestBase) passes in the upstream clone
-  - [ ] build_apworld packages; export/basepatch --check green; committed
+  - [x] Upstream clone set up (commands below); linear, open-world and mixed seeds generate
+  - [x] archipelago/lufia2ow/test/ (WorldTestBase) passes in the upstream clone
+  - [x] build_apworld packages; export/basepatch --check green; committed
 - [ ] Prompt 3: characters, capsules, maidens as items; boss NPCs and the orb as locations
 - [ ] Prompt 4: boss placement and boss strength options (tokens)
 - [ ] Prompt 5: leader and extras as per-seed options (token variants, else documented Iris flags)
+
+## Generation testing in upstream Archipelago (set up in prompt 2, reuse it)
+
+Clone: `C:\Users\marti\Documents\GitHub\Archipelago-upstream` (upstream main, Python 3.12 venv). The world is a directory
+junction `worlds\lufia2ow` -> this worktree's `archipelago\lufia2ow`, so edits are live (no copies). Player yamls live in
+`l2ow_players\<set>\` there (linear, open, mixed, variants, bad), outputs in `l2ow_out\`.
+
+```sh
+cd /c/Users/marti/Documents/GitHub
+git clone --depth 1 https://github.com/ArchipelagoMW/Archipelago Archipelago-upstream
+cd Archipelago-upstream
+uv venv --python 3.12 .venv
+uv pip install --python .venv/Scripts/python.exe -r requirements.txt pytest pip
+.venv/Scripts/python.exe ModuleUpdate.py --yes          # the other worlds' requirements
+cmd //c "mklink /J worlds\\lufia2ow C:\\Users\\marti\\Documents\\GitHub\\Iris-src-read-write\\archipelago\\lufia2ow"
+.venv/Scripts/python.exe -c "import settings; s = settings.get_settings(); s.lufia2ow_options.rom_file = r'C:\Users\marti\AppData\Local\Temp\l2_headerless.sfc'; s.save()"
+# generate (stdin from /dev/null: on an error Generate waits for Enter)
+.venv/Scripts/python.exe Generate.py --player_files_path l2ow_players/open --outputpath l2ow_out/open --seed 12345 --spoiler 2 < /dev/null
+# the apworld's own tests (archipelago/lufia2ow/test, WorldTestBase)
+.venv/Scripts/python.exe -m pytest worlds/lufia2ow/test -q -p no:cacheprovider
+```
+
+`C:\Users\marti\AppData\Local\Temp\l2_headerless.sfc` is `/tmp/l2_headerless.sfc` in Git Bash. A player yaml is just
+`name: X`, `game: Lufia II Overworld`, and the options under `Lufia II Overworld:`.
