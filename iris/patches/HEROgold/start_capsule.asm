@@ -44,7 +44,8 @@ org $83AD80                     ; was AD 51 0B 89 02 F0 24
     jml start_capsule_hook      ; 4 bytes
     db $EA,$EA,$EA              ; pad the remaining 3 bytes with NOP
 
-freecode
+; START_CAPSULE_CODE_REGION (apply_asm_patch's code_region), not freecode: asar's freespace finder lands in vanilla tile data.
+org !code
 start_capsule_hook:
     lda $0B51                   ; replay the vanilla check (same DBR as the original code)
     bit.b #$02
@@ -84,3 +85,5 @@ start_capsule_hook:
     jml $82E7DB                 ; EXP for the level, save to tables, reload member 7, RTL to .back
 .back:
     jml $83ADAB                 ; continue with the normal new-game start
+
+warnpc !code_end

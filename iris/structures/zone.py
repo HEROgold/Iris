@@ -13,13 +13,16 @@ from typing import TYPE_CHECKING, ClassVar, Self, SupportsIndex
 
 from iris._types.objects import Cache
 from iris.enums.event_scripts import EventClass
-from iris.helpers.addresses import address_to_lorom
+from iris.constants import ZONE_DATA_FREESPACE
+from iris.helpers.addresses import address_from_lorom, address_to_lorom
 from iris.helpers.bits import read_little_int
 from iris.helpers.files import on_new_session, read_file, restore_pointer, write_file
-from iris.helpers.freespace import relocate_pointer_table_entry, zone_data_allocator
+from iris.helpers.freespace import event_script_allocator, relocate_pointer_table_entry, zone_data_allocator
 from iris.helpers.name import compress_name, read_as_decompressed_name
+from iris.helpers.rom_expansion import ensure_rom_expanded
 from iris.logger import iris
 from iris.structures.event_script import EventScript, MapEvent, ZoneEventManager
+from iris.structures.event_script.containers import EVENT_BANK_LIMIT
 from iris.structures.zone_data_pointers import zone_data_pointers
 from iris.tables import MapMetaObject, ZoneObject
 
@@ -43,13 +46,15 @@ if TYPE_CHECKING:
 # Be able to determine which items are from what zone.
 @dataclass
 class Boundary:
+    """A rectangle in map tiles. ``east`` and ``south`` are exclusive: a single tile at (x, y) is ``(x, y, x+1, y+1)``."""
+
     west: SupportsIndex
     north: SupportsIndex
-    south: SupportsIndex
     east: SupportsIndex
+    south: SupportsIndex
 
     def __bytes__(self) -> bytes:
-        return bytes([self.west, self.north, self.south, self.east])
+        return bytes([self.west, self.north, self.east, self.south])
 
 
 # TODO: differentiate between NPC and RoamingNPC
@@ -129,6 +134,10 @@ class Chest:
         return bytes([self.slot_id, self.x, self.y, self.chest_type])
 
 
+_moved_blobs: dict[int, int] = {}
+"""Blob start -> bytes allocated, for every blob :func:`move_all_zone_data` copied into the pool."""
+
+
 class ZoneData:
     _cache = Cache[int, Self]()
 
@@ -144,7 +153,12 @@ class ZoneData:
         # True once write_relocated has moved this blob into the shared freespace pool -- only then
         # does its *previous* slot belong to that pool and need deallocating on the next relocation.
         self._relocated = False
+        self._capacity = 0
+        """Bytes :meth:`reserve` set aside at ``start``; 0 when nothing is reserved."""
         self._blob_length = self.size + 2  # the 2-byte size prefix + payload, as currently on ROM
+        if pointer in _moved_blobs:  # move_all_zone_data put it in the pool: the next move gives that copy back
+            self._relocated = True
+            self._blob_length = _moved_blobs[pointer]
 
         self._parse_offsets()
         self._parse_npc_positions()
@@ -351,6 +365,12 @@ class ZoneData:
         self.dirty = True
         self.parsed_data[EXIT_SECTION] = b"".join(bytes(exit_) for exit_ in exits) + b"\xff"
 
+    def set_tiles(self, tiles: "list[Tile]") -> None:
+        """Replace section 5 (the tile-trigger table) with ``tiles`` (0xFF-terminated)."""
+        self.tiles = list(tiles)
+        self.dirty = True
+        self.parsed_data[TILE_SECTION] = b"".join(bytes(tile) for tile in tiles) + b"\xff"
+
     def set_npcs(self, npcs: "list[NPC]") -> None:
         """Replace section 7 (the NPC-position table) with ``npcs`` (0xFF-terminated)."""
         self.npc_positions = list(npcs)
@@ -391,16 +411,19 @@ class ZoneData:
         deallocated.
         """
         blob = self.rebuild()
-        if self._relocated:
-            zone_data_allocator.deallocate(self.start, self._blob_length)
-        pointer = zone_data_allocator.allocate(len(blob))
+        if self._capacity >= len(blob):  # reserved: stay in the slot reserve() gave it
+            pointer = self.start
+        else:
+            if self._relocated:
+                zone_data_allocator.deallocate(self.start, self._blob_length)
+            pointer = zone_data_allocator.allocate(len(blob))
         zone_data_allocator.write(pointer, blob)
         relocate_pointer_table_entry(ZONE_DATA_POINTER_TABLE, map_index, 3, pointer, encode=address_to_lorom)
         self.start = pointer
         self.data = blob[2:]
         self.size = len(blob) - 2
         self._parse_offsets()  # the in-place layout check must see the new offset table
-        self._blob_length = len(blob)
+        self._blob_length = max(len(blob), self._capacity)
         self._relocated = True
         self.dirty = False
         # Re-register under the new pointer: from_pointer's cache is keyed by construction-time
@@ -408,6 +431,19 @@ class ZoneData:
         # MapMeta.write() on an already-relocated zone) would miss the cache and parse a second,
         # separate instance of the same blob instead of reusing this in-memory object.
         self._cache.to_cache(pointer, self)
+
+    def reserve(self, map_index: int, extra: int) -> None:
+        """Relocate this blob into a slot ``extra`` bytes bigger (zero-filled) and keep it there: a later
+        :meth:`write_relocated` that fits stays at the same address (the Archipelago open world's variants, Iris-Dev#43).
+        """
+        capacity = len(self.rebuild()) + extra
+        if self._relocated:
+            zone_data_allocator.deallocate(self.start, self._blob_length)
+        self.start = zone_data_allocator.allocate(capacity)
+        self._capacity = self._blob_length = capacity
+        self._relocated = True
+        zone_data_allocator.write(self.start, bytes(capacity))
+        self.write_relocated(map_index)
 
     def write_section18_inplace(self) -> None:
         """Write section 18 back at its current location (only valid when its length is unchanged)."""
@@ -564,7 +600,7 @@ class Zone:
         inst.event = MapEvent.from_index(index)
         Zone.event_manager.load_zone_events(inst)
         # get_npc_script / export_zone_events are called on demand, not necessarily here.
-        inst.data = ZoneData.from_pointer(zone_data_pointers[index])
+        inst.data = ZoneData.from_pointer(zone_data_pointer(index))
 
         cls._cache.to_cache(index, inst)
 
@@ -696,9 +732,56 @@ class Zone:
                 break
         return name
 
+@restore_pointer
+def zone_data_pointer(index: int) -> int:
+    """Where map ``index``'s ZoneData is now: its pointer-table entry, which a move updates.
+
+    ``zone_data_pointers`` holds the vanilla addresses; past the table's end it is the only source.
+    """
+    if index >= MapMetaObject.count:
+        return zone_data_pointers[index]
+    read_file.seek(ZONE_DATA_POINTER_TABLE + index * MapMetaObject.reference_pointer)
+    return address_from_lorom(read_little_int(read_file, MapMetaObject.reference_pointer))
+
+
+def move_all_zone_data() -> None:
+    """Move every map's ZoneData, unchanged, to ``ZONE_DATA_FREESPACE``, and give the bytes it leaves to event scripts.
+
+    An event container that grows must move, and it must stay in banks $80-$BF (HER-232), where only a few hundred
+    bytes are free. Vanilla ZoneData fills 111KB of banks $91-$94 and works from the expansion area as well (HER-206),
+    so moving it out is what makes room for growing events. Each blob is copied as is (its offsets are relative to its
+    own start) and its pointer-table entry repointed; its old bytes stay as they are until an event container takes
+    them. A ZoneData already read follows its blob. Blobs already outside banks $80-$BF are left alone, so a second
+    call does nothing.
+    """
+    ensure_rom_expanded(ZONE_DATA_FREESPACE.stop)
+    for index in range(MapMetaObject.count):
+        start = zone_data_pointer(index)
+        if start >= EVENT_BANK_LIMIT:
+            continue
+        read_file.seek(start)
+        length = read_little_int(read_file, 2)  # the size counts its own 2 bytes: the next blob starts at start+size
+        read_file.seek(start)
+        blob = read_file.read(length)
+        pointer = zone_data_allocator.allocate(length)
+        zone_data_allocator.write(pointer, blob)
+        _moved_blobs[pointer] = length
+        relocate_pointer_table_entry(
+            ZONE_DATA_POINTER_TABLE, index, MapMetaObject.reference_pointer, pointer, encode=address_to_lorom,
+        )
+        if (zone_data := ZoneData._cache.from_cache(start)) is not None:  # noqa: SLF001
+            ZoneData._cache.discard(start)  # noqa: SLF001
+            zone_data.start = pointer
+            zone_data._relocated = True  # noqa: SLF001
+            zone_data._blob_length = length  # noqa: SLF001
+            ZoneData._cache.to_cache(pointer, zone_data)  # noqa: SLF001
+        event_script_allocator.deallocate(start, length)
+
+
 @on_new_session
 def reset_zones() -> None:
     ZoneData._cache.clear()  # noqa: SLF001
+    _moved_blobs.clear()
     Zone._cache.clear()  # noqa: SLF001
 
 

@@ -8,6 +8,7 @@ recomputes them.
 
 import logging
 import re
+from collections.abc import Callable
 
 from iris.enums.event_scripts import EventClass
 from iris.logger import iris
@@ -143,11 +144,13 @@ def _parse_instruction_line(line: int, opcode: int, body: str, *, is_text: bool)
     return Instruction(line, opcode, operands)  # type: ignore[arg-type]
 
 
-def parse_dump(text: str) -> None:
+def parse_dump(text: str, resolve: Callable[[str], EventScript] = _resolve_script) -> None:
     """Parse dump text and replace the ``instructions`` of every referenced script (marks dirty).
 
     A physical line that does not start with ``NNNN.`` is a *continuation* of the previous
     instruction -- it reassembles multi-line dialogue whose embedded newlines came from ``0x03``.
+    ``resolve`` turns an ``EVENT`` signature into its script; the terrorwave event-patch dialect passes its own
+    (see ``event_patch``).
     """
     current: EventScript | None = None
     pending: list[Instruction] = []
@@ -171,7 +174,7 @@ def parse_dump(text: str) -> None:
         event_match = _EVENT_MATCHER.match(raw_line)
         if event_match:
             flush()
-            current = _resolve_script(event_match.group(1))
+            current = resolve(event_match.group(1))
             pending = []
             last_line = -1
             continue

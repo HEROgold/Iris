@@ -7,6 +7,7 @@ byte-level steps and ``docs/reference/capsule-ram.md`` for the RAM and routines 
 
 from pathlib import Path
 
+from iris.constants import START_CAPSULE_CODE_REGION
 from iris.logger import iris
 from iris.patcher import apply_asm_patch
 from iris.structures.capsule import CapsuleMonster
@@ -46,4 +47,4 @@ def start_capsule(species: int, name: str | None = None) -> None:
         "flag_mask": str(1 << (STORY_FLAGS[species] % 8)),
         **{f"n{i}": str(byte) for i, byte in enumerate(padded)},
     }
-    apply_asm_patch(_ASM, defines=defines)
+    apply_asm_patch(_ASM, defines=defines, code_region=START_CAPSULE_CODE_REGION)

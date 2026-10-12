@@ -254,6 +254,13 @@ _PARTY_FLAG_BY_INDEX = (
     EventFlag.LEXIS_IN_PARTY,   # index 6 -> flag 7
 )
 
+
+
+def party_flag_of(index: int) -> int:
+    """The party-membership event flag of character ``index`` (see ``_PARTY_FLAG_BY_INDEX``)."""
+    return int(_PARTY_FLAG_BY_INDEX[index])
+
+
 # The seven "found/unlocked" flags are index-ordered starting at FOUND_MAXIM (220), so found flag == 220 +
 # index. These are new flags (no game-side swap), unlike the membership flags above.
 _FOUND_FLAG_BASE = int(EventFlag.FOUND_MAXIM)
@@ -279,7 +286,7 @@ class PlayableCharacter(TablePointer):
         (proved by Elcid's party-select scripts and the TCRF flag notes -- see ``_PARTY_FLAG_BY_INDEX``).
         Set on join (``2B`` + ``1A(flag)``), cleared on leave (``2C`` + ``1B(flag)``).
         """
-        return int(_PARTY_FLAG_BY_INDEX[self.index])
+        return party_flag_of(self.index)
 
     @property
     def found_flag(self) -> int:

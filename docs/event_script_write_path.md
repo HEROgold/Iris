@@ -43,8 +43,9 @@ relative to the block base, which moves together.
 2. Repoint the map record (`MapEventObject` eventlist low/high, npc low/high). `offset = low | (high << 15)`
    supports the large offset, so the block base *can* live in `EMPTY_BYTES` even though 16-bit entry
    offsets can't.
-3. The NPC-load script is referenced separately (base = map bank base `0x38000`, not the block base) —
-   confirm in an emulator how the game bases NPC-script jumps before moving it.
+3. The NPC-load script is referenced separately. Its jumps are relative to the start of the 32 KB bank it sits in
+   (`pointer & 0xFF8000`; `0x38000` for every vanilla one), not to the block base: terrorwave's
+   `Script.base_pointer`, whose open world moves these scripts on real hardware. The relocator and the reader use it.
 4. Reclaim the vacated original range into the freelist so other maps can reuse it (this is the only way to
    get reachable space back).
 

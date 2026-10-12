@@ -10,6 +10,8 @@
 ;                 ($7E:097B..$7E:0996): 0x00 = locked, 0xFF = unlocked. This bakes in the UNLOCK_WARP Game Genie codes.
 ; !skip_tutorial  Leave the Secret Skills Cave (map 5) as vanilla leaves it after the tutorial: set the tutorial's
 ;                 event flags and have Maxim learn Reset. See new_game.py for what each flag does.
+; !skip_intro     Debug runs: set the flags the Elcid intro (Tia's shop, dinner, "Bad news") would have set. The new
+;                 game also starts at Elcid entrance 3 (set_spawn_location) so the opening scene never loads.
 ; !start_items    Put items in the inventory through the game's add-item routine $82:E80C (item in $09CF, quantity
 ;                 in $09CD), as the Archipelago Ancient Cave patch's StartInventory does.
 
@@ -17,8 +19,10 @@ lorom
 
 !unlock_warps ?= 1
 !skip_tutorial ?= 0
+!skip_intro ?= 0
 !start_item_count ?= 0      ; number of (item, quantity) pairs in !start_items
 !start_items ?= 0           ; "item,quantity,item,quantity,..." as dw values
+!clear_ap_rx ?= 0           ; zero the Archipelago RX counters (archipelago/overworld/rx.asm)
 
 ; Event flag n is bit n % 8 (low bit first) of $7E:077E + n / 8, as the game's own helper at $80:BE30 computes it.
 macro set_event_flag(n)
@@ -31,7 +35,8 @@ org $03ADC2                 ; file 0x1ADC2: was  A9 FF 8D 9D 09 4C 8E B1  (LDA #
     jml new_game_hook       ; 4 bytes
     db $EA,$EA,$EA,$EA      ; pad the remaining 4 replaced bytes with NOP
 
-freecode
+; NEW_GAME_CODE_REGION (apply_asm_patch's code_region), not freecode: asar's freespace finder lands in vanilla tile data.
+org !code
 new_game_hook:
 if !unlock_warps
     lda #$FF                ; A stays 8-bit (M flag already set by surrounding code)
@@ -87,6 +92,13 @@ if !skip_tutorial
     plb
     plp
 endif
+if !skip_intro
+    ; Keep this list in sync with new_game.INTRO_FLAGS (tests/test_new_game.py checks the assembled bytes).
+    %set_event_flag($01)    ; MAXIM_IN_PARTY, set at the end of Tia's shop scene (04-A-01)
+    %set_event_flag($0A)    ; NEW_GAME_STARTED, set by 03-A-02 before it walks Maxim into Tia's shop
+    %set_event_flag($16)    ; Tia's dinner scene (04-C-01) has run
+    %set_event_flag($96)    ; the "Bad news" scene (03-C-01) has run; the cave guard (06-B-50) lets you in
+endif
 if !start_item_count
     ; $82:E80C reads $09CD/$09CF through the data bank and can return with A 8-bit, so save everything around it.
     php
@@ -112,7 +124,15 @@ if !start_item_count
     plb
     plp
 endif
-if !skip_tutorial || !unlock_warps == 0 || !start_item_count
+if !clear_ap_rx
+    php
+    rep #$20
+    lda.w #$0000
+    sta.l $F02800           ; received
+    sta.l $F02802           ; processed
+    plp
+endif
+if !skip_tutorial || !skip_intro || !unlock_warps == 0 || !start_item_count || !clear_ap_rx
     lda #$FF                ; A is still $FF after the warp stores unless something since changed it
 endif
     sta.l $7E099D           ; the original displaced write (LDA #$FF : STA $099D)
@@ -122,3 +142,5 @@ if !start_item_count
 start_items:
     dw !start_items
 endif
+
+warnpc !code_end

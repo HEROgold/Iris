@@ -59,9 +59,13 @@ class Args(argparse.Namespace):
     # Game Genie Codes
     game_genie_codes: list[str]
     # Event patches
-    max_world_clock: bool
-    open_world_base: bool
+    open_world: bool
+    open_world_extras: list[str]
+    leader: str | None
+    boss_placement: str
+    boss_strength: str
     skip_tutorial: bool
+    skip_intro: bool
     treadool_warp: bool
     # Specific rom patches
     aggressive_movement: bool
@@ -129,9 +133,30 @@ parser.add_argument("--frue", action="store_true", help="Apply the Frue Lufia pa
 parser.add_argument("--spekkio", action="store_true", help="Apply the Spekkio Lufia patch.\n" + CANNOT_PATCH_TOGETHER)
 parser.add_argument("--kureji", action="store_true", help="Apply the Kureji Lufia patch.\n" + CANNOT_PATCH_TOGETHER)
 # Event patches
-parser.add_argument("--max_world_clock", action="store_true")  # TODO: Implement and set default to True
-parser.add_argument("--open_world_base", action="store_true")  # TODO: Implement and set default to True
+parser.add_argument("--open-world", "--open_world", dest="open_world", action="store_true", help="Open world: the story at its end and every area open (terrorwave's open-world base).")
+parser.add_argument("--leader", choices=["selan", "guy", "artea", "tia", "dekar", "lexis", "random"], default=None, help="Open world only. This character leads instead of Maxim ('random': picked from the seed).")
+parser.add_argument("--boss-placement", choices=["shuffled", "fixed"], default="shuffled", help="Open world: which boss stands at which boss-NPC spot, shuffled per seed or in story order.")
+parser.add_argument("--boss-strength", choices=["unchanged", "depth", "party"], default="unchanged", help="Open world: bosses keep their stats; each is as strong as the story's boss for its spot (depth); or each scales to the party's average level when the fight starts (party).")
+parser.set_defaults(open_world_extras=[])
+for _extra, _help in (  # one flag per patches.open_world.EXTRAS entry
+    ("npc-secondary-tool-tip", "Secret Skills Cave: an NPC explains R+A+L (--secondary_tool)."),
+    ("npc-capsule-tips", "Foomy Woods: an NPC explains capsule tag and the feeding bonus."),
+    ("npc-tanbel-inn", "Tanbel: an innkeeper NPC."),
+    ("npc-cave-bridge-orb-guard", "Cave Bridge B5: terrorwave's NPC keeping you from the orb. Not with --orb-check."),
+    ("npc-egg-key-trader", "Agurio: an NPC trades three Dragon eggs for any key."),
+    ("npc-egg-wishes", "Small Shrine to Dragon Egg: terrorwave's egg wishes."),
+    ("orb-check", "Cave Bridge B5: touching the orb gives an item once."),
+    ("escapable-dungeons", "Escape and Warp work everywhere but the overworld, seafloor, Karlloon Shrine and Daos' Shrine."),
+):
+    parser.add_argument(f"--{_extra}", dest="open_world_extras", action="append_const", const=_extra.replace("-", "_"), help=f"Open world only. {_help}")
 parser.add_argument("--skip-tutorial", "--skip_tutorial", dest="skip_tutorial", action="store_true", help="Skip the Secret Skills Cave tutorial: its flags are set at new game and Maxim starts with Reset.")
+parser.add_argument(
+    "--skip-intro", "--skip_intro", dest="skip_intro", action="store_true",
+    help=(
+        "Debug runs: skip the Elcid intro (Tia's shop, dinner and \"Bad news\" scenes). "
+        "A new game starts in Elcid with their flags set. Implies --skip-tutorial."
+    ),
+)
 # Patch flags
 parser.add_argument("--aggressive-movement", action="store_true", help="Set all monsters to be aggressive.")
 parser.add_argument("--passive-movement", action="store_true", help="Set all monsters to be passive.")
@@ -199,12 +224,13 @@ def parse_args(argv: Sequence[str] | None = None) -> Args:
         _check_scale_encounters(*args.scale_encounters)
     if args.debug:
         _enable_debug_patches(args)
+    if args.skip_intro:
+        # The tutorial sits between Tia's shop scene and her dinner scene, so skipping the intro skips it too.
+        args.skip_tutorial = True
     return args
 
 
 def _reject_unimplemented(args: Args) -> None:
-    assert not args.max_world_clock,"EventPatch not implemented."
-    assert not args.open_world_base,"EventPatch not implemented."
     assert not args.custom_spawn_city, "Custom starting location not implemented."
     assert args.spawn_location == "Portravia", "Custom starting location not implemented."
     assert not args.unlock_gift_mode, "Patch not implemented."
@@ -252,8 +278,6 @@ def _check_scale_encounters(low: int, high: int) -> None:
 
 
 def _enable_debug_patches(args: Args) -> None:
-    args.max_world_clock = True
-    args.open_world_base = True
     args.skip_tutorial = True
     args.treadool_warp = True
     args.capsule_feeding_bonus = True

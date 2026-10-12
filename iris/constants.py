@@ -47,12 +47,26 @@ SCALE_ENCOUNTERS_MAX_BAND = 0xFF
 """The band size is baked as one byte, so it cannot span more than 255 distinct offsets."""
 
 
-# --- Reserved space: ZoneData / event-script relocation freespace -------------------------------
-# Dedicated arenas for the shared FreeSpaceAllocator instances (helpers.freespace) that back
-# ZoneData.write_relocated and the event-script container relocator. 128KB each, bank-aligned, well
-# clear of SCALE_ENCOUNTERS_REGION.
+# --- Reserved space: ZoneData relocation freespace ----------------------------------------------
+# The arena for the shared ZoneData FreeSpaceAllocator (helpers.freespace): 128KB, bank-aligned, well clear of
+# SCALE_ENCOUNTERS_REGION. structures.zone.move_all_zone_data moves every map's ZoneData (111KB) here. Event containers
+# have no arena out here: they must stay in banks $80-$BF (HER-232) and grow into the space ZoneData leaves behind.
 ZONE_DATA_FREESPACE = range(0x320000, 0x340000)
-EVENT_SCRIPT_FREESPACE = range(0x340000, 0x360000)
+
+# --- Reserved space: asar patch code --------------------------------------------------------------
+# Code an asar patch adds (not just hooks over vanilla code) goes here with `org !code` (patcher.apply_asm_patch's
+# code_region), never `freecode`: asar's freespace finder takes the first run of $00 it sees, and in vanilla those runs
+# are blank tiles. Bank $9F from $8000 is DMA'd raw into VRAM, so code at $9F:84FF / $9F:8D3E showed up as garbled item
+# icons and battle tiles. One slot per patch in bank $E8 (headerless 0x340000); each patch's `warnpc !code_end` keeps it
+# inside its slot.
+RX_CODE_REGION = range(0x340000, 0x340800)
+"""rx.asm with rx_specials.asm and key_items.asm (about 0.75KB)."""
+NEW_GAME_CODE_REGION = range(0x340800, 0x340C00)
+"""new_game.asm, including its start-item table."""
+START_CAPSULE_CODE_REGION = range(0x340C00, 0x340E00)
+"""start_capsule.asm."""
+SCALE_BOSSES_CODE_REGION = range(0x340E00, 0x341800)
+"""open_world/scale_bosses.asm (about 0.6KB)."""
 
 # --- Reserved space: RealCritical fix_cave_chest_table --------------------------------------------
 # 71-byte hook body at headerless 0x30D820 (SNES $E1:D820); the patched code at 0x19176 jumps to $E1:D84A.
@@ -63,7 +77,7 @@ CAVE_CHEST_FIX_REGION = range(0x30D820, 0x30D867)
 # client and by our asm; filled per seed by Archipelago tokens (offset + bytes) over a static base
 # patch, so every field has a fixed offset. Bump AP_CONFIG_VERSION whenever the layout changes.
 AP_CONFIG_REGION = range(0x360000, 0x368000)
-AP_CONFIG_VERSION = 1
+AP_CONFIG_VERSION = 2
 """Layout version stored in the byte at AP_CONFIG_VERSION_OFFSET."""
 AP_CONFIG_MAGIC = b"IRISAP"
 AP_CONFIG_MAGIC_OFFSET = 0x360000
@@ -100,7 +114,13 @@ AP_OPT_BLUE_CHEST_COUNT = 0x360049
 """2 bytes, little-endian: number of blue chest checks N."""
 AP_OPT_DEATH_LINK = 0x36004B
 """1 byte (0/1): death link."""
-AP_OPT_RESERVED = 0x36004C
+AP_OPT_BOSS_STRENGTH = 0x36004C
+"""1 byte: how scripted (boss) battles scale (open world, scale_bosses.asm): 0 not, 1 to the party's average level,
+2 to AP_OPT_BOSS_LEVELS."""
+AP_OPT_BOSS_LEVELS = 0x36004D
+"""39 bytes: per boss formation, the level its monsters are scaled to in mode 2 (0 = unchanged)."""
+AP_OPT_BOSS_LEVELS_SIZE = 39
+AP_OPT_RESERVED = 0x360074
 """Reserved option bytes up to the end of the 64-byte option area."""
 
 AP_HINT_HEADER_OFFSET = 0x360080
@@ -110,7 +130,16 @@ AP_HINT_ARENA_OFFSET = 0x360090
 AP_HINT_ARENA_END = 0x368000
 """Reserved hint text arena: AP_HINT_ARENA_OFFSET up to the end of AP_CONFIG_REGION."""
 
-RESERVED_REGIONS = [SCALE_ENCOUNTERS_REGION, ZONE_DATA_FREESPACE, EVENT_SCRIPT_FREESPACE, CAVE_CHEST_FIX_REGION, AP_CONFIG_REGION]
+RESERVED_REGIONS = [
+    SCALE_ENCOUNTERS_REGION,
+    ZONE_DATA_FREESPACE,
+    CAVE_CHEST_FIX_REGION,
+    AP_CONFIG_REGION,
+    RX_CODE_REGION,
+    NEW_GAME_CODE_REGION,
+    START_CAPSULE_CODE_REGION,
+    SCALE_BOSSES_CODE_REGION,
+]
 """Every fixed ROM-expansion reservation, checked for overlaps by helpers.rom_expansion.assert_no_overlaps."""
 
 

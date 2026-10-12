@@ -16,8 +16,6 @@ from typing import TYPE_CHECKING, Any
 
 from iris.api.rom import Rom, RomView
 
-# Converts a ROM file to a different extension, and removes a header if present.
-from iris.helpers.extension import convert_rom
 
 
 if TYPE_CHECKING:
@@ -29,8 +27,8 @@ _resets: list[Callable[[], None]] = []
 
 
 def output_path(source: Path, seed: int) -> Path:
-    """The CLI's default output: the source ROM's name with the seed appended."""
-    return source.with_stem(f"{source.stem}-{seed}").with_suffix(source.suffix)
+    """The CLI's default output: the source ROM's name with the seed appended, as a headerless ``.smc``."""
+    return source.with_stem(f"{source.stem}-{seed}").with_suffix(".smc")
 
 
 def on_new_session[F: Callable[[], None]](reset: F) -> F:
@@ -53,7 +51,8 @@ def use(rom: Rom | None) -> None:
 
 def open_rom(source: Path | bytes, base: "Patch | None" = None) -> Rom:
     """Read ``source`` (a ROM file, or its bytes) into a new active session and apply the base patch to it."""
-    rom = Rom.open(convert_rom(source, ".smc")) if isinstance(source, Path) else Rom.from_bytes(source)
+    # Read only: the header is dropped in memory, and nothing is written next to the source.
+    rom = Rom.open(source) if isinstance(source, Path) else Rom.from_bytes(source)
     use(rom)
     if base is not None:
         from iris.patcher import apply_patch  # noqa: PLC0415 - patcher imports this module

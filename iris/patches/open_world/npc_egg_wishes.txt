@@ -1,0 +1,183 @@
+# Ported from absynnonym's terrorwave eventpatch_open_world_base.txt (see ../absynnonym/LICENSE).
+# Applied with iris.structures.event_script.event_patch; class letters are terrorwave's.
+# Small Shrine to Dragon Egg: the egg dragon's wishes, rewritten.
+# Needs base.txt first: it replaces the map's NPC-load script with base's plus this NPC.
+
+EVENT 9F-C-50
+    0000. 14(12-08-04-20-@1F1-FF)        # If Variable 08 ($07a6) >= 4 then jump to @1F1
+    0008. AB(08)                         # Check Dragon Eggs Obtained
+    000A. 6A(FF-@363)                    # Branch on NOT Flag FF ($079d:80)
+    000E. 08: I see you've collected
+              eight Dragon Eggs.
+              Choose a wish.<END MESSAGE>
+    0035. 48(07-03)
+    0038. 10(04-@8C-@E5-@143-@18D)       # Set Up Branching Event
+    0042. 08: A set of 10 potions.
+              A set of 20 fruits.
+              Dual Blade.
+              A set of Super Rings.<CHOICE>
+    0075. 08: Take your time and
+              think it over.<END EVENT>
+    # LABEL @8C
+    008C. 08: I see. I shall make
+              your wish come true!<END MESSAGE>
+    00A7. 4B(33)                         # Preload Music
+    00A9. 8C(00-0A-16)                   # Load animation frame 0A-16 for sprite 04
+    00AD. 86(00-40)                      # Character Movement?
+    00B0. 49(C8)
+    00B2. 9E: <POSITION 06>Gets a set of 10 potions.<END MESSAGE>
+    00C2. 89(00)
+    00C4. 49(00)
+    00C6. 20(11-0A)                      # Get Item 0XX (Life potion x10)
+    00C9. 20(12-0A)                      # Get Item 0XX (Spell potion x10)
+    00CC. 20(14-0A)                      # Get Item 0XX (Speed potion x10)
+    00CF. 20(15-0A)                      # Get Item 0XX (Mind potion x10)
+    00D2. 20(13-0A)                      # Get Item 0XX (Power potion x10)
+    00D5. 20(16-0A)                      # Get Item 0XX (Brave x10)
+    00E1. 1C(@388)                       # Jump
+    00E4. 00()                           # End Event
+    # LABEL @E5
+    00E5. 08: I see. I shall make
+              your wish come true!<END MESSAGE>
+    0100. 4B(33)                         # Preload Music
+    0102. 8C(00-0A-17)                   # Load animation frame 0A-17 for sprite 04
+    0106. 86(00-40)                      # Character Movement?
+    0109. 49(C8)
+    010B. 9E: <POSITION 06>Gets a set of 20 fruits.<END MESSAGE>
+    011A. 89(00)
+    011C. 49(00)
+    011E. 20(2E-14)                      # Get Item 0XX (Secret fruit x20)
+    0121. 20(2F-14)                      # Get Item 0XX (Holy fruit x20)
+    0124. 20(30-14)                      # Get Item 0XX (Breeze fruit x20)
+    0127. 20(31-14)                      # Get Item 0XX (Charm fruit x20)
+    012A. 20(32-14)                      # Get Item 0XX (Dark fruit x20)
+    012D. 20(33-14)                      # Get Item 0XX (Earth fruit x20)
+    0130. 20(34-14)                      # Get Item 0XX (Flame fruit x20)
+    0133. 20(35-14)                      # Get Item 0XX (Magic fruit x20)
+    013F. 1C(@388)                       # Jump
+    0142. 00()                           # End Event
+    # LABEL @143
+    0143. 08: I see. I shall make
+              your wish come true!<END MESSAGE>
+    015E. 4B(33)                         # Preload Music
+    0160. 8C(00-0A-01)                   # Load animation frame 0A-01 for sprite 04
+    0164. 86(00-40)                      # Character Movement?
+    0167. 49(C8)
+    0169. 9E: <POSITION 06>Gets the Dual Blade.<END MESSAGE>
+    0179. 89(00)
+    017B. 49(00)
+    017D. 20(36-01)                      # Get Item 0XX (Dual blade x1)
+    0189. 1C(@388)                       # Jump
+    018C. 00()                           # End Event
+    # LABEL @18D
+    018D. 08: I see. I shall make
+              your wish come true!<END MESSAGE>
+    01A8. 4B(33)                         # Preload Music
+    01AA. 8C(00-0A-06)                   # Load animation frame 0A-06 for sprite 04
+    01AE. 86(00-40)                      # Character Movement?
+    01B1. 49(C8)
+    01B3. 9E: <POSITION 06>Gets a set of Super Rings.<END MESSAGE>
+    01C5. 89(00)
+    01C7. 49(00)
+    01C9. 21(5B-01)                      # Get Item 1XX (S-power ring x1)
+    01CC. 21(5D-01)                      # Get Item 1XX (S-pro ring x1)
+    01CF. 21(5C-01)                      # Get Item 1XX (S-mind ring x1)
+    01D2. 21(5E-01)                      # Get Item 1XX (S-witch ring x1)
+    01D5. 21(63-01)                      # Get Item 1XX (S-myst ring x1)
+    01D8. 21(5A-01)                      # Get Item 1XX (S-thun ring x1)
+    01DB. 21(57-01)                      # Get Item 1XX (S-fire ring x1)
+    01DE. 21(58-01)                      # Get Item 1XX (S-water ring x1)
+    01E1. 21(59-01)                      # Get Item 1XX (S-ice ring x1)
+    01ED. 1C(@388)                       # Jump
+    01F0. 00()                           # End Event
+    # LABEL @1F1
+    01F1. 08: I have made your
+              wish come true. There
+              is nothing else I can do.<END MESSAGE>
+    0219. 48(04-03)
+    021C. 10(02-@241-@24D)               # Set Up Branching Event
+    0222. 08: Go back.
+              Fight the Egg Dragon!<CHOICE>
+    023A. 08: So long.<END EVENT>
+    # LABEL @241
+    0241. 08: So...so long...<END EVENT>
+    # LABEL @24D
+    024D. 08: I see you wish to
+              battle me! I will
+              give you all I've got!<END MESSAGE>
+    0276. 4B(19)                         # Preload Music
+    0278. 74(04)                         # Set Battle BG
+    027A. 53(25)                         # Invoke Battle (Egg Dragon x1)
+    027C. 15(FF-@343)                    # Branch on Flag FF ($079d:80)
+    0280. 70()                           # Silence
+    0281. CC()
+    0282. A4()                           # Screen Mosaic
+    0283. 76()
+    0284. 6F(2C)                         # Change Music
+    0286. 08: I see you people are
+              quite the warriors. It has
+              been a long time since
+              I've so enjoyed myself!<END MESSAGE>
+    02BF. 15(C1-@31A)                    # Branch on Flag C1 ($0796:02)
+    02C3. 08: To show my
+              appreciation, let me
+              give you this.<END MESSAGE>
+    02E4. 4B(33)                         # Preload Music
+    02E6. 8C(00-0A-01)                   # Load animation frame 0A-01 for sprite 04
+    02EA. 86(00-40)                      # Character Movement?
+    02ED. 49(C8)
+    02EF. 9E: <POSITION 06>Gets the Egg Sword
+              and Egg Ring.<END MESSAGE>
+    0308. 89(00)
+    030A. 49(00)
+    030C. 20(70-01)                      # Get Item 0XX (Egg sword x1)
+    030F. 21(68-01)                      # Get Item 1XX (Egg ring x1)
+    0312. 1A(C1)                         # Set Event Flag C1 ($0796:02)
+    0314. 4B(2C)                         # Preload Music
+    0316. 31(00-01)                      # Change Facing
+    0319. 00()                           # End Event
+    # LABEL @31A
+    031A. 08: I have nothing else to
+              give you, but I will
+              fight with you anytime.<END EVENT>
+    # LABEL @343
+    0343. 70()                           # Silence
+    0344. A4()                           # Screen Mosaic
+    0345. 76()
+    0346. 6F(2C)                         # Change Music
+    0348. 08: You need more practice.
+              Come back later.<END MESSAGE>
+    0361. 28()
+    0362. 00()                           # End Event
+    # LABEL @363
+    0363. 08: Collect eight Dragon Eggs
+              and I will grant your
+              wish.<END EVENT>
+    # LABEL @388
+    0388. 4B(2C)                         # Preload Music
+    0390. 1E(08-01)                      # Add Value to Variable 08 ($07a6)
+    0400. 1D(0A-00)
+    0410. 24(2B-08)
+    0420. 14(C2-002B-0001-30-@800-FF)
+    0430. 1E(0A-01)
+    0440. 24(2B-01)
+    0450. 1C(@420)
+    0800. 20(2B-08)
+    0810. AD(31-00-01)                   # Dragon eggs related?
+    0820. 14(12-0A-01-30-@1388-FF)
+    0830. 1E(0A-FF)
+    0840. 20(2B-01)
+    0850. 1C(@820)
+    1388. 37(1E)                         # Pause
+    138A. 95(BF-00-3C)                   # Screen tint animation
+    138E. 37(3C)                         # Pause
+    1390. 97()
+    1391. 37(14)                         # Pause
+    1393. 4C(2F)                         # Play Sound
+    1395. C1(0A-12)
+    1398. C2(00-01-08-08-00-00)
+    139F. 90(00-00-21)                   # Wave motion right-left
+    13A3. 8F(00-00-41)                   # Wave motion up-down
+    13A7. 9F(00-C6-12)                   # Wave motion shrink
+    13AB. A2(00)
+    13AD. 00()                           # End Event

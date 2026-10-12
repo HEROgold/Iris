@@ -4,6 +4,7 @@ The CLI (``__main__``), the Archipelago world and the check-ROM scripts all buil
 its own ROM session, which drops every cache of the previous one, so builds in one process don't share state.
 """
 
+import random
 from dataclasses import KW_ONLY, dataclass, fields
 from pathlib import Path
 from typing import Self
@@ -42,6 +43,7 @@ from iris.patches.HEROgold import (
     set_rom_name,
     swap_pierre_danielle_sprites,
 )
+from iris.patches.HEROgold.new_game import INTRO_SPAWN_ENTRANCE
 from iris.patches.HEROgold.start_capsule import start_capsule
 from iris.patches.RealCritical import (
     ac_more_enemies,
@@ -51,11 +53,23 @@ from iris.patches.RealCritical import (
     killer_names,
 )
 from iris.patches.archipelago.overworld.basepatch import apply_overworld_basepatch
+from iris.patches.archipelago.overworld.hint_npcs import hint_npc_candidates
+from iris.patches.open_world import apply_open_world
+from iris.patches.open_world.bosses import (
+    fixed_placement,
+    place_bosses,
+    BOSS_SCALING_NONE,
+    BOSS_SCALING_PARTY,
+    install_boss_scaling,
+    scale_to_depth,
+    shuffled_placement,
+)
+from iris.patches.open_world.leader import LEADERS, set_leader
 from iris.patches.RealCritical.sprites import bunny_girls, fix_shrine_tile_set
 from iris.structures.item import Item
 from iris.structures.monster import Monster
 from iris.structures.shop import Shop
-from iris.structures.zone import Zone
+from iris.structures.zone import Zone, move_all_zone_data
 from iris.tables import select
 from tests.read_write import read_write_all
 
@@ -96,6 +110,8 @@ class Options:
     fix_softlocks: bool = False
     foomy_firebird: bool = False
     skip_tutorial: bool = False
+    skip_intro: bool = False
+    """Debug runs: a new game starts in Elcid past the intro scenes, with their flags set. Implies ``skip_tutorial``."""
     game_genie_codes: tuple[str, ...] = ()
     scale_encounters: tuple[int, int] | None = None
     start_capsule: int | None = None
@@ -121,6 +137,16 @@ class Options:
     zero_gold_command: bool = False
     unlock_warps: bool = True
     """Dev fix: every Warp destination is open from the start. Off for Archipelago, whose logic tracks travel."""
+    open_world: bool = False
+    """terrorwave's open world: the story at its end, every area open (Iris-Dev#43)."""
+    open_world_extras: tuple[str, ...] = ()
+    """Optional open-world patches, by name (``patches.open_world.EXTRAS``). Each needs ``open_world``."""
+    leader: int | None = None
+    boss_placement: str = "shuffled"
+    boss_strength: str = "unchanged"
+    """Open world: ``"unchanged"``, ``"depth"`` (each boss as strong as the story's boss for its spot) or ``"party"``."""
+    """Open world: which boss stands at which boss-NPC spot, ``"shuffled"`` (per seed) or ``"fixed"`` (story order)."""
+    """Open world: the character index (1-6) who leads instead of Maxim."""
     archipelago: bool = False
     """Add the overworld Archipelago base patch (config block, AP item); see tools/build_ap_basepatch.py."""
 
@@ -129,6 +155,10 @@ class Options:
         """The options of a parsed command line (see :func:`args.parse_args`)."""
         values = {field.name: getattr(args, field.name) for field in fields(cls) if hasattr(args, field.name)}
         values["game_genie_codes"] = tuple(values["game_genie_codes"])
+        values["open_world_extras"] = tuple(values["open_world_extras"])
+        if args.leader is not None:
+            name = random.Random(args.seed).choice(sorted(LEADERS)) if args.leader == "random" else args.leader
+            values["leader"] = LEADERS[name]
         if values["scale_encounters"] is not None:
             low, high = values["scale_encounters"]
             values["scale_encounters"] = (low, high)
@@ -148,6 +178,25 @@ def build(source: Path | bytes, options: Options) -> bytes:
         return output_bytes()
 
     set_rom_name(b"Lufia II (Iris patch)") # For identification purposes.
+    if (options.open_world_extras or options.leader is not None) and not options.open_world:
+        msg = "Open-world extras and --leader need open world."
+        raise ValueError(msg)
+    if options.archipelago or options.open_world:
+        move_all_zone_data()  # event containers need to grow (hint slots, open world), before anything reads ZoneData
+    if options.open_world:
+        apply_open_world(options.open_world_extras, reserve=options.archipelago)  # replaces whole scripts, so before any patch edits one
+        if options.leader is not None:
+            set_leader(options.leader)
+        placement = shuffled_placement(options.seed) if options.boss_placement == "shuffled" else fixed_placement()
+        place_bosses(placement)
+        if options.boss_strength == "depth":
+            scale_to_depth(placement)
+        elif options.boss_strength == "party":
+            install_boss_scaling(BOSS_SCALING_PARTY)
+        elif options.archipelago:
+            install_boss_scaling(BOSS_SCALING_NONE)  # the world's tokens set the mode and levels per seed
+    if options.archipelago:
+        hint_npcs = hint_npc_candidates()  # before any patch changes a script
 
     party_toggle_in_elcid(require_found=not options.debug_party)  # event-script demo: Elcid townspeople toggle party join/leave
     set_found_flags_on_story_joins()  # story joins also set each character's "found/unlocked" flag
@@ -162,14 +211,7 @@ def build(source: Path | bytes, options: Options) -> bytes:
         _apply_debug_codes()
     apply_game_genie_codes(*options.game_genie_codes)
 
-    # Apply Event patches
-    # TODO: Implement EventParser
-    # if options.max_world_clock:
-    #     max_world_clock()
-    # if options.open_world_base:
-    #     open_world_base()
-    # if options.treadool_warp:
-    #     treadool_warp()
+    # TODO: treadool_warp is an event patch too (patches/absynnonym); apply it with event_patch.apply_event_patch_file.
 
     _apply_randomizer_patches(options)
 
@@ -210,7 +252,7 @@ def build(source: Path | bytes, options: Options) -> bytes:
     # randomize_chest_locations()   # shuffle WHERE chests sit, within each map
 
     if options.archipelago:
-        apply_overworld_basepatch()
+        apply_overworld_basepatch(hint_npcs)
     return output_bytes()
 
 
@@ -232,7 +274,10 @@ def _apply_randomizer_patches(options: Options) -> None:
     for option, patch in _RANDOMIZER_PATCHES:
         if getattr(options, option):
             apply_absynnonym_patch(patch)
-    if options.custom_spawn_city:
+    if options.skip_intro:
+        # Elcid entrance 3 instead of 2, so the opening scene in Tia's shop never loads; the hook sets its flags.
+        set_spawn_location(Zone.from_name("Elcid"), entrance_cutscene=INTRO_SPAWN_ENTRANCE)
+    elif options.custom_spawn_city:
         set_spawn_location(Zone.from_name("Elcid"), entrance_cutscene=0x02) # TODO: Investigate and fix (event) script loading.
         # set_spawn_location(Zone.from_name(options.spawn_location))
     if options.start_engine:
@@ -244,9 +289,15 @@ def _apply_randomizer_patches(options: Options) -> None:
 
 def _apply_new_game(options: Options) -> None:
     # One asar hook at the new-game handoff: every Warp destination unlocked (dev fix, unless unlock_warps is off),
-    # --skip-tutorial and the start items.
+    # --skip-tutorial, --skip-intro and the start items. The tutorial sits between the intro scenes, so --skip-intro skips it too.
     start_items = [(Item.from_index(index), quantity) for index, quantity in options.start_items]
-    apply_new_game_hook(unlock_warps=options.unlock_warps, skip_tutorial=options.skip_tutorial, start_items=start_items)
+    apply_new_game_hook(
+        unlock_warps=options.unlock_warps,
+        skip_tutorial=options.skip_tutorial or options.skip_intro,
+        skip_intro=options.skip_intro,
+        start_items=start_items,
+        clear_ap_rx=options.archipelago,
+    )
     if options.debug_party:
         max_out_party()
     if options.start_capsule is not None:
