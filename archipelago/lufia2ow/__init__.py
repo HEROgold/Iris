@@ -22,19 +22,24 @@ from . import data, data_open_world, hints
 from .client import L2OWSNIClient  # noqa: F401 - importing it registers the SNI client
 from .items import (
     BASE_ID,
+    CHARACTER_BASE,
     DRAGON_EGG,
     FIRE_ARROW,
     GAME,
     ITEM_CLASSIFICATION,
     ITEM_NAMES,
     KEYS,
+    MAIDEN_BASE,
+    MAIDENS,
+    OPEN_WORLD_SPECIALS,
     RANDOM_FILLER,
     RANDOM_USEFUL,
+    SPECIAL_ITEM_NAMES,
     TOOLS,
     L2OWItem,
     item_name_to_id,
 )
-from .locations import LOCATIONS, L2OWLocation, LocationInfo, grant_offsets, location_name_to_id
+from .locations import BOSS_REWARDS, LOCATIONS, BossReward, L2OWLocation, LocationInfo, grant_offsets, location_name_to_id
 from .logic import (
     EGG_SHRINE_MAP,
     EGG_SHRINE_STAGE,
@@ -103,6 +108,10 @@ class L2OWWorld(World):
     """``data`` or ``data_open_world``: the ROM data of this player's base patch (players can mix them)."""
     grant_offsets: dict[int, int]
     """Grant location id -> offset of its item byte in this player's base ROM."""
+    boss_rewards: list[BossReward]
+    """Open world's boss NPC rewards (locations); empty in the linear game."""
+    boss_offsets: dict[int, int]
+    """Boss reward location id -> offset of its grant's item byte in the open-world base ROM."""
     stages: list[Stage]
     """The stages up to and including the goal's; empty in open world, which has areas (``logic.OPEN_AREAS``)."""
     location_infos: list[LocationInfo]
@@ -127,6 +136,8 @@ class L2OWWorld(World):
         self.auth = f"IRIS{self.player}_{self.multiworld.seed}".encode()[:AUTH_SIZE]
         self.data = data_open_world if self.options.open_world else data
         self.grant_offsets = grant_offsets(self.data)
+        self.boss_rewards = BOSS_REWARDS if self.options.open_world else []
+        self.boss_offsets = {reward.code: reward.offset for reward in self.boss_rewards}
         if self.options.open_world:
             self._open_world_options()
             self.stages = []
@@ -214,7 +225,11 @@ class L2OWWorld(World):
             regions[stage.name].locations.append(location)
 
     def _create_open_regions(self, menu: Region) -> None:
-        """One region per travel area, entered from the area before it; the maps keep their tool and key rules."""
+        """One region per travel area, entered from the area before it; the maps keep their tool and key rules.
+
+        Daos waits behind the Doom Island barrier, which the three maidens lift. A boss reward is in its map's area,
+        under its map's rule.
+        """
         regions: dict[str, Region] = {}
         for area in OPEN_AREAS:
             region = Region(area.name, self.player, self.multiworld)
@@ -226,6 +241,8 @@ class L2OWWorld(World):
             daos = regions[OPEN_AREAS[-1].name]
             event = L2OWLocation(self.player, OPEN_DAOS_EVENT, None, daos)
             event.place_locked_item(self.create_event(OPEN_DAOS_EVENT))
+            maidens, player = [SPECIAL_ITEM_NAMES[MAIDEN_BASE + n] for n in range(len(MAIDENS))], self.player
+            event.access_rule = lambda state: state.has_all(maidens, player)
             daos.locations.append(event)
         for info in self.location_infos:
             area = area_of_map(info.map_index)
@@ -235,6 +252,14 @@ class L2OWWorld(World):
             location = L2OWLocation(self.player, info.name, info.code, regions[area.name])
             requirement = without(OPEN_MAP_RULES.get(info.map_index, NOTHING), ITEM_NAMES[info.vanilla_item])
             location.access_rule = self._rule(requirement)
+            regions[area.name].locations.append(location)
+        for reward in self.boss_rewards:
+            area = area_of_map(reward.map_index)
+            if area is None:
+                msg = f"Boss map {reward.map_index:#04x} has no open-world area."
+                raise ValueError(msg)
+            location = L2OWLocation(self.player, reward.name, reward.code, regions[area.name])
+            location.access_rule = self._rule(OPEN_MAP_RULES.get(reward.map_index, NOTHING))
             regions[area.name].locations.append(location)
 
     @staticmethod
@@ -287,8 +312,9 @@ class L2OWWorld(World):
     def create_items(self) -> None:
         """Lock what stays vanilla, hold back own_stage keys and tools for ``pre_fill``, and pool the rest.
 
-        Items without a vanilla location (ship upgrades, extra Dragon eggs) take the place of filler, so the pool stays
-        the size of the locations.
+        Boss rewards (open world) have no vanilla item: each pools a random filler item. Items without a vanilla
+        location (ship upgrades, extra Dragon eggs, open world's characters, capsules and maidens) take the place of
+        filler, so the pool stays the size of the locations.
         """
         pool: list[Item] = []
         for info in self.location_infos:
@@ -300,6 +326,7 @@ class L2OWWorld(World):
                 self._hold(item, self._stage_of(info.map_index, info.grant).name)
             else:
                 pool.append(item)
+        pool += [self._random_filler() for _ in self.boss_rewards]
         for name, placement in self._extra_items():
             item = self.create_item(name)
             if placement == Placement.option_vanilla:
@@ -322,6 +349,8 @@ class L2OWWorld(World):
         if self._egg_goal():
             in_pool = sum(info.vanilla_item == DRAGON_EGG for info in self.location_infos)
             extra += [("Dragon egg", Placement.option_anywhere)] * max(0, self._eggs_needed() - in_pool)
+        if self.options.open_world:
+            extra += [(ITEM_NAMES[index], Placement.option_anywhere) for index in OPEN_WORLD_SPECIALS]
         return extra
 
     def _hold(self, item: Item, stage: str) -> None:
@@ -329,8 +358,14 @@ class L2OWWorld(World):
         self.held_stage[id(item)] = stage
 
     def _drop_filler(self, pool: list[Item]) -> None:
-        """Remove one non-progression item (not a Dragon egg) from ``pool`` to make room."""
-        candidates = [item for item in pool if not item.advancement and item.code != BASE_ID + DRAGON_EGG]
+        """Remove one non-progression item (not a Dragon egg, a capsule or another special item) from ``pool``."""
+        candidates = [
+            item for item in pool
+            if not item.advancement and item.code != BASE_ID + DRAGON_EGG and item.code - BASE_ID not in SPECIAL_ITEM_NAMES
+        ]
+        if not candidates:
+            msg = f"{self.player_name}: no filler left to make room for the items without a location."
+            raise OptionError(msg)
         pool.remove(self.random.choice(candidates))
 
     def _first_stage_with_locations(self) -> str:
@@ -350,8 +385,12 @@ class L2OWWorld(World):
         """With randomized Filler Items, a non-progression item becomes a random one; Dragon eggs stay."""
         if self.options.filler_items == FillerItems.option_vanilla or item.advancement:
             return item
-        if item.code == BASE_ID + DRAGON_EGG:
+        if item.code == BASE_ID + DRAGON_EGG or item.code - BASE_ID in SPECIAL_ITEM_NAMES:
             return item
+        return self._random_filler()
+
+    def _random_filler(self) -> Item:
+        """A random useful item (Useful Items percent of the time) or a random filler item."""
         pool = RANDOM_USEFUL if self.random.randrange(100) < self.options.useful_items.value else RANDOM_FILLER
         return self.create_item(ITEM_NAMES[self.random.choice(pool)])
 
@@ -455,9 +494,13 @@ class L2OWWorld(World):
             if location.address is None or location.item is None:
                 continue
             item = location.item
-            own = item.player == self.player and item.code is not None
+            # A character, capsule or maiden can't sit in a chest or grant: it shows as the AP item and the server sends
+            # it (the client hands on this world's own items only for those).
+            own = item.player == self.player and item.code is not None and item.code - BASE_ID < CHARACTER_BASE
             index = item.code - BASE_ID if own else self.data.AP_ITEM_INDEX
-            if location.address in self.grant_offsets:
+            if location.address in self.boss_offsets:
+                patch.write_grant(self.boss_offsets[location.address], index)
+            elif location.address in self.grant_offsets:
                 patch.write_grant(self.grant_offsets[location.address], index)
             else:
                 patch.write_chest(location.address - BASE_ID, index)

@@ -1,7 +1,8 @@
 """Locations: the red chests (named from guides) and the script grants that set a flag the client can read.
 
-Chest id = BASE_ID + chest index; grant id = GRANT_BASE + its row in ``data.GRANTS``. The Ancient Cave and the Dragon
-Egg shrine's wishes stay vanilla (see ``logic``); blue chests come with Iris-Dev#21.
+Chest id = BASE_ID + chest index; grant id = GRANT_BASE + its row in ``data.GRANTS``; an open-world boss reward's id is
+BOSS_BASE + 2 * its spot's row in ``data_open_world.BOSS_NPCS`` + the reward's number (0, 1). The Ancient Cave and the
+Dragon Egg shrine's wishes stay vanilla (see ``logic``); blue chests come with Iris-Dev#21.
 """
 
 from types import ModuleType
@@ -9,12 +10,13 @@ from typing import NamedTuple
 
 from BaseClasses import Location
 
-from . import data
+from . import data, data_open_world
 from .items import BASE_ID, GAME, ITEM_NAMES
 from .logic import EXCLUDED_GRANTS, EXCLUDED_MAPS
 
 
 GRANT_BASE = BASE_ID + 0x1000
+BOSS_BASE = BASE_ID + 0x2000
 
 
 class LocationInfo(NamedTuple):
@@ -87,6 +89,34 @@ def grant_offsets(module: ModuleType) -> dict[int, int]:
 
     offsets = {key: offset for key, (_, offset) in keyed(module.GRANTS).items()}
     return {GRANT_BASE + row: offsets[key] for key, (row, _) in keyed(data.GRANTS).items() if key in offsets}
+
+
+class BossReward(NamedTuple):
+    """An open-world boss NPC's reward: a ``20`` grant in its talk script, checked by the boss's beaten flag."""
+
+    name: str
+    code: int
+    map_index: int
+    flag: int
+    offset: int
+    """The grant's item byte in the open-world base ROM (``rom.write_grant``)."""
+
+
+def _boss_rewards() -> list[BossReward]:
+    """Every boss spot's rewards, Daos (no reward) left out: "<Spot> Boss", and "<Spot> Boss 2" for a second one."""
+    out = []
+    for row, (spot, map_index, flag, _, _, _, _, offsets) in enumerate(data_open_world.BOSS_NPCS):
+        title = spot.replace("_", " ").title()
+        for n, offset in enumerate(offsets):
+            name = f"{title} Boss" if n == 0 else f"{title} Boss {n + 1}"
+            out.append(BossReward(name, BOSS_BASE + 2 * row + n, map_index, flag, offset))
+    return out
+
+
+BOSS_REWARDS = _boss_rewards()
+location_name_to_id |= {reward.name: reward.code for reward in BOSS_REWARDS}
+BOSS_FLAGS = {reward.code: reward.flag for reward in BOSS_REWARDS}
+"""Boss reward location id -> the boss's beaten flag; a boss with two rewards sends both when it's set."""
 
 
 class L2OWLocation(Location):

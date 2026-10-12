@@ -1,8 +1,10 @@
 """SNI client: authenticates against the config block, reports checks and the goal, delivers items (Iris-Dev#36, #20).
 
 Chests are read from the opened-chest bits (confirmed in a real run); a script grant is reported once the event flag its
-script sets is on, and the goal once the goal option's flag (from the slot data) is. Received items go into the SRAM list
-that the base patch's rx.asm hands out in the field. Talking to a hint NPC sets its flag; with Hint Unlock
+script sets is on, an open-world boss's rewards once its beaten flag is, and the goal once the goal option's flag (from
+the slot data) is. Received items go into the SRAM list that the base patch's rx.asm hands out in the field. The server
+also sends this world's own items: a character, capsule or maiden found in this world shows as the AP item, so it has to
+come through the list; any other own item was already given by its chest or grant, so it is skipped. Talking to a hint NPC sets its flag; with Hint Unlock
 on, the client then creates that hint on the server. Not here yet: death link. There is no "a save is loaded" flag;
 ``looks_uninitialised`` only rejects the fill pattern some emulators put in WRAM at power-on.
 """
@@ -14,8 +16,8 @@ from NetUtils import ClientStatus
 from worlds.AutoSNIClient import SNIClient
 
 from . import data
-from .items import BASE_ID, GAME
-from .locations import GRANT_FLAGS
+from .items import BASE_ID, CHARACTER_BASE, GAME
+from .locations import BOSS_FLAGS, GRANT_FLAGS
 
 
 if TYPE_CHECKING:
@@ -48,6 +50,20 @@ def is_set(flags: bytes, flag: int) -> bool:
 def opened_chests(bits: bytes) -> list[int]:
     """Chest indices whose "opened" bit is set (bit n & 7 of byte n >> 3)."""
     return [index for index in range(len(bits) * 8) if bits[index >> 3] & (1 << (index & 7))]
+
+
+def flagged_locations(flags: bytes) -> list[int]:
+    """Locations whose event flag is set: script grants, and boss rewards (a boss's two rewards share its flag)."""
+    return [location for location, flag in (GRANT_FLAGS | BOSS_FLAGS).items() if is_set(flags, flag)]
+
+
+def given_in_game(item: Any, slot: int | None) -> bool:
+    """Whether a received item came from this world's own chest or grant, which gave it already.
+
+    Characters, capsules and maidens (ids from $0200) never sit in a chest: those always go through the list.
+    Starting inventory and server-sent items have no location of this world (location <= 0).
+    """
+    return item.player == slot and item.location > 0 and item.item - BASE_ID < CHARACTER_BASE
 
 
 def looks_uninitialised(bits: bytes) -> bool:
@@ -91,7 +107,7 @@ class L2OWSNIClient(SNIClient):
         if auth is None:
             return False
         ctx.game = self.game
-        ctx.items_handling = 0b101  # other worlds' items and the starting inventory; our own sit in our chests
+        ctx.items_handling = 0b111  # every item; our own are skipped unless special (``given_in_game``)
         ctx.rom = auth
         return True
 
@@ -110,7 +126,7 @@ class L2OWSNIClient(SNIClient):
             checked += [BASE_ID + index for index in opened_chests(bits)]
         flags = await snes_read(ctx, EVENT_FLAGS, EVENT_FLAG_BYTES)
         if flags is not None and not looks_uninitialised(flags):
-            checked += [location for location, flag in GRANT_FLAGS.items() if is_set(flags, flag)]
+            checked += flagged_locations(flags)
         new = [loc for loc in checked if loc in ctx.server_locations and loc not in ctx.locations_checked]
         if new:
             ctx.locations_checked.update(new)
@@ -146,18 +162,29 @@ class L2OWSNIClient(SNIClient):
 
     @staticmethod
     async def _deliver(ctx: "SNIContext") -> None:
-        """Append the next received item to the SRAM list; the game hands it out and catches up one per frame."""
+        """Append the next received item to the SRAM list; the game hands it out and catches up one per frame.
+
+        An item the game already gave (``given_in_game``) moves both counters on together, in one write once the game
+        has caught up, so the game never sees it as pending.
+        """
         from SNIClient import snes_buffered_write, snes_flush_writes, snes_read
 
-        counter = await snes_read(ctx, RX_ADDRESS, 2)
-        if counter is None:
+        counters = await snes_read(ctx, RX_ADDRESS, 4)
+        if counters is None:
             return
-        received = int.from_bytes(counter, "little")
+        received = int.from_bytes(counters[:2], "little")
+        processed = int.from_bytes(counters[2:], "little")
         if received >= len(ctx.items_received):
             return
         item = ctx.items_received[received]
+        index = item.item - BASE_ID
+        skip = given_in_game(item, ctx.slot)
+        if skip and processed != received:
+            return  # the game is still handing out earlier items
         received += 1
-        snes_buffered_write(ctx, RX_ADDRESS + 2 * (received + 1), (item.item - BASE_ID).to_bytes(2, "little"))
-        snes_buffered_write(ctx, RX_ADDRESS, received.to_bytes(2, "little"))
+        snes_buffered_write(ctx, RX_ADDRESS + 2 * (received + 1), index.to_bytes(2, "little"))
+        counters = received.to_bytes(2, "little") * 2 if skip else received.to_bytes(2, "little")
+        snes_buffered_write(ctx, RX_ADDRESS, counters)
         await snes_flush_writes(ctx)
-        logger.info(f"Received {ctx.item_names.lookup_in_game(item.item)} ({received}/{len(ctx.items_received)}).")
+        how = "Found" if skip else "Received"
+        logger.info(f"{how} {ctx.item_names.lookup_in_game(item.item)} ({received}/{len(ctx.items_received)}).")

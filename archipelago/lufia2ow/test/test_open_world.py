@@ -3,7 +3,7 @@
 from BaseClasses import CollectionState
 from Options import OptionError
 
-from ..locations import GRANT_BASE
+from ..locations import BOSS_BASE, GRANT_BASE
 from ..logic import OPEN_AREAS, STAGES
 from ..options import Placement, ShipUpgrades
 from . import L2OWTestBase
@@ -34,7 +34,9 @@ class TestOpenWorldProgressive(OpenWorldBase):
         self.assertEqual(names, {"Menu"} | {area.name for area in OPEN_AREAS})
 
     def test_no_grant_locations(self) -> None:
-        grants = [loc for loc in self.multiworld.get_locations(self.player) if (loc.address or 0) >= GRANT_BASE]
+        grants = [
+            loc for loc in self.multiworld.get_locations(self.player) if GRANT_BASE <= (loc.address or 0) < BOSS_BASE
+        ]
         self.assertEqual(grants, [])
 
     def test_travel(self) -> None:
