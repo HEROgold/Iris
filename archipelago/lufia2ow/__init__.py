@@ -6,6 +6,7 @@ through the base patch's RX (Iris-Dev#20); other worlds' items in this world's c
 """
 
 import base64
+import logging
 import os
 import re
 from collections.abc import Callable
@@ -31,6 +32,7 @@ from .items import (
     KEYS,
     MAIDEN_BASE,
     MAIDENS,
+    MAXIM,
     OPEN_WORLD_SPECIALS,
     RANDOM_FILLER,
     RANDOM_USEFUL,
@@ -39,7 +41,18 @@ from .items import (
     L2OWItem,
     item_name_to_id,
 )
-from .locations import BOSS_REWARDS, LOCATIONS, BossReward, L2OWLocation, LocationInfo, grant_offsets, location_name_to_id
+from .locations import (
+    BOSS_BASE,
+    BOSS_REWARDS,
+    GRANT_BASE,
+    LOCATIONS,
+    ORB_CHECK,
+    BossReward,
+    L2OWLocation,
+    LocationInfo,
+    grant_offsets,
+    location_name_to_id,
+)
 from .logic import (
     EGG_SHRINE_MAP,
     EGG_SHRINE_STAGE,
@@ -64,6 +77,7 @@ from .options import (
     Arrows,
     BossPlacement,
     BossStrength,
+    CaveBridgeOrb,
     FillerItems,
     Goal,
     L2OWOptions,
@@ -122,6 +136,12 @@ class L2OWWorld(World):
     """Open world's boss NPC rewards (locations); empty in the linear game."""
     boss_offsets: dict[int, int]
     """Boss reward location id -> offset of its grant's item byte in the open-world base ROM."""
+    boss_rows: list[tuple]
+    """``data_open_world.BOSS_NPCS`` as this player's extras leave it (``EXTRA_BOSS_NPCS``); empty in linear."""
+    extras: tuple[str, ...]
+    """Open world: the chosen extras (``data_open_world.EXTRAS``), written as tokens; empty in linear."""
+    leader: str
+    """Open world: the leader (``options.Leader``); ``maxim`` is the base patch's."""
     boss_placement: list[bosses.Boss]
     """Open world: the boss at each spot of ``data_open_world.BOSS_SPOTS`` (Daos not included); empty in linear."""
     stages: list[Stage]
@@ -149,10 +169,14 @@ class L2OWWorld(World):
         self.data = data_open_world if self.options.open_world else data
         self.grant_offsets = grant_offsets(self.data)
         self.boss_rewards = BOSS_REWARDS if self.options.open_world else []
-        self.boss_offsets = {reward.code: reward.offset for reward in self.boss_rewards}
         self.boss_placement = []
+        self.boss_rows = []
+        self.boss_offsets = {}
+        self.extras = ()
+        self.leader = "maxim"
         if self.options.open_world:
             self._open_world_options()
+            self._open_world_variants()
             self.boss_placement = (
                 bosses.shuffled_placement(self.random)
                 if self.options.boss_placement == BossPlacement.option_shuffled
@@ -163,6 +187,9 @@ class L2OWWorld(World):
                 info for info in LOCATIONS
                 if info.grant is None or info.code in self.grant_offsets  # open world drops the story grants
             ]
+            if "orb_check" in self.extras:
+                self.location_infos.append(ORB_CHECK)
+                self.grant_offsets[ORB_CHECK.code] = data_open_world.ORB_CHECK[1]
         else:
             goal = GOALS[self.options.goal.current_key]
             last = next(index for index, stage in enumerate(STAGES) if stage.name == goal.stage)
@@ -183,8 +210,8 @@ class L2OWWorld(World):
 
     def _open_world_options(self) -> None:
         """Open world has no stages and no story: own_stage placement is own_world, vanilla ship upgrades are
-        progressive, and only the goals in ``OPEN_GOALS`` are allowed. Boss Placement and Boss Strength only act here;
-        the linear game ignores them."""
+        progressive, and only the goals in ``OPEN_GOALS`` are allowed. Boss Placement, Boss Strength, Leader, Cave Bridge
+        Orb, Escapable Dungeons and Extra NPCs only act here; the linear game ignores them."""
         goal = self.options.goal.current_key
         if goal not in OPEN_GOALS:
             msg = f"{self.player_name}: goal {goal} needs the story; with Open World use one of {sorted(OPEN_GOALS)}."
@@ -194,6 +221,36 @@ class L2OWWorld(World):
                 option.value = Placement.option_own_world
         if self.options.ship_upgrades == ShipUpgrades.option_vanilla:
             self.options.ship_upgrades.value = ShipUpgrades.option_progressive
+
+    def _open_world_variants(self) -> None:
+        """The leader and the extras (Iris-Dev#43): each is a byte diff over the open-world base patch.
+
+        An extra that replaces a script takes its grants with it (``EXTRA_REPLACED_SCRIPTS``: the egg wishes, which
+        aren't locations anyway), and one that grows a boss's map moves that boss's row (``EXTRA_BOSS_NPCS``)."""
+        chosen = {f"npc_{key}" for key in self.options.extra_npcs.value}
+        if self._egg_goal() and "npc_egg_key_trader" in chosen:
+            logging.warning(f"{self.player_name}: egg_key_trader is left out with the dragon_eggs goal.")
+            chosen.discard("npc_egg_key_trader")
+        if self.options.cave_bridge_orb == CaveBridgeOrb.option_orb_check:
+            chosen.add("orb_check")
+        elif self.options.cave_bridge_orb == CaveBridgeOrb.option_guard:
+            chosen.add("npc_cave_bridge_orb_guard")
+        if self.options.escapable_dungeons:
+            chosen.add("escapable_dungeons")
+        self.extras = tuple(extra for extra in data_open_world.EXTRAS if extra in chosen)
+        self.leader = self.options.leader.current_key
+        replaced = {script for extra in self.extras for script in data_open_world.EXTRA_REPLACED_SCRIPTS.get(extra, ())}
+        self.grant_offsets = {
+            code: offset for code, offset in self.grant_offsets.items()
+            if data.GRANTS[code - GRANT_BASE][1] not in replaced
+        }
+        self.boss_rows = list(data_open_world.BOSS_NPCS)
+        for extra in self.extras:
+            for row, npc in data_open_world.EXTRA_BOSS_NPCS.get(extra, {}).items():
+                self.boss_rows[row] = npc
+        self.boss_offsets = {
+            BOSS_BASE + 2 * row + n: offset for row, npc in enumerate(self.boss_rows) for n, offset in enumerate(npc[7])
+        }
 
     def _counts(self) -> dict[str, tuple[str, int] | None]:
         # Maxim always starts with the Arrow: the game assumes at least one tool, and an empty tool list leaves the
@@ -369,8 +426,15 @@ class L2OWWorld(World):
             in_pool = sum(info.vanilla_item == DRAGON_EGG for info in self.location_infos)
             extra += [("Dragon egg", Placement.option_anywhere)] * max(0, self._eggs_needed() - in_pool)
         if self.options.open_world:
-            extra += [(ITEM_NAMES[index], Placement.option_anywhere) for index in OPEN_WORLD_SPECIALS]
+            extra += [(ITEM_NAMES[index], Placement.option_anywhere) for index in self._specials()]
         return extra
+
+    def _specials(self) -> tuple[int, ...]:
+        """The special items of an open-world pool: the leader starts in the party, so Maxim takes their place."""
+        if self.leader == "maxim":
+            return OPEN_WORLD_SPECIALS
+        leader = CHARACTER_BASE + data_open_world.LEADERS[self.leader]
+        return (MAXIM, *(index for index in OPEN_WORLD_SPECIALS if index != leader))
 
     def _hold(self, item: Item, stage: str) -> None:
         self.held.append(item)
@@ -509,6 +573,7 @@ class L2OWWorld(World):
     def generate_output(self, output_directory: str) -> None:
         patch = L2OWProcedurePatch(player=self.player, player_name=self.player_name)
         patch.write_file("basepatch.bsdiff4", base_patch(bool(self.options.open_world)))
+        self._write_variants(patch)  # first: the other tokens' offsets are those of the ROM with the variants on
         for location in self.get_locations():
             if location.address is None or location.item is None:
                 continue
@@ -533,11 +598,22 @@ class L2OWWorld(World):
         out_name = f"{self.multiworld.get_out_file_name_base(self.player)}{patch.patch_file_ending}"
         patch.write(os.path.join(output_directory, out_name))
 
+    def _write_variants(self, patch: L2OWProcedurePatch) -> None:
+        """The chosen extras, then the leader and the leader inside those extras' scripts (``data_open_world``)."""
+        for extra in self.extras:
+            patch.write_runs(data_open_world.EXTRA_DIFFS[extra])
+        if self.leader == "maxim":
+            return
+        patch.write_runs(data_open_world.LEADER_DIFFS[self.leader])
+        for extra in self.extras:
+            if (self.leader, extra) in data_open_world.LEADER_EXTRA_DIFFS:
+                patch.write_runs(data_open_world.LEADER_EXTRA_DIFFS[self.leader, extra])
+
     def _write_bosses(self, patch: L2OWProcedurePatch) -> None:
         """The shuffled bosses' sprite, music and formation at each spot (the base patch has the fixed ones), and the
         boss-scaling mode, with by_depth's level per formation from the placement in effect."""
         if self.options.boss_placement == BossPlacement.option_shuffled:
-            for row, boss in zip(data_open_world.BOSS_NPCS[:-1], self.boss_placement, strict=True):  # Daos last, stays
+            for row, boss in zip(self.boss_rows[:-1], self.boss_placement, strict=True):  # Daos last, stays
                 patch.write_boss(row, boss)
         strength = self.options.boss_strength.value
         levels = bosses.depth_levels(self.boss_placement) if strength == BossStrength.option_by_depth else None

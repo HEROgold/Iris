@@ -1,7 +1,8 @@
 """Locations: the red chests (named from guides) and the script grants that set a flag the client can read.
 
 Chest id = BASE_ID + chest index; grant id = GRANT_BASE + its row in ``data.GRANTS``; an open-world boss reward's id is
-BOSS_BASE + 2 * its spot's row in ``data_open_world.BOSS_NPCS`` + the reward's number (0, 1). The Ancient Cave and the
+BOSS_BASE + 2 * its spot's row in ``data_open_world.BOSS_NPCS`` + the reward's number (0, 1); the open-world orb check's
+is ORB_CHECK_ID. The Ancient Cave and the
 Dragon Egg shrine's wishes stay vanilla (see ``logic``); blue chests come with Iris-Dev#21.
 """
 
@@ -17,6 +18,7 @@ from .logic import EXCLUDED_GRANTS, EXCLUDED_MAPS
 
 GRANT_BASE = BASE_ID + 0x1000
 BOSS_BASE = BASE_ID + 0x2000
+ORB_CHECK_ID = BASE_ID + 0x3000
 
 
 class LocationInfo(NamedTuple):
@@ -117,6 +119,14 @@ BOSS_REWARDS = _boss_rewards()
 location_name_to_id |= {reward.name: reward.code for reward in BOSS_REWARDS}
 BOSS_FLAGS = {reward.code: reward.flag for reward in BOSS_REWARDS}
 """Boss reward location id -> the boss's beaten flag; a boss with two rewards sends both when it's set."""
+
+_ORB_MAP, _, ORB_CHECK_ITEM, _ORB_FLAG = data_open_world.ORB_CHECK
+ORB_CHECK = LocationInfo(f"{place(_ORB_MAP)}: Orb", ORB_CHECK_ID, _ORB_MAP, ORB_CHECK_ITEM, None)
+"""Open world with Cave Bridge Orb orb_check: touching the orb is a grant (``data_open_world.ORB_CHECK``)."""
+location_name_to_id[ORB_CHECK.name] = ORB_CHECK.code
+ORB_FLAGS = {ORB_CHECK.code: _ORB_FLAG}
+"""The orb check's location id -> the flag its script sets (0x30, vanilla's "orb touched", which nothing else reads in
+open world; in the linear game the location doesn't exist, so the client never sends it)."""
 
 
 class L2OWLocation(Location):

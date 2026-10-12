@@ -68,6 +68,11 @@ class L2OWProcedurePatch(APProcedurePatch, APTokenMixin):
         if levels is not None:
             self.write_token(APTokenTypes.WRITE, data.CONFIG["AP_OPT_BOSS_LEVELS"], levels)
 
+    def write_runs(self, runs: tuple[tuple[int, str], ...]) -> None:
+        """Write a ``data_open_world`` variant: (offset, hex bytes) runs over the open-world base ROM."""
+        for offset, data_hex in runs:
+            self.write_token(APTokenTypes.WRITE, offset, bytes.fromhex(data_hex))
+
     def write_auth(self, auth: bytes) -> None:
         self.write_token(APTokenTypes.WRITE, data.CONFIG["AP_CONFIG_AUTH_OFFSET"], auth.ljust(AUTH_SIZE, b"\0"))
 

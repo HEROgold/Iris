@@ -3,7 +3,7 @@ encounter scaling, fixes) are chosen when building the ROM and don't touch logic
 
 from dataclasses import dataclass
 
-from Options import Choice, DefaultOnToggle, PerGameCommonOptions, Range, Toggle
+from Options import Choice, DefaultOnToggle, OptionSet, PerGameCommonOptions, Range, Toggle
 
 from . import data
 
@@ -183,6 +183,55 @@ class BossStrength(Choice):
     default = option_unchanged
 
 
+class Leader(Choice):
+    """Open World only (does nothing without it): who leads the party from the new game on. Maxim joins like the
+    other characters, as an item, and the leader's own item leaves the pool. Dialogue still calls the hero Maxim.
+    random picks any of the seven."""
+
+    display_name = "Leader"
+    option_maxim = 0
+    option_selan = 1
+    option_guy = 2
+    option_artea = 3
+    option_tia = 4
+    option_dekar = 5
+    option_lexis = 6
+    default = option_maxim
+
+
+class CaveBridgeOrb(Choice):
+    """Open World only (does nothing without it): the orb on Cave Bridge B5.
+
+    none: it stays as it is. orb_check: touching it gives an item once, a location. guard: an NPC stands in front of
+    it (terrorwave's open world, where the orb crashed the game; in Iris it doesn't)."""
+
+    display_name = "Cave Bridge Orb"
+    option_none = 0
+    option_orb_check = 1
+    option_guard = 2
+    default = option_none
+
+
+class EscapableDungeons(Toggle):
+    """Open World only (does nothing without it): Escape and Warp work in every dungeon, except the seafloor, the
+    Karlloon Shrine and Daos' Shrine."""
+
+    display_name = "Escapable Dungeons"
+
+
+class ExtraNPCs(OptionSet):
+    """Open World only (does nothing without it): townspeople from terrorwave's open world.
+
+    secondary_tool_tip: in the Secret Skills Cave, someone explains R+A+L. capsule_tips: in Foomy Woods, someone
+    explains capsule tag and the feeding bonus. tanbel_inn: an innkeeper in Tanbel (200 gold). egg_key_trader: in
+    Agurio, someone trades three Dragon eggs for any key; logic doesn't count on it, and with the dragon_eggs goal it is
+    left out (the eggs are for the wishes). egg_wishes: the Egg Dragon's wishes, rewritten."""
+
+    display_name = "Extra NPCs"
+    valid_keys = frozenset(("secondary_tool_tip", "capsule_tips", "tanbel_inn", "egg_key_trader", "egg_wishes"))
+    default = frozenset()
+
+
 @dataclass
 class L2OWOptions(PerGameCommonOptions):
     open_world: OpenWorld
@@ -199,3 +248,7 @@ class L2OWOptions(PerGameCommonOptions):
     hint_unlock: HintUnlock
     boss_placement: BossPlacement
     boss_strength: BossStrength
+    leader: Leader
+    cave_bridge_orb: CaveBridgeOrb
+    escapable_dungeons: EscapableDungeons
+    extra_npcs: ExtraNPCs

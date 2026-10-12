@@ -17,7 +17,7 @@ from worlds.AutoSNIClient import SNIClient
 
 from . import data
 from .items import BASE_ID, CHARACTER_BASE, GAME
-from .locations import BOSS_FLAGS, GRANT_FLAGS
+from .locations import BOSS_FLAGS, GRANT_FLAGS, ORB_FLAGS
 
 
 if TYPE_CHECKING:
@@ -53,8 +53,9 @@ def opened_chests(bits: bytes) -> list[int]:
 
 
 def flagged_locations(flags: bytes) -> list[int]:
-    """Locations whose event flag is set: script grants, and boss rewards (a boss's two rewards share its flag)."""
-    return [location for location, flag in (GRANT_FLAGS | BOSS_FLAGS).items() if is_set(flags, flag)]
+    """Locations whose event flag is set: script grants, boss rewards (a boss's two rewards share its flag) and the
+    open-world orb check."""
+    return [location for location, flag in (GRANT_FLAGS | BOSS_FLAGS | ORB_FLAGS).items() if is_set(flags, flag)]
 
 
 def given_in_game(item: Any, slot: int | None) -> bool:
