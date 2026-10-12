@@ -1,6 +1,6 @@
 # Encounter scaling, and how Lufia II picks a battle formation
 
-Reference notes behind `--scale-encounters` ([patches/HEROgold/scale_encounters.py](../patches/HEROgold/scale_encounters.py)
+Reference notes behind `--scale-encounters` ([patches/HEROgold/scale_encounters.py](../iris/patches/HEROgold/scale_encounters.py)
 and its `.asm`). Most of this is ROM knowledge that is useful well beyond that one patch, so it is
 recorded here rather than only in the patch header.
 

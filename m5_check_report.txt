@@ -1,0 +1,39 @@
+Flash:
+effect:
+    magical_damage element=$0002, base=$0200, extra=$00
+    op_57 arg=$50, arg=$01, arg=$60
+    op_57 arg=$5A, arg=$01, arg=$80
+    end
+
+Light attack before:
+    .data FF
+effect:
+    call subroutine=$21 (reg $80 = own ATP x 1.5), zero=$00
+    physical_damage element=$0010, base=$8080, extra=$00
+    end
+
+Light attack after:
+    .data FF
+effect:
+    call subroutine=$21 (reg $80 = own ATP x 1.5), zero=$00
+    physical_damage element=$0010, base=$0001, extra=$00
+    end
+
+'Potion      ' flags=0x6003 at 0xb7add:
+menu:
+    op_35 arg=$04
+    op_24 arg=$00, arg=$1E, arg=$00, arg=$0B
+    end
+battle:
+    op_24 arg=$00, arg=$1E, arg=$00, arg=$0B
+    op_24 arg=$01, arg=$1E, arg=$00, arg=$0B
+    end
+
+'Speed potion' flags=0x6003 at 0xb7b05:
+menu:
+    op_35 arg=$0E
+    op_24 arg=$07, arg=$03, arg=$00, arg=$05
+    end
+battle:
+    op_24 arg=$00, arg=$1E, arg=$00, arg=$0B
+    end
