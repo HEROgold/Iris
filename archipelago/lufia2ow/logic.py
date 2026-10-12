@@ -249,6 +249,7 @@ class GoalInfo:
 
 EGG_SHRINE_STAGE = "Agurio to the Divine Shrine"
 """The Small Shrine to Dragon Egg (map 0x9F) opens with this stage."""
+EGG_SHRINE_MAP = 0x9F
 EGG_WISH_VARIABLE = 8
 """Event variable the Egg Dragon's script (9F-B-50) adds 1 to per wish; at 4 it gives its last reward."""
 EGGS_PER_WISH = 8
@@ -269,3 +270,54 @@ GOALS = {
 
 def stage_of_map(map_index: int) -> Stage | None:
     return next((stage for stage in STAGES if map_index in stage.maps), None)
+
+
+# Open world (Iris-Dev#43) -------------------------------------------------------------------------------------------
+#
+# Every map is in its end-of-story state and every area is open from the start in Elcid, so there are no stages: only
+# travel and locked doors gate an area, and the dungeons keep their tool and key rules (each map's ``map_rules`` above).
+# The travel needs come from terrorwave's tables/requirements.txt (abyssonym/terrorwave): the Shrine of Vengeance,
+# the Submarine Shrine and the Zeppy cave need the Submarine ("mermaid_jade" there), Chaed and Dragon Mountain the
+# Submarine or the airship, Gratze the Submarine, the airship or the way through the Dankirk North Cave, the sealed
+# towers the airship ("engine"), and the Shrine of Daos both. terrorwave starts on the Ship at Kirmo; here the Ship is
+# an item, so everything the story only reaches after Aleyn's shipbuilder (Phantom Tree Mountain on) also needs the
+# Ship. The Door key and the Shrine key gate nothing (terrorwave's "useless_keys"; open world drops the Sundletan
+# boss's Door key grant, so it isn't even in the pool).
+
+
+@dataclass(frozen=True)
+class Area:
+    name: str
+    maps: frozenset[int]
+    parent: str | None
+    """The area this one is entered from; None for the start."""
+    entry: Requirement = NOTHING
+    """What getting in from ``parent`` needs."""
+
+
+OPEN_AREAS: list[Area] = [
+    Area("Elcid to Aleyn", maps(range(0x02, 0x60)), None),
+    Area("Sea", maps(range(0x60, 0xAE), range(0xB5, 0xBE), 0xED), "Elcid to Aleyn", all_of("Ship")),
+    # 0xED: the Capsule Monsters' Shrine (terrorwave's darbi_shrine), 0xEF: terrorwave's zeppy_cave.
+    Area("Seafloor", maps(range(0xAE, 0xB5), range(0xC8, 0xD1), 0xEF), "Sea", all_of("Submarine")),
+    Area("Chaed and Dragon Mountain", maps(range(0xBE, 0xC8)), "Sea", (("Submarine",), ("Airship",))),
+    Area(
+        "Gratze", maps(range(0xD1, 0xD8)), "Sea",
+        (("Submarine",), ("Airship",), ("Bomb", "Hook", "Dankirk key")),  # terrorwave's "gratze": through Dankirk
+    ),
+    Area("Sky", maps(range(0xD8, 0xE7)), "Sea", all_of("Airship")),
+    Area("Shrine of Daos", maps(range(0xE7, 0xEC)), "Sky", all_of("Submarine")),
+]
+"""The open world's regions, in travel order. The Shrine of Daos also needs the three maidens there (prompt 3)."""
+
+OPEN_MAP_RULES: dict[int, Requirement] = {index: rule for stage in STAGES for index, rule in stage.map_rules.items()}
+"""Every map's tool and key rule, from the stages (each map lies in one stage)."""
+
+OPEN_GOALS = frozenset(("daos", "dragon_eggs"))
+"""Goals that still mean something in open world. The other goal flags are story flags: the open world sets them or
+hands them to boss NPCs (iris.patches.open_world.bosses), so they no longer mark that fight."""
+OPEN_DAOS_EVENT = "Defeat Daos"
+
+
+def area_of_map(map_index: int) -> Area | None:
+    return next((area for area in OPEN_AREAS if map_index in area.maps), None)

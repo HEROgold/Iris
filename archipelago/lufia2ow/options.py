@@ -23,7 +23,8 @@ class KeyPlacement(Placement):
     """Where the dungeon keys can be placed.
 
     anywhere: any location in any world. own_world: any location in this world. own_stage: a location in the story stage
-    the key lies in in vanilla (its own dungeon or town). vanilla: where it lies in vanilla."""
+    the key lies in in vanilla (its own dungeon or town); with Open World there are no stages, so it is own_world.
+    vanilla: where it lies in vanilla."""
 
     display_name = "Key Placement"
 
@@ -32,7 +33,8 @@ class ToolPlacement(Placement):
     """Where the Hook, Bomb, Fire arrow and Hammer can be placed. Maxim always starts with the Arrow.
 
     anywhere: any location in any world. own_world: any location in this world. own_stage: a location in the story stage
-    the tool lies in in vanilla. vanilla: where it lies in vanilla."""
+    the tool lies in in vanilla; with Open World there are no stages, so it is own_world. vanilla: where it lies in
+    vanilla."""
 
     display_name = "Tool Placement"
 
@@ -40,7 +42,8 @@ class ToolPlacement(Placement):
 class StoryRewards(Choice):
     """What the story rewards (items an NPC or a scene gives you, such as the Sundletan boss's Door key) hold.
 
-    shuffled: any item. vanilla: their own item. Vanilla wins over Key and Tool Placement for these locations."""
+    shuffled: any item. vanilla: their own item. Vanilla wins over Key and Tool Placement for these locations.
+    Open World replaces the story scenes, so there it has no story rewards and this does nothing."""
 
     display_name = "Story Rewards"
     option_shuffled = 0
@@ -55,7 +58,9 @@ class Goal(Choice):
     shrine_of_daos_open: finish the three sealed towers, which opens the Shrine of Daos. chaed: see Chaed destroyed,
     after the Submarine Shrine. amon_divine_shrine: defeat Amon in the Divine Shrine. idura: defeat Idura in the Tower of
     Sacrifice. gades_ancient_tower: defeat Gades in the Ancient Tower.
-    dragon_eggs: bring 8 Dragon eggs per wish to the Egg Dragon's shrine and make Egg Wishes wishes."""
+    dragon_eggs: bring 8 Dragon eggs per wish to the Egg Dragon's shrine and make Egg Wishes wishes.
+    With Open World only daos and dragon_eggs are allowed (the others are story events open world skips), and no
+    locations are left out."""
 
     display_name = "Goal"
     option_daos = 0
@@ -70,7 +75,8 @@ class Goal(Choice):
 
 class EggWishes(Range):
     """With the dragon_eggs goal: how many wishes to make. Each takes 8 Dragon eggs; the multiworld holds 8 per wish
-    (one of them is Merix's, which stays where it is). The Egg Dragon grants at most 4."""
+    (one of them is Merix's, which stays where it is; Open World has no Merix egg, so all are in the pool). The Egg
+    Dragon grants at most 4."""
 
     display_name = "Egg Wishes"
     range_start = 1
@@ -104,7 +110,8 @@ class ShipUpgrades(Choice):
 
     progressive: three Progressive Ships: the Ship, then the Submarine, then the airship. separate: a Ship, a Submarine
     and an Engine, in any order (the Engine without the Submarine flies but can't dive). vanilla: only the story gives
-    them. The story still gives them in every mode."""
+    them. The story still gives them in every mode. With Open World there is no story to give them: vanilla is
+    progressive there, and the Ship, Submarine and airship are what open the sea, the seafloor and the sky."""
 
     display_name = "Ship Upgrades"
     option_progressive = 0
@@ -141,7 +148,9 @@ class HintUnlock(DefaultOnToggle):
 class OpenWorld(Toggle):
     """Open world: the whole map is open from the start, and boss NPCs guard the dungeons (Iris's open world).
 
-    For now this only switches the base patch; routing still follows the linear story.
+    You start in Elcid and can walk as far as Aleyn; the Ship opens the sea, the Submarine the seafloor and the
+    airship the sky. Inside, the dungeons still need their keys and tools. Changes Goal (daos or dragon_eggs only),
+    Key/Tool Placement (own_stage is own_world) and Ship Upgrades (vanilla is progressive).
     """
 
     display_name = "Open World"

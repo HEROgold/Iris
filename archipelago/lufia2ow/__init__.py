@@ -1,6 +1,6 @@
 """Lufia II: Rise of the Sinistrals, the overworld, as an Archipelago world built on Iris (Iris-Dev#2).
 
-Routing follows the vanilla story (see ``logic``): every progression item can land in any chest or flagged script grant
+Routing follows the vanilla story (see ``logic``), or with Open World the travel map (``logic.OPEN_AREAS``): every progression item can land in any chest or flagged script grant
 that it doesn't itself gate, in this world or another, within what the options allow. Items from other worlds arrive
 through the base patch's RX (Iris-Dev#20); other worlds' items in this world's chests and grants show as the AP item.
 """
@@ -15,6 +15,7 @@ from typing import Any, ClassVar
 import settings
 from BaseClasses import CollectionState, Item, ItemClassification, Location, MultiWorld, Region, Tutorial
 from Fill import fill_restrictive
+from Options import OptionError
 from worlds.AutoWorld import WebWorld, World
 
 from . import data, data_open_world, hints
@@ -35,15 +36,22 @@ from .items import (
 )
 from .locations import LOCATIONS, L2OWLocation, LocationInfo, grant_offsets, location_name_to_id
 from .logic import (
+    EGG_SHRINE_MAP,
     EGG_SHRINE_STAGE,
     EGG_WISH_VARIABLE,
     EGGS_PER_WISH,
     GOALS,
     GRANT_STAGE,
     MERIX_EGGS,
+    NOTHING,
+    OPEN_AREAS,
+    OPEN_DAOS_EVENT,
+    OPEN_GOALS,
+    OPEN_MAP_RULES,
     STAGES,
     Requirement,
     Stage,
+    area_of_map,
     stage_of_map,
     without,
 )
@@ -96,7 +104,7 @@ class L2OWWorld(World):
     grant_offsets: dict[int, int]
     """Grant location id -> offset of its item byte in this player's base ROM."""
     stages: list[Stage]
-    """The stages up to and including the goal's."""
+    """The stages up to and including the goal's; empty in open world, which has areas (``logic.OPEN_AREAS``)."""
     location_infos: list[LocationInfo]
     """The locations in ``stages``."""
     counts: dict[str, tuple[str, int] | None]
@@ -117,17 +125,25 @@ class L2OWWorld(World):
 
     def generate_early(self) -> None:
         self.auth = f"IRIS{self.player}_{self.multiworld.seed}".encode()[:AUTH_SIZE]
-        goal = GOALS[self.options.goal.current_key]
-        last = next(index for index, stage in enumerate(STAGES) if stage.name == goal.stage)
-        self.stages = STAGES[: last + 1]
-        names = {stage.name for stage in self.stages}
         self.data = data_open_world if self.options.open_world else data
         self.grant_offsets = grant_offsets(self.data)
-        self.location_infos = [
-            info for info in LOCATIONS
-            if self._stage_of(info.map_index, info.grant).name in names
-            and (info.grant is None or info.code in self.grant_offsets)  # open world drops some story grants
-        ]
+        if self.options.open_world:
+            self._open_world_options()
+            self.stages = []
+            self.location_infos = [
+                info for info in LOCATIONS
+                if info.grant is None or info.code in self.grant_offsets  # open world drops the story grants
+            ]
+        else:
+            goal = GOALS[self.options.goal.current_key]
+            last = next(index for index, stage in enumerate(STAGES) if stage.name == goal.stage)
+            self.stages = STAGES[: last + 1]
+            names = {stage.name for stage in self.stages}
+            self.location_infos = [
+                info for info in LOCATIONS
+                if self._stage_of(info.map_index, info.grant).name in names
+                and (info.grant is None or info.code in self.grant_offsets)
+            ]
         self.counts = self._counts()
         for kind, placement in ((KEYS, self.options.key_placement), (TOOLS, self.options.tool_placement)):
             if placement == Placement.option_own_world:
@@ -135,6 +151,19 @@ class L2OWWorld(World):
         self.held = []
         self.held_stage = {}
         self.npc_hints = []
+
+    def _open_world_options(self) -> None:
+        """Open world has no stages and no story: own_stage placement is own_world, vanilla ship upgrades are
+        progressive, and only the goals in ``OPEN_GOALS`` are allowed."""
+        goal = self.options.goal.current_key
+        if goal not in OPEN_GOALS:
+            msg = f"{self.player_name}: goal {goal} needs the story; with Open World use one of {sorted(OPEN_GOALS)}."
+            raise OptionError(msg)
+        for option in (self.options.key_placement, self.options.tool_placement):
+            if option == Placement.option_own_stage:
+                option.value = Placement.option_own_world
+        if self.options.ship_upgrades == ShipUpgrades.option_vanilla:
+            self.options.ship_upgrades.value = ShipUpgrades.option_progressive
 
     def _counts(self) -> dict[str, tuple[str, int] | None]:
         # Maxim always starts with the Arrow: the game assumes at least one tool, and an empty tool list leaves the
@@ -160,6 +189,9 @@ class L2OWWorld(World):
     def create_regions(self) -> None:
         menu = Region("Menu", self.player, self.multiworld)
         self.multiworld.regions.append(menu)
+        if self.options.open_world:
+            self._create_open_regions(menu)
+            return
         regions: dict[str, Region] = {}
         previous, previous_event = menu, None
         for stage in self.stages:
@@ -180,6 +212,30 @@ class L2OWWorld(World):
             location.access_rule = self._rule(requirement)
             location.item_rule = self._stage_item_rule(stage.name)
             regions[stage.name].locations.append(location)
+
+    def _create_open_regions(self, menu: Region) -> None:
+        """One region per travel area, entered from the area before it; the maps keep their tool and key rules."""
+        regions: dict[str, Region] = {}
+        for area in OPEN_AREAS:
+            region = Region(area.name, self.player, self.multiworld)
+            parent = menu if area.parent is None else regions[area.parent]
+            parent.connect(region, f"To {area.name}", self._rule(area.entry))
+            regions[area.name] = region
+            self.multiworld.regions.append(region)
+        if not self._egg_goal():
+            daos = regions[OPEN_AREAS[-1].name]
+            event = L2OWLocation(self.player, OPEN_DAOS_EVENT, None, daos)
+            event.place_locked_item(self.create_event(OPEN_DAOS_EVENT))
+            daos.locations.append(event)
+        for info in self.location_infos:
+            area = area_of_map(info.map_index)
+            if area is None:
+                msg = f"Map {info.map_index:#04x} has no open-world area."
+                raise ValueError(msg)
+            location = L2OWLocation(self.player, info.name, info.code, regions[area.name])
+            requirement = without(OPEN_MAP_RULES.get(info.map_index, NOTHING), ITEM_NAMES[info.vanilla_item])
+            location.access_rule = self._rule(requirement)
+            regions[area.name].locations.append(location)
 
     @staticmethod
     def _stage_of(map_index: int, grant: str | None) -> Stage:
@@ -221,8 +277,9 @@ class L2OWWorld(World):
         return self.options.goal == Goal.option_dragon_eggs
 
     def _eggs_needed(self) -> int:
-        """Dragon eggs from the pool the wishes need; Merix's egg isn't in the pool."""
-        return EGGS_PER_WISH * self.options.egg_wishes.value - MERIX_EGGS
+        """Dragon eggs from the pool the wishes need; Merix's egg isn't in the pool (open world has no Merix egg)."""
+        merix = 0 if self.options.open_world else MERIX_EGGS
+        return EGGS_PER_WISH * self.options.egg_wishes.value - merix
 
     def create_event(self, name: str) -> Item:
         return L2OWItem(name, ItemClassification.progression, None, self.player)
@@ -236,12 +293,11 @@ class L2OWWorld(World):
         pool: list[Item] = []
         for info in self.location_infos:
             item = self.create_item(self._item_name(info.vanilla_item))
-            stage = self._stage_of(info.map_index, info.grant).name
             placement = self._placement(info)
             if placement == Placement.option_vanilla:
                 self.get_location(info.name).place_locked_item(item)
             elif placement == Placement.option_own_stage:
-                self._hold(item, stage)
+                self._hold(item, self._stage_of(info.map_index, info.grant).name)
             else:
                 pool.append(item)
         for name, placement in self._extra_items():
@@ -335,11 +391,14 @@ class L2OWWorld(World):
         player = self.player
         if self._egg_goal():
             eggs = self._eggs_needed()
+            shrine = EGG_SHRINE_STAGE
+            if self.options.open_world:
+                shrine = area_of_map(EGG_SHRINE_MAP).name  # type: ignore[union-attr] - the map has an area
             self.multiworld.completion_condition[player] = lambda state: (
-                state.can_reach_region(EGG_SHRINE_STAGE, player) and state.has("Dragon egg", player, eggs)
+                state.can_reach_region(shrine, player) and state.has("Dragon egg", player, eggs)
             )
             return
-        goal = self.stages[-1].event
+        goal = OPEN_DAOS_EVENT if self.options.open_world else self.stages[-1].event
         self.multiworld.completion_condition[player] = lambda state: state.has(goal, player)
 
     def post_fill(self) -> None:
