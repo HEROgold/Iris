@@ -5,6 +5,7 @@ from collections.abc import Iterator
 import pytest
 
 from iris.build import Options, build
+from iris.constants import AP_OPT_BOSS_STRENGTH
 from iris.enums.flags import EventFlag
 from iris.enums.patches import Patch
 from iris.helpers import files
@@ -14,6 +15,8 @@ from iris.patches.open_world.bosses import (
     BOSSES,
     DAOS,
     SPOTS,
+    BOSS_SCALING_NONE,
+    BOSS_SCALING_PARTY,
     STAT_DERIVE_CALL,
     _flags_of,
     boss_monsters,
@@ -116,3 +119,16 @@ def test_party_scaling_hooks_the_monster_loader(source: bytes) -> None:
     address, vanilla = STAT_DERIVE_CALL
     assert out[address] == 0x22  # still a JSL, now to scale_boss
     assert out[address : address + 4] != vanilla
+    assert out[AP_OPT_BOSS_STRENGTH] == BOSS_SCALING_PARTY
+
+
+def test_archipelago_installs_boss_scaling_switched_off(source: bytes) -> None:
+    """An Archipelago open-world build hooks the loader with mode 0; the world's tokens pick the mode per seed."""
+    rom = session()
+    try:
+        out = build(source, Options(1, selected_patch=Patch.VANILLA, open_world=True, archipelago=True))
+    finally:
+        use(rom)
+    address, vanilla = STAT_DERIVE_CALL
+    assert out[address : address + 4] != vanilla
+    assert out[AP_OPT_BOSS_STRENGTH] == BOSS_SCALING_NONE

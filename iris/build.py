@@ -57,8 +57,10 @@ from iris.patches.open_world import apply_open_world
 from iris.patches.open_world.bosses import (
     fixed_placement,
     place_bosses,
+    BOSS_SCALING_NONE,
+    BOSS_SCALING_PARTY,
+    install_boss_scaling,
     scale_to_depth,
-    scale_to_party,
     shuffled_placement,
 )
 from iris.patches.open_world.leader import LEADERS, set_leader
@@ -187,7 +189,9 @@ def build(source: Path | bytes, options: Options) -> bytes:
         if options.boss_strength == "depth":
             scale_to_depth(placement)
         elif options.boss_strength == "party":
-            scale_to_party()
+            install_boss_scaling(BOSS_SCALING_PARTY)
+        elif options.archipelago:
+            install_boss_scaling(BOSS_SCALING_NONE)  # the world's tokens set the mode and levels per seed
     if options.archipelago:
         hint_npcs = hint_npc_candidates()  # before any patch changes a script
 

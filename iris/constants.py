@@ -62,7 +62,7 @@ CAVE_CHEST_FIX_REGION = range(0x30D820, 0x30D867)
 # client and by our asm; filled per seed by Archipelago tokens (offset + bytes) over a static base
 # patch, so every field has a fixed offset. Bump AP_CONFIG_VERSION whenever the layout changes.
 AP_CONFIG_REGION = range(0x360000, 0x368000)
-AP_CONFIG_VERSION = 1
+AP_CONFIG_VERSION = 2
 """Layout version stored in the byte at AP_CONFIG_VERSION_OFFSET."""
 AP_CONFIG_MAGIC = b"IRISAP"
 AP_CONFIG_MAGIC_OFFSET = 0x360000
@@ -99,7 +99,13 @@ AP_OPT_BLUE_CHEST_COUNT = 0x360049
 """2 bytes, little-endian: number of blue chest checks N."""
 AP_OPT_DEATH_LINK = 0x36004B
 """1 byte (0/1): death link."""
-AP_OPT_RESERVED = 0x36004C
+AP_OPT_BOSS_STRENGTH = 0x36004C
+"""1 byte: how scripted (boss) battles scale (open world, scale_bosses.asm): 0 not, 1 to the party's average level,
+2 to AP_OPT_BOSS_LEVELS."""
+AP_OPT_BOSS_LEVELS = 0x36004D
+"""39 bytes: per boss formation, the level its monsters are scaled to in mode 2 (0 = unchanged)."""
+AP_OPT_BOSS_LEVELS_SIZE = 39
+AP_OPT_RESERVED = 0x360074
 """Reserved option bytes up to the end of the 64-byte option area."""
 
 AP_HINT_HEADER_OFFSET = 0x360080

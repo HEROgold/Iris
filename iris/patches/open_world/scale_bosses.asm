@@ -16,11 +16,16 @@
 ; LDA #$96 : PHA : PLB). The loader doesn't copy the level; it's byte 13 of the ROM record (after the name).
 ;
 ; Only scripted battles are scaled: $80:B919, the event-script battle every boss NPC uses, stores #$FF in
-; $7F:F8A3 (the roaming-monster path stores 0; see scale_encounters.asm).
+; $7F:F8A3 (the roaming-monster path stores 0; see scale_encounters.asm) and the formation in $7F:F8A4.
+;
+; THE MODE (config block, constants.AP_OPT_BOSS_STRENGTH / AP_OPT_BOSS_LEVELS; tokens set it in Archipelago)
+;   0  nothing is scaled
+;   1  T = the live party members' average level
+;   2  T = !boss_levels[formation], skipped when 0 or the formation is past the table
 ;
 ; THE SCALE
 ;
-; T = the live party members' average level, L = the monster's level. Each field v becomes
+; T (see the mode), L = the monster's level. Each field v becomes
 ;   v / L * T + (v % L) * T / L      (hardware 16/8 divide and 8x8 multiply only), capped at $FFFF, at least 1.
 ; The level itself, which the battle reads from the ROM record, stays.
 
@@ -33,6 +38,9 @@ lorom
 !scripted       = $FF
 !monster_bank   ?= $96
 !level_in_record = 13
+!boss_strength  ?= $EC804C     ; constants.AP_OPT_BOSS_STRENGTH
+!boss_levels    ?= $EC804D     ; constants.AP_OPT_BOSS_LEVELS
+!boss_level_count ?= 39        ; constants.AP_OPT_BOSS_LEVELS_SIZE
 
 ; Add one party slot's level to the word at $01,s and count it in Y (16-bit A and X/Y in and out).
 macro add_slot(slot)
@@ -86,6 +94,27 @@ scale_boss:
     beq .scripted
     brl .done
 .scripted:
+    lda.l !boss_strength
+    bne .enabled
+    brl .done
+.enabled:
+    cmp.b #$02
+    bne .party
+    rep #$30
+    lda.l $7FF8A4
+    and.w #$00FF
+    cmp.w #!boss_level_count    ; formations past the table aren't scaled
+    bcs .no_target
+    tax
+    sep #$20
+    lda.l !boss_levels,x        ; this formation's level
+    rep #$30
+    and.w #$00FF
+    beq .no_target
+    brl .have_target
+.no_target:
+    brl .done
+.party:
     rep #$30
     ldy.w #$0000
     lda.w #$0000
@@ -113,6 +142,7 @@ scale_boss:
     nop
     rep #$30
     lda.l $004214               ; T
+.have_target:
     pha                         ; $01,s = T (word)
     ldy.w #$0045
     lda [$B2],y                 ; the monster's ROM record

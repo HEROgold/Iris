@@ -21,7 +21,10 @@ from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 
 from iris.enums.flags import EventFlag
-from iris.helpers.files import on_new_session, read_file
+from iris.constants import AP_OPT_BOSS_LEVELS, AP_OPT_BOSS_LEVELS_SIZE, AP_OPT_BOSS_STRENGTH, EXPANDED_ROM_SIZE
+from iris.helpers.addresses import address_to_lorom
+from iris.helpers.files import on_new_session, read_file, write_file
+from iris.helpers.rom_expansion import ensure_rom_expanded
 from iris.logger import iris
 from iris.patcher import apply_asm_patch
 from iris.structures.event_script.codec import decode_text, encode_text
@@ -353,12 +356,18 @@ def scale_to_depth(placement: dict[BossSpot, Boss]) -> None:
 SCALE_BOSSES_ASM = Path(__file__).parent / "scale_bosses.asm"
 STAT_DERIVE_CALL = (0x00FCDA, bytes.fromhex("22D5F481"))
 """$81:FCDA, ``JSL $81F4D5`` at the end of the battle's monster loader: the hook scale_bosses.asm replaces."""
+BOSS_SCALING_NONE, BOSS_SCALING_PARTY, BOSS_SCALING_LEVELS = 0, 1, 2
+"""The modes of constants.AP_OPT_BOSS_STRENGTH."""
 MONSTER_BANK_OPERAND = 0x00FC1A
 """$81:FC1A, the operand of the loader's ``LDA #$96`` (then PHA : PLB): the bank of the monster records."""
 
 
-def scale_to_party() -> None:
-    """Scripted (boss) battles scale their monsters to the party's average level when the battle loads them."""
+def install_boss_scaling(mode: int = BOSS_SCALING_PARTY) -> None:
+    """Hook the battle's monster loader with scale_bosses.asm, scaling scripted (boss) battles by ``mode``.
+
+    The mode and the per-formation levels live in the Archipelago config block (constants.AP_OPT_BOSS_STRENGTH,
+    AP_OPT_BOSS_LEVELS): an Archipelago base patch installs the hook with mode 0 and the world's tokens choose.
+    """
     address, vanilla = STAT_DERIVE_CALL
     read_file.seek(address)
     if read_file.read(len(vanilla)) != vanilla:
@@ -366,5 +375,19 @@ def scale_to_party() -> None:
         raise ValueError(msg)
     read_file.seek(MONSTER_BANK_OPERAND)
     bank = read_file.read(1)[0]
-    apply_asm_patch(SCALE_BOSSES_ASM, defines={"monster_bank": f"${bank:02X}"})
-    iris.info("Boss battles scale to the party's level.")
+    apply_asm_patch(SCALE_BOSSES_ASM, defines={
+        "monster_bank": f"${bank:02X}",
+        "boss_strength": f"${address_to_lorom(AP_OPT_BOSS_STRENGTH) | 0x800000:06X}",
+        "boss_levels": f"${address_to_lorom(AP_OPT_BOSS_LEVELS) | 0x800000:06X}",
+        "boss_level_count": str(AP_OPT_BOSS_LEVELS_SIZE),
+    })
+    if mode:
+        ensure_rom_expanded(EXPANDED_ROM_SIZE)
+        write_file.seek(AP_OPT_BOSS_STRENGTH)
+        write_file.write(bytes([mode]))
+    iris.info(f"Boss battles scale in mode {mode} (0 none, 1 party level, 2 per formation).")
+
+
+def scale_to_party() -> None:
+    """Scripted (boss) battles scale their monsters to the party's average level when the battle loads them."""
+    install_boss_scaling(BOSS_SCALING_PARTY)
