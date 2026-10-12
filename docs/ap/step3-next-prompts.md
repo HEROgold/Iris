@@ -135,3 +135,39 @@ tested checkpoint (no push), so a session that stops midway can resume with "con
 - The open-world pool is the chests' vanilla items plus the ship items; each extra item drops one filler
   (`_drop_filler`), so adding boss reward locations and character/capsule/maiden items in prompt 3 must keep
   `len(itempool) == empty locations` (test `test_pool_fits_locations`).
+
+## Findings from prompt 3
+
+- Items (`items.py`): `SPECIAL_ITEM_NAMES` = characters `$0200+c` (Maxim .. Lexis), capsules `$0210+s` ("Capsule
+  Foomy", "Capsule Shaggy", "Capsule Hard Hat", "Capsule Red Fish", "Capsule Myconido", "Capsule Raddisher", "Capsule
+  Armor Dog": each species' first-form US name), maidens `$0220+m` (Lisa, Marie, Clare); id = `BASE_ID + index`.
+  `OPEN_WORLD_SPECIALS` (16: six characters, seven capsules, three maidens) go in every open-world pool; Maxim
+  (`items.MAXIM`) is named but never pooled; prompt 5's leader option can pool him and keep the leader out instead.
+  Characters and maidens are progression, capsules useful. Nothing in the logic needs a character yet.
+- No free source is left in the open-world base, so no ROM change was needed (checked on a dump of the built
+  open-world ROM). Every `2B` join is either Elcid's party toggle (gated on the FOUND flags, which only the RX sets now)
+  or Gruberik's pub (map 0x69, 69-B-66..6B), whose NPCs load only with GIFT_MODE (flag 196). Only 68-A-02 sets that
+  flag, and that's Gift mode's own start scene. The capsule join scripts (`81`: 27-B-54, 49-B-54, 70-B-57, 7E-B-52,
+  ED-B-50, EF-B-50) are still there, but base.txt's NPC-load scripts no longer load those NPCs, and Foomy's is gone.
+  No script sets flags 0x1A-0x1C. No event script *reads* them either, so the Doom Island barrier check that
+  rx_specials.asm describes is presumably in code or ZoneData; it hasn't been checked in an emulator.
+- Locations (`locations.py`): `BOSS_REWARDS`, 48 of them (not 50: 26 spots give one reward and the 11 big dungeons
+  give two). Ids are `BOSS_BASE (BASE_ID + 0x2000) + 2 * row in BOSS_NPCS + n`, named "<Spot> Boss" / "<Spot> Boss 2"
+  (spot name in title case, e.g. "Tsword Shrine Boss"). Each reward sits in `area_of_map(map)` under
+  `OPEN_MAP_RULES[map]`, with no fight-strength rule; prompt 4 may want one. "Defeat Daos" needs all three maidens.
+- Pool: each boss reward pools one `_random_filler()` (Useful Items percent useful), and every extra item, specials
+  included, drops one filler. `_drop_filler` never drops a special and raises OptionError when it runs out. Open
+  world now has 32 more fillers than before (48 locations, 16 items).
+- Output: a special is never written into a chest or grant, even in its own world; the AP item goes there instead.
+  Boss rewards are written with `write_grant(self.boss_offsets[id], index)`.
+- Client: own items didn't come through the receive list before (items_handling was 0b101), even though the brief
+  said they did. It is now 0b111 for every player, linear included. `given_in_game(item, slot)` skips an own item
+  found in an own location below $0200: the chest already gave it. Both SRAM counters are moved on together in one
+  write, and only once the game has caught up. Specials always go through the list. `flagged_locations(flags)`
+  reports grants and boss rewards; a two-reward boss sends both from its one flag. Not tried in an emulator yet.
+  Saves from before this change have counters from the 0b101 list.
+- Seed 12345: the linear spoiler is identical to the one before prompt 3; open, mixed and variants (eggs x4 +
+  separate ships + randomized filler, own_stage, vanilla keys) generate, and mixed generates on seeds 1-5 as well.
+- While prompt 3 ran, someone else had uncommitted Iris changes in this worktree (new_game.asm, rx.asm,
+  scale_bosses.asm, constants.py, patcher.py, ...). In that working tree asar fails with "Define 'code' wasn't
+  found". The `--check`s and `tests/test_ap_export.py` pass on a clean `git archive HEAD`.
