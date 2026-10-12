@@ -38,6 +38,7 @@ from iris.patches.open_world.bosses import (
     PLACEHOLDER_ITEM,
     SPOTS,
     Boss,
+    _power,
     placed_bosses,
 )
 from iris.structures.chest import PointerChest
@@ -165,8 +166,9 @@ def _boss_npcs(rom: bytes) -> list[BossRow]:
     return rows
 
 
-def _boss(boss: Boss) -> tuple[str, int, int, int]:
-    return boss.name, boss.sprite, boss.formation, boss.bgm
+def _boss(boss: Boss) -> tuple[str, int, int, int, int]:
+    """(name, sprite, formation, bgm, power): power is the highest vanilla level among the formation's monsters."""
+    return boss.name, boss.sprite, boss.formation, boss.bgm, _power(boss)
 
 
 def _moved(grants: list[Grant], *, open_world: bool) -> list[Grant]:
@@ -250,7 +252,8 @@ def render(vanilla: bytes, options: Options = OPTIONS) -> str:
             "# Open world, fixed boss placement. Boss spots in story order: (name, map, rewards); FINAL_SPOT is Daos's.",
             f"BOSS_SPOTS = {pformat([(spot.name, spot.map_index, spot.rewards) for spot in SPOTS], width=120)}",
             f"FINAL_SPOT = {(FINAL_SPOT.name, FINAL_SPOT.map_index, FINAL_SPOT.rewards)!r}\n",
-            "# Bosses in story order: (name, sprite, formation, bgm). DAOS always guards FINAL_SPOT.",
+            "# Bosses in story order: (name, sprite, formation, bgm, power). DAOS always guards FINAL_SPOT. Power is the",
+            "# highest vanilla level among the formation's monsters (bosses._power), what scale_to_depth compares.",
             f"BOSSES = {pformat([_boss(boss) for boss in BOSSES], width=120)}",
             f"DAOS = {_boss(DAOS)!r}\n",
             "# Boss NPCs as the base patch places them, Daos last: (spot, map, flag set when beaten, talk signature,",

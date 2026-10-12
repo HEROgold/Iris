@@ -49,7 +49,7 @@ Branch `ap/open-world`, worktree `C:\Users\marti\Documents\GitHub\Iris-src-read-
 - Hold lifted: the code-region work landed as 8fa74ae (both base patches rebuilt, all checks green).
 - [ ] Prompt 4: boss placement and boss strength options (tokens)
   - [x] Baseline linear spoiler (seed 12345) saved before any change
-  - [ ] export_ap_data: boss power levels in data_open_world; data/base patches --check; Iris export test
+  - [x] export_ap_data: boss power levels in data_open_world; data/base patches --check; Iris export test
   - [ ] options.py: BossPlacement (fixed/shuffled), BossStrength (unchanged/party_level/by_depth)
   - [ ] __init__.py/rom.py: shuffled placement (sprite/bgm/formation bytes), spoiler, strength tokens
   - [ ] apworld tests (tokens per choice, shuffle multiset, by_depth fixed levels)

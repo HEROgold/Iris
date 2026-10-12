@@ -12,15 +12,18 @@ import pytest
 from iris.build import Options
 from iris.constants import AP_CONFIG_MAGIC, AP_CONFIG_MAGIC_OFFSET, AP_CONFIG_VERSION, AP_CONFIG_VERSION_OFFSET
 from iris.helpers import files
-from iris.helpers.files import session, use
+from iris.enums.patches import Patch
+from iris.helpers.files import open_rom, session, use
 from iris.patches.open_world.bosses import (
     BOSS_BATTLE,
+    BOSSES,
     DAOS,
     FINAL_SPOT,
     ITEM,
     LOAD_NPC,
     MUSIC,
     SPOTS,
+    _power,
     fixed_placement,
 )
 from iris.tables import select, selected
@@ -103,7 +106,7 @@ def test_boss_npc_operands_read_back(vanilla: bytes) -> None:
     for name, map_index, _, signature, sprite, bgm, formation, rewards in data.BOSS_NPCS:
         spot = next(spot for spot in [*SPOTS, FINAL_SPOT] if spot.name == name)
         boss = DAOS if spot is FINAL_SPOT else placement[spot]
-        _, boss_sprite, boss_formation, boss_bgm = bosses[boss.name]
+        _, boss_sprite, boss_formation, boss_bgm, _ = bosses[boss.name]
         assert map_index == spot.map_index
         slot = int(signature.split("-")[2], 16)
         assert patched[sprite - 2 : sprite + 1] == bytes([LOAD_NPC, slot, boss_sprite])
@@ -112,6 +115,16 @@ def test_boss_npc_operands_read_back(vanilla: bytes) -> None:
         assert len(rewards) == spots[name][2]
         for offset in rewards:
             assert patched[offset - 1 : offset + 2] == bytes([ITEM, data.PLACEHOLDER_ITEM, 1])
+
+
+def test_boss_power_is_the_formations_top_level(vanilla: bytes) -> None:
+    """Each exported boss carries its power (max vanilla level of its formation's monsters) for the world's by_depth."""
+    data = _load(OPEN_WORLD_DATA_FILE)
+    select(Patch.VANILLA)
+    open_rom(vanilla)
+    expected = [(boss.name, _power(boss)) for boss in [*BOSSES, DAOS]]
+    assert [(boss[0], boss[4]) for boss in [*data.BOSSES, data.DAOS]] == expected
+    assert all(1 <= power <= 99 for _, power in expected)
 
 
 @modules
