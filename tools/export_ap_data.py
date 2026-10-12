@@ -12,7 +12,9 @@ Most of it comes from the vanilla ROM. What the base patch moves comes from the 
 """
 
 import argparse
+import re
 import sys
+from dataclasses import replace
 from pathlib import Path
 from pprint import pformat
 
@@ -23,7 +25,8 @@ from iris import constants
 from iris.build import Options, build
 from iris.enums.flags import GOAL_FLAG, EventFlag, Usability
 from iris.enums.patches import Patch
-from iris.helpers.files import open_rom, read_file
+from iris.helpers.files import open_rom, output_bytes, read_file
+from iris.patches import open_world
 from iris.patches.archipelago.overworld.ap_item import AP_ITEM_INDEX
 from iris.patches.archipelago.overworld.hint_npcs import HINT_FLAGS, hint_slots
 from iris.patches.archipelago.overworld.key_items import KEY_ITEM_NAMES
@@ -41,10 +44,12 @@ from iris.patches.open_world.bosses import (
     _power,
     placed_bosses,
 )
+from iris.patches.open_world.leader import LEADERS, MAXIM
 from iris.structures.chest import PointerChest
 from iris.structures.chest_location import CHEST_MAP
 from iris.structures.chest_names import CHEST_NAMES
 from iris.structures.event_script import MapEvent
+from iris.structures.event_script.event_patch import measure_event_patch, resolve_or_create
 from iris.structures.event_script.dump import _signature
 from iris.structures.item import Item
 from iris.structures.key_doors import key_doors
@@ -53,7 +58,7 @@ from iris.structures.zone_data_pointers import zone_data_pointers
 from iris.tables import ChestObject, ItemObject, select
 from iris.structures.event_script.script import EventScript
 from tools.build_ap_basepatch import OPEN_WORLD_OPTIONS, OPTIONS, vanilla_image
-from tools.dump_item_grants import GRANT_OPS, collect
+from tools.dump_item_grants import GRANT_OPS, SET_FLAG, collect
 
 
 DATA_FILE = Path(__file__).resolve().parent.parent / "archipelago" / "lufia2ow" / "data.py"
@@ -208,11 +213,133 @@ def _from_base_rom(
     return _moved(grants, open_world=options.open_world), _hint_npcs(), _boss_npcs(rom)
 
 
+type Runs = tuple[tuple[int, str], ...]
+CHECKSUM = range(0x7FDC, 0x7FE0)
+"""The header's checksum and complement: every variant changes them, and the game doesn't read them."""
+ORB_CHECK = "orb_check"
+ORB_SCRIPT = "44-D-01"
+"""The orb's tile script, in event-patch letters (``orb_check.txt``)."""
+LEADER_SCRIPT_OPCODES = {0x33: 1, 0x86: 0, 0x8C: 0}
+"""``leader.CHARACTER_OPERAND``: an extra's script with one of these naming Maxim changes with the leader too."""
+_SCRIPT_LINE = re.compile(r"\s*[0-9A-F]{4}\.\s*([0-9A-F]{2})\(([^)]*)\)")
+
+
+def _runs(base: bytes, variant: bytes) -> Runs:
+    """The bytes ``variant`` changes in ``base``, as (offset, hex) runs of consecutive changed bytes."""
+    runs: list[list[int]] = []
+    for offset, (old, new) in enumerate(zip(base, variant, strict=True)):
+        if old == new or offset in CHECKSUM:
+            continue
+        if runs and runs[-1][1] == offset:
+            runs[-1][1] = offset + 1
+        else:
+            runs.append([offset, offset + 1])
+    return tuple((start, variant[start:stop].hex()) for start, stop in runs)
+
+
+def apply_runs(rom: bytes, *runs: Runs) -> bytes:
+    """``rom`` with every run of ``runs`` written over it, in order (what the world's tokens do)."""
+    out = bytearray(rom)
+    for group in runs:
+        for offset, data in group:
+            chunk = bytes.fromhex(data)
+            out[offset : offset + len(chunk)] = chunk
+    return bytes(out)
+
+
+def _moves_maxim(extra: str) -> bool:
+    """True if ``extra``'s scripts move character 0, which the leader replaces (``leader._replace_leader_in_events``)."""
+    path = open_world.OPEN_WORLD / f"{extra}.txt"
+    if not path.exists():
+        return False
+    for line in path.read_text(encoding="utf-8").splitlines():
+        match = _SCRIPT_LINE.match(line)
+        if match and int(match[1], 16) in LEADER_SCRIPT_OPCODES:
+            operands = match[2].split("-")
+            if int(operands[LEADER_SCRIPT_OPCODES[int(match[1], 16)]], 16) == MAXIM:
+                return True
+    return False
+
+
+def _orb_check() -> tuple[int, int, int, int]:
+    """(map, offset of the item byte, item, flag) of the orb check's grant, in the active (orb_check) session."""
+    script = resolve_or_create(ORB_SCRIPT)
+    grant = next(ins for ins in script.instructions if ins.opcode in GRANT_OPS)
+    flag = next(int(ins.operands[0]) for ins in script.instructions if ins.opcode == SET_FLAG)
+    item = GRANT_OPS[grant.opcode] + int(grant.operands[0])
+    return int(ORB_SCRIPT[:2], 16), script.pointer + grant.line + 1, item, flag
+
+
+def _variants(vanilla: bytes, grants: list[Grant], options: Options, base: tuple) -> dict[str, object]:
+    """Every open-world extra and leader as runs over the base ROM, and what they move (Iris-Dev#43).
+
+    The base keeps room for each (``apply_open_world(reserve=True)``), so each is a small diff in place. Grants and
+    hint slots must stay where they are; a boss NPC whose sprite moves gets its row for that extra.
+    """
+    base_grants, base_hints, base_bosses, base_rom = base
+    extra_runs: dict[str, Runs] = {}
+    boss_rows: dict[str, dict[int, BossRow]] = {}
+    orb = None
+    replaced: dict[str, tuple[str, ...]] = {}
+    for extra in open_world.EXTRAS:
+        rom = build(vanilla, replace(options, open_world_extras=(extra,)))
+        extra_runs[extra] = _runs(base_rom, rom)
+        scripts = _replaced_scripts(extra)
+        if scripts:
+            replaced[extra] = scripts
+        kept = [grant for grant in grants if grant[1] not in scripts]
+        if _moved(kept, open_world=True) != [g for g in base_grants if g[1] not in scripts] or _hint_npcs() != base_hints:
+            msg = f"Open-world extra {extra} moves a grant or a hint slot; the base needs room for it."
+            raise ValueError(msg)
+        rows = {n: row for n, (row, old) in enumerate(zip(_boss_npcs(rom), base_bosses, strict=True)) if row != old}
+        if rows:
+            boss_rows[extra] = rows
+        if extra == ORB_CHECK:
+            orb = _orb_check()
+    leader_runs: dict[str, Runs] = {}
+    for name, leader in LEADERS.items():
+        rom = build(vanilla, replace(options, leader=leader))
+        leader_runs[name] = _runs(base_rom, rom)
+        if (_moved(grants, open_world=True), _hint_npcs(), _boss_npcs(rom)) != (base_grants, base_hints, base_bosses):
+            msg = f"Leader {name} moves a grant, a hint slot or a boss NPC; the base needs room for it."
+            raise ValueError(msg)
+    pairs: dict[tuple[str, str], Runs] = {}
+    for extra in filter(_moves_maxim, open_world.EXTRAS):
+        for name, leader in LEADERS.items():
+            rom = build(vanilla, replace(options, open_world_extras=(extra,), leader=leader))
+            runs = _runs(apply_runs(base_rom, extra_runs[extra], leader_runs[name]), rom)
+            if runs:
+                pairs[name, extra] = runs
+    return {
+        "extras": extra_runs, "leaders": leader_runs, "pairs": pairs, "boss_rows": boss_rows, "orb": orb,
+        "replaced": replaced,
+    }
+
+
+def _replaced_scripts(extra: str) -> tuple[str, ...]:
+    """The signatures (Iris's letters) of the existing scripts ``extra`` replaces, in the active session."""
+    path = open_world.OPEN_WORLD / f"{extra}.txt"
+    if not path.exists():
+        return ()
+    sizes, _ = measure_event_patch(path.read_text(encoding="utf-8"))
+    out = []
+    for signature in sizes:
+        script = resolve_or_create(signature)
+        if script.index >= 0:
+            out.append(_signature(int(signature[:2], 16), script))
+    return tuple(sorted(out))
+
+
 def render(vanilla: bytes, options: Options = OPTIONS) -> str:
     """The module's text, from the vanilla US ROM ``vanilla`` and the base ROM Iris builds from it with ``options``."""
     select(Patch.VANILLA)
     open_rom(vanilla)
-    grants, hint_npcs, boss_npcs = _from_base_rom(vanilla, _grants(), options)
+    vanilla_grants = _grants()
+    grants, hint_npcs, boss_npcs = _from_base_rom(vanilla, vanilla_grants, options)
+    variants = (
+        _variants(vanilla, vanilla_grants, options, (grants, hint_npcs, boss_npcs, output_bytes()))
+        if options.open_world else None
+    )
     select(Patch.VANILLA)
     open_rom(vanilla)
     ap_constants = {name: getattr(constants, name) for name in dir(constants) if name.startswith("AP_")}
@@ -262,6 +389,28 @@ def render(vanilla: bytes, options: Options = OPTIONS) -> str:
             "# PLACEHOLDER_ITEM in the base patch; these grants are not in GRANTS.",
             f"PLACEHOLDER_ITEM = {PLACEHOLDER_ITEM:#04x}",
             f"BOSS_NPCS = {pformat(boss_npcs, width=120)}",
+        ]
+    if variants is not None:
+        sections += [
+            "",
+            "# Per-seed open-world variants (Iris-Dev#43). The base patch keeps room for each, so each is a list of",
+            "# (offset, hex bytes) runs that turn the base ROM into Iris's build with it, the checksum left out. Write the",
+            "# chosen extras in EXTRAS order, then the leader, then LEADER_EXTRA_DIFFS[leader, extra] for each chosen",
+            "# extra, before every other token. The extras of a group in EXCLUSIVE_EXTRAS can't be chosen together.",
+            f"EXTRAS = {tuple(open_world.EXTRAS)!r}",
+            f"EXCLUSIVE_EXTRAS = {tuple(tuple(sorted(group)) for group in open_world.EXCLUSIVE)!r}",
+            f"EXTRA_DIFFS = {pformat(variants['extras'], width=120, sort_dicts=False)}",
+            "# Leaders by character index; Maxim (0) is the base patch's.",
+            f"LEADERS = {LEADERS!r}",
+            f"LEADER_DIFFS = {pformat(variants['leaders'], width=120, sort_dicts=False)}",
+            "# The leader's change inside an extra's own scripts (where the extra moves Maxim).",
+            f"LEADER_EXTRA_DIFFS = {pformat(variants['pairs'], width=120, sort_dicts=False)}",
+            "# BOSS_NPCS rows an extra moves (its NPC-load script grows in front of the boss): extra -> {row: new row}.",
+            f"EXTRA_BOSS_NPCS = {pformat(variants['boss_rows'], width=120, sort_dicts=False)}",
+            "# Scripts an extra replaces: GRANTS rows in them don't hold with that extra (9F-B-50, the egg wishes).",
+            f"EXTRA_REPLACED_SCRIPTS = {pformat(variants['replaced'], width=120, sort_dicts=False)}",
+            "# orb_check's grant, a location: (map, offset of the item byte, vanilla item, flag set once taken).",
+            f"ORB_CHECK = {variants['orb']!r}",
         ]
     return "\n".join(sections) + "\n"
 
