@@ -97,3 +97,20 @@ tested checkpoint (no push), so a session that stops midway can resume with "con
 > be done without shipping Iris, leave it out of the apworld and document it as an Iris flag in
 > `archipelago/lufia2ow/docs/setup_en.md`. Export the variant diffs in `data_open_world.py`.
 > Done when each shipped variant has a composition test and the left-out ones are documented.
+
+## Findings from prompt 1 (commits 4533afe..a3929bb)
+
+- The world picks `self.data` (`data` or `data_open_world`) and `self.grant_offsets` per instance in `generate_early`;
+  `rom.base_patch(open_world)`; `write_grant(offset, item_index)` takes the offset. Linear and open-world players can
+  share a multiworld. `CHESTS`, `CONFIG`, `EVENT_FLAGS`, `GOAL_FLAG`, `KEY_DOORS`, `MAP_NAMES` are equal in both
+  modules; `GRANTS` (44 vs 30) and `HINT_NPCS` differ.
+- Open world replaces 13 story scripts (14 grants: 07-C-01, 14-C-03, 26-B-18, 2A-B-18, 3D-C-01, 3F-B-1B, 7E-C-01,
+  8B-B-25, BF-B-2D, D6-C-02, DC-C-01, E0-C-01, E4-C-01 ×2), so an open-world player has no grant locations today.
+- `data_open_world.BOSS_NPCS`: (spot, map, flag, talk signature, sprite offset, bgm offset, formation offset,
+  reward item-byte offsets), Daos last; 37 spots (24 one reward, 13 two) + Daos (none). A reward is placed like a
+  grant: `[0x20|0x21, item & 0xFF]` at offset-1. The boss's beaten flag is the check. Also `BOSS_SPOTS`, `FINAL_SPOT`,
+  `BOSSES`, `DAOS`, `PLACEHOLDER_ITEM`. Boss NPC signatures use Iris's letter B (e.g. 05-B-57).
+- Another base-patch variant = one more entry in `tools/build_ap_basepatch.py` `PATCHES`, `tools/export_ap_data.py`
+  `MODULES` and `rom.BASE_PATCHES`.
+- No real AP generation ran: `GitHub\Archipelago` is an old LoL fork. The user chose a fresh upstream clone at
+  `C:\Users\marti\Documents\GitHub\Archipelago-upstream` for generation tests (2026-10-12).
