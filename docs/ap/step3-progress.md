@@ -17,11 +17,12 @@ Branch `ap/open-world`, worktree `C:\Users\marti\Documents\GitHub\Iris-src-read-
 - [ ] apworld: boss strength option writes the tokens. Moved to prompt 4: the linear AP base patch has no
   boss hook, so the tokens only work once the open-world base patch exists (prompt 1).
 
-## Still open in step 3 (prompts in `docs/ap/step3-next-prompts.md`, run in order)
+## Still open in step 3 (prompts in `docs/ap/step3-next-prompts.md`, one agent each, in order)
 
 - Orb crash: done, not an Iris bug (1df5ea9, Mesen). `orb_check` makes the orb an item check.
-- [ ] Open decisions for the open-world base patch (boss placement, leader, extras, packaging): ask the user
-- [ ] Prompt 1: open-world base patch and data export
-- [ ] Prompt 2: apworld open-world option and region map (ship, submarine, airship)
+- [x] Decisions asked (2026-10-12), recorded in the prompts file
+- [ ] Prompt 1: open-world base patch, data export, `open_world` option
+- [ ] Prompt 2: open-world region map (ship, submarine, airship)
 - [ ] Prompt 3: characters, capsules, maidens as items; boss NPCs and the orb as locations
-- [ ] Prompt 4: boss strength option (tokens)
+- [ ] Prompt 4: boss placement and boss strength options (tokens)
+- [ ] Prompt 5: leader and extras as per-seed options (token variants, else documented Iris flags)

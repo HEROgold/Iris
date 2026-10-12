@@ -1,8 +1,8 @@
 # Open world step 3: prompts for the remaining work
 
-Paste one prompt per session, in order. Every prompt shares the **Common context** block; paste it first.
-Each session ticks its boxes in `docs/ap/step3-progress.md` after every sub-step and commits each tested
-checkpoint (no push), so a session that stops midway can be resumed with "continue from step3-progress.md".
+One agent per prompt, run in order. Each brief = **Common context** + **Decisions** + its prompt.
+Each session adds its sub-steps as boxes in `docs/ap/step3-progress.md`, ticks them as it goes, and commits each
+tested checkpoint (no push), so a session that stops midway can resume with "continue from step3-progress.md".
 
 ## Common context
 
@@ -11,74 +11,89 @@ checkpoint (no push), so a session that stops midway can be resumed with "contin
 > Tests: `uv run --no-project --python 3.12 --with bitstring --with bsdiff4 --with pytest python -m pytest tests/<file>
 > --file /tmp/l2_headerless.sfc -q -p no:cacheprovider -p no:logging --rootdir .` (if the ROM is missing:
 > `tail -c +513 C:/Users/marti/Documents/GitHub/Iris/rom.sfc > /tmp/l2_headerless.sfc`, md5 6efc477d…).
-> After changing anything the base patch or export sees, rerun `tools/build_ap_basepatch.py --file <rom>` and
-> `tools/export_ap_data.py --file <rom>`; `tests/test_ap_export.py` fails while they're stale.
-> Progress log: `docs/ap/step3-progress.md`. Add your sub-steps as boxes before you start, tick each when done.
+> Python scripts: same `uv run … python` prefix. After changing anything the base patches or export see, rerun
+> `tools/build_ap_basepatch.py --file <rom>` and `tools/export_ap_data.py --file <rom>`; `tests/test_ap_export.py`
+> fails while they're stale.
 > Commit message style: `Open world: … (Iris-Dev#43)` / `apworld: … (Iris-Dev#43)`.
 >
-> Done on the ROM side (don't redo): open world (`iris/patches/open_world/__init__.py`, `apply_open_world`, `EXTRAS`
-> incl. `orb_check` and `escapable_dungeons`), leader (`leader.py`), boss NPCs at 38 spots (`bosses.py`: `BOSSES`,
-> `SPOTS`, `fixed_placement`, `shuffled_placement`, `place_bosses`), boss strength in the config block
-> (`AP_OPT_BOSS_STRENGTH` mode 0/1/2, `AP_OPT_BOSS_LEVELS` 39 bytes indexed by formation; `docs/ap/config_block.md`),
-> received characters/capsules/maidens (rx_specials.asm: item index `$0200+c` character c, `$0210+s` capsule
-> species s, `$0220+m` maiden m). The orb crash is not an Iris bug (commit 1df5ea9, checked in Mesen).
-> Today the AP base patch (`tools/build_ap_basepatch.py`) is built **linear**: `Options(0, selected_patch=Patch.VANILLA,
-> archipelago=True, unlock_warps=False)`, no `open_world`.
+> Done on the ROM side (don't redo): open world (`iris/patches/open_world/__init__.py`: `apply_open_world(extras)`,
+> `EXTRAS`, `EXCLUSIVE` = orb guard vs `orb_check`), leader (`leader.py` `set_leader`), boss NPCs (`bosses.py`:
+> `SPOTS` (37 spots + `FINAL_SPOT` Daos), `BOSSES`, `fixed_placement`, `shuffled_placement(seed)`, `place_bosses`,
+> `placed_bosses()` for the export), boss strength in the config block (`AP_OPT_BOSS_STRENGTH` 0 none/1 party/
+> 2 per formation, `AP_OPT_BOSS_LEVELS` 39 bytes indexed by formation; `docs/ap/config_block.md`), received
+> characters/capsules/maidens (rx_specials.asm: item index `$0200+c` character c, `$0210+s` capsule species s,
+> `$0220+m` maiden m). The orb crash is not an Iris bug (commit 1df5ea9). `iris/build.py` `build()`: with
+> `open_world` and `archipelago` and `boss_strength="unchanged"` it installs the boss hook in mode 0.
+> The linear AP base patch: `tools/build_ap_basepatch.py` `OPTIONS = Options(0, selected_patch=Patch.VANILLA,
+> archipelago=True, unlock_warps=False)`; the apworld loads it in `archipelago/lufia2ow/rom.py` `base_patch()` and
+> writes tokens with `L2OWProcedurePatch.write_*` (see `write_auth`) from `__init__.py` `generate_output`.
 
-## Prompt 1: open-world base patch and data export
+## Decisions (the user's, 2026-10-12)
 
-**Needs the user's decisions first (see "Open decisions" below). Put them in the prompt before running it.**
+> - Packaging: a second base patch inside `lufia2ow` (`basepatch_open_world.bsdiff4` + its data), picked by an
+>   `open_world` option. Linear seeds stay byte-identical.
+> - Boss placement: an apworld option, fixed or shuffled. The base patch holds `fixed_placement`; shuffled writes the
+>   per-spot boss bytes with tokens (a spot's boss only changes fixed-size operands: the NPC-load sprite, the talk
+>   script's MUSIC bgm and BOSS_BATTLE formation, see `bosses._prefix_npc_load` / `_talk`).
+> - Boss strength: an apworld option, default unchanged (unchanged / party_level / by_depth), written as tokens.
+> - Leader: a per-seed apworld option (Maxim default, the six others, random), written as tokens.
+> - Extras: ideally all four (`orb_check`, `escapable_dungeons`, the NPC tips, the orb guard NPC) are apworld options.
+>   If one can only be per seed by shipping Iris inside the apworld, don't: leave it out of the apworld and document
+>   it as an Iris flag instead (they already are CLI flags: `iris/args.py`, one per `EXTRAS` entry).
+> - Ship Upgrades = vanilla in open world is treated as progressive (say so in the option text).
+
+## Prompt 1: open-world base patch, data export, `open_world` option
 
 > Add an open-world AP base patch and data export next to the linear ones.
-> - `tools/build_ap_basepatch.py` and `tools/export_ap_data.py`: build a second set with `open_world=True` (plus the
->   extras decided below) into `archipelago/lufia2ow/basepatch_open_world.bsdiff4` and the matching data module
->   (layout decided below). Keep the linear outputs byte-identical.
-> - `--check` covers both. `tests/test_ap_export.py`: parametrize the current-ness and config-header tests over both.
-> - `archipelago/lufia2ow/rom.py` `base_patch()`: take which one to load; nothing chooses open world yet (prompt 2 does).
-> - Export for open world as well: the boss spots (`bosses.SPOTS`, their maps and flags) and the orb-check grant, as
->   the apworld needs them for locations in prompt 3.
-> Done when both patches build, `--check` passes for both, and the export tests pass for both.
+> - `tools/build_ap_basepatch.py`: a second options set `OPEN_WORLD_OPTIONS` = the linear `OPTIONS` plus
+>   `open_world=True, boss_placement="fixed"` (no extras, no leader) → `archipelago/lufia2ow/basepatch_open_world.bsdiff4`.
+>   `--check` checks both. Keep the linear patch byte-identical.
+> - `tools/export_ap_data.py`: export the open-world data from the open-world base ROM into
+>   `archipelago/lufia2ow/data_open_world.py` (same literal-only style), adding the boss NPCs from `placed_bosses()`:
+>   spot name, map, flag, talk-script signature, and the ROM offsets of the per-spot operands a shuffle rewrites
+>   (NPC-load sprite, MUSIC bgm, BOSS_BATTLE formation) and of each reward's ITEM operand; plus `BOSSES`/`DAOS`
+>   (name, sprite, formation, bgm), the spot order, and the orb-check grant if present. Check the grant export
+>   (`tools/dump_item_grants.py` `collect`) picks up the boss reward ITEMs; if not, export them as above.
+> - `tests/test_ap_export.py`: parametrize the current-ness and config-header tests over both.
+> - apworld: an `open_world` Toggle (default off) in `options.py`; `rom.py` `base_patch()` and the `data` module used
+>   by the world come from the open-world pair when it's on. Only the plumbing: open-world logic is prompt 2.
+> Done when both patches build, `--check` passes for both, `tests/test_ap_export.py` and `tests/test_open_world_bosses.py`
+> pass, and the linear outputs are unchanged.
 
-## Prompt 2: apworld open-world option and region map
+## Prompt 2: open-world region map
 
-> Add an `open_world` option (Toggle, default off) to `archipelago/lufia2ow/options.py` and use it in
-> `__init__.py`: it picks the open-world base patch/data from prompt 1. Open world has no story stages, so
-> `logic.py`'s story-stage regions don't apply: build a region map where the areas are reachable from the
-> start (Elcid) and gated only by travel: Ship (sea), Submarine (seafloor), Airship/Engine (sky), using the existing
-> `ShipUpgrades` items (`items.py`: SHIP, SUBMARINE, PROGRESSIVE_SHIP; `__init__.py:136-140`) and the key
-> items/tools that still lock doors (`logic.py` reads key doors from the ROM). The `ShipUpgrades` choice "vanilla"
-> means nothing in open world: reject it there or treat it as progressive (pick one, say which in the option text).
-> Linear seeds must generate the same as before.
-> Done when an open-world seed and a linear seed both generate (`tests/` apworld tests, plus a generate run if the
-> repo has one) and `tools/build_apworld.py` still packages.
+> With `open_world` on, `logic.py`'s story-stage regions don't apply: build a region map where areas are reachable
+> from the start (Elcid) and gated by travel only: Ship (sea), Submarine (seafloor), Engine/airship (sky), using the
+> existing `ShipUpgrades` items (`items.py`; `__init__.py` around line 136), plus the key items/tools that still lock
+> doors (`logic.py` reads key doors from the ROM). `ShipUpgrades` vanilla → progressive in open world (option text).
+> Goals that need the story (e.g. `chaed`) must still be reachable or be rejected with an OptionError in open world.
+> Linear seeds generate the same as before. Done when an open-world and a linear seed both generate and
+> `tools/build_apworld.py` still packages.
 
-## Prompt 3: characters, capsules, maidens, boss NPCs and the orb as AP items and locations
+## Prompt 3: characters, capsules, maidens as items; boss NPCs and the orb as locations
 
-> In open world only:
-> - Items: each character, capsule species and maiden is an AP item, with item index `$0200+c`, `$0210+s`,
->   `$0220+m` (already handled in the ROM by rx_specials.asm, commit 722de37). Characters and maidens are
->   progression (the maidens open the Doom Island barrier), capsules are useful. Remove the vanilla joins from the
->   pool so each one comes only as an item.
-> - Locations: every placed boss NPC (from the prompt 1 export) and the orb check (`orb_check` extra,
->   flag 0x30, a script grant written with `rom.write_grant`).
-> Done when an open-world seed places these and a generated ROM's tokens write the boss and orb grants.
+> In open world only: each character, capsule species and maiden is an AP item (index `$0200+c`, `$0210+s`,
+> `$0220+m`); characters and maidens progression (maidens open the Doom Island barrier), capsules useful; no vanilla
+> joins left in the pool. Every placed boss NPC's reward(s) and the orb check (if in the base) are locations, using
+> prompt 1's export; rewards are written like grants (`rom.write_grant`). Region per spot from prompt 2.
+> Done when an open-world seed places these and the generated tokens write the boss and orb grants.
 
-## Prompt 4: boss strength option
+## Prompt 4: boss placement and boss strength options
 
-> Add a `boss_strength` option (Choice: unchanged / party_level / by_depth, default unchanged) for open world. In
-> `generate_output`, write `data.CONFIG["AP_OPT_BOSS_STRENGTH"]` (0/1/2) with a token. For by_depth, compute each placed
-> boss formation's level the way `iris/patches/open_world/bosses.py` `scale_to_depth` does (by spot depth) and
-> write the 39 bytes at `AP_OPT_BOSS_LEVELS` (index = formation, 0 = unchanged). If boss placement is shuffled per
-> seed (prompt 1's decision), use the seed's placement. Add `write_boss_strength` to `rom.py` like `write_auth`.
-> Done when a test reads the tokens back for each choice.
+> `boss_placement` (fixed / shuffled, default fixed) and `boss_strength` (unchanged / party_level / by_depth, default
+> unchanged), open world only. Shuffled: port `bosses.shuffled_placement` to the apworld (seeded by the AP random)
+> and write each spot's sprite/bgm/formation bytes from prompt 1's export with tokens. Strength: write
+> `AP_OPT_BOSS_STRENGTH` (0/1/2); by_depth writes `AP_OPT_BOSS_LEVELS[formation]` for each placed boss, computed
+> the way `bosses.scale_to_depth` ranks depth. A boss placed at several spots gets one level (mean, as there).
+> Add `write_*` helpers to `rom.py`. Done when tests read the tokens back for each choice.
 
-## Open decisions (ask the user before prompt 1)
+## Prompt 5: leader and extras as per-seed options
 
-A static base patch can't hold per-seed choices. These open-world features are per seed in the Iris CLI today:
-
-1. **Boss placement** (`shuffled_placement(seed)`): bake in `fixed_placement` only, or make placement token-driven
-   (write each spot's boss script per seed)?
-2. **Leader** (`--leader`, incl. random): leave it out of AP, bake Maxim in, or make it a token?
-3. **Extras** (`EXTRAS`: orb_check vs orb guard, escapable_dungeons, the NPC tips): which are baked into the open-world
-   base patch? Making them options means one base patch per combination, or tokens.
-4. **Packaging**: a second base patch inside `lufia2ow` (picked by the option), or a separate apworld?
+> Make `leader` and each extra per-seed apworld options, as token variants over the open-world base patch.
+> Method: for a variant, build the open-world base with it on and diff against the base. A variant is token-able if
+> the diff is small, in place (no moved containers) and composes with the others (base + all chosen diffs == a build
+> with all of them on; test that). Where a variant isn't, first try making the base hold room for it (e.g. the
+> opening's leader-swap block always present, with the leader byte the token sets, Maxim = skip); if it still can't
+> be done without shipping Iris, leave it out of the apworld and document it as an Iris flag in
+> `archipelago/lufia2ow/docs/setup_en.md`. Export the variant diffs in `data_open_world.py`.
+> Done when each shipped variant has a composition test and the left-out ones are documented.
