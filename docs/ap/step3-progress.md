@@ -39,6 +39,13 @@ Branch `ap/open-world`, worktree `C:\Users\marti\Documents\GitHub\Iris-src-read-
   - [x] archipelago/lufia2ow/test/ (WorldTestBase) passes in the upstream clone
   - [x] build_apworld packages; export/basepatch --check green; committed
 - [ ] Prompt 3: characters, capsules, maidens as items; boss NPCs and the orb as locations
+  - [ ] Check the open-world base for free sources of characters, capsules and maidens (ROM change only if needed)
+  - [ ] items.py: character (not Maxim), capsule and maiden items (ids BASE_ID + $0200/$0210/$0220 + n)
+  - [ ] locations.py: 50 boss reward locations (BASE_ID + 0x2000 + spot*2 + n), BOSS_FLAGS for the client
+  - [ ] __init__.py: specials in the open-world pool, boss reward regions/rules, Daos gated on the maidens, tokens
+  - [ ] client.py: report boss rewards from the boss flag; own specials delivered through the receive list
+  - [ ] Tests (apworld + Iris), linear/open/mixed seeds, linear spoiler unchanged; commit
+  - [ ] Findings in step3-next-prompts.md
 - [ ] Prompt 4: boss placement and boss strength options (tokens)
 - [ ] Prompt 5: leader and extras as per-seed options (token variants, else documented Iris flags)
 
