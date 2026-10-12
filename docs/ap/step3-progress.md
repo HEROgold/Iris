@@ -24,7 +24,7 @@ Branch `ap/open-world`, worktree `C:\Users\marti\Documents\GitHub\Iris-src-read-
 - [ ] Prompt 1: open-world base patch, data export, `open_world` option
   - [x] `tools/build_ap_basepatch.py`: `OPEN_WORLD_OPTIONS` -> `basepatch_open_world.bsdiff4`; default writes both, `--check` checks both
   - [x] `tools/export_ap_data.py`: `data_open_world.py` (data.py content + boss NPC operand offsets, BOSSES/DAOS, spot order)
-  - [ ] `tests/test_ap_export.py`: both pairs current; boss operand offsets read back
+  - [x] `tests/test_ap_export.py`: both pairs current; boss operand offsets read back
   - [ ] apworld: `open_world` Toggle; base patch + data module per world instance
   - [ ] Linear `basepatch.bsdiff4`/`data.py` byte-identical; tests green; committed
 - [ ] Prompt 2: open-world region map (ship, submarine, airship)
