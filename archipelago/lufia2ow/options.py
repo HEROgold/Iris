@@ -156,6 +156,33 @@ class OpenWorld(Toggle):
     display_name = "Open World"
 
 
+class BossPlacement(Choice):
+    """Open World only (does nothing without it): which boss stands at each of the 37 boss spots. Daos always waits
+    in the Shrine of Daos.
+
+    fixed: the bosses in story order. shuffled: every boss at least once, some twice, mostly near their story place
+    (the spoiler log lists them)."""
+
+    display_name = "Boss Placement"
+    option_fixed = 0
+    option_shuffled = 1
+    default = option_fixed
+
+
+class BossStrength(Choice):
+    """Open World only (does nothing without it): how strong the bosses are. Logic doesn't take it into account.
+
+    unchanged: their own stats. party_level: every boss battle scales to the party's average level when it starts.
+    by_depth: each boss scales to the level of the story's boss at the spot it stands at, so a late boss placed early
+    is weaker and an early one placed late stronger (Daos stays unchanged)."""
+
+    display_name = "Boss Strength"
+    option_unchanged = 0
+    option_party_level = 1
+    option_by_depth = 2
+    default = option_unchanged
+
+
 @dataclass
 class L2OWOptions(PerGameCommonOptions):
     open_world: OpenWorld
@@ -170,3 +197,5 @@ class L2OWOptions(PerGameCommonOptions):
     arrows: Arrows
     hint_npcs: HintNpcs
     hint_unlock: HintUnlock
+    boss_placement: BossPlacement
+    boss_strength: BossStrength

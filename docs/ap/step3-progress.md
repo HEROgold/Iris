@@ -50,9 +50,9 @@ Branch `ap/open-world`, worktree `C:\Users\marti\Documents\GitHub\Iris-src-read-
 - [ ] Prompt 4: boss placement and boss strength options (tokens)
   - [x] Baseline linear spoiler (seed 12345) saved before any change
   - [x] export_ap_data: boss power levels in data_open_world; data/base patches --check; Iris export test
-  - [ ] options.py: BossPlacement (fixed/shuffled), BossStrength (unchanged/party_level/by_depth)
-  - [ ] __init__.py/rom.py: shuffled placement (sprite/bgm/formation bytes), spoiler, strength tokens
-  - [ ] apworld tests (tokens per choice, shuffle multiset, by_depth fixed levels)
+  - [x] options.py: BossPlacement (fixed/shuffled), BossStrength (unchanged/party_level/by_depth)
+  - [x] __init__.py/rom.py: shuffled placement (sprite/bgm/formation bytes), spoiler, strength tokens
+  - [x] apworld tests (tokens per choice, shuffle multiset, by_depth fixed levels)
   - [ ] Seeds: linear/open/mixed + open shuffled+by_depth; linear spoiler unchanged; commit
   - [ ] Findings in step3-next-prompts.md
 - [ ] Prompt 5: leader and extras as per-seed options (token variants, else documented Iris flags)

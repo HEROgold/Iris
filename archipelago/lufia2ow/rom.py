@@ -52,6 +52,22 @@ class L2OWProcedurePatch(APProcedurePatch, APTokenMixin):
         """Overwrite a hint NPC's talk script: its slot in the base ROM, which hints.py fills to the slot's size."""
         self.write_token(APTokenTypes.WRITE, offset, script)
 
+    def write_boss(self, row: tuple, boss: tuple) -> None:
+        """Put ``boss`` (a ``data_open_world.BOSSES`` row) at the spot of ``row`` (a ``BOSS_NPCS`` row): its sprite in
+        the map's NPC-load script, its music and its formation in the talk script."""
+        _, _, _, _, sprite_offset, bgm_offset, formation_offset, _ = row
+        _, sprite, formation, bgm, _ = boss
+        self.write_token(APTokenTypes.WRITE, sprite_offset, bytes([sprite]))
+        self.write_token(APTokenTypes.WRITE, bgm_offset, bytes([bgm]))
+        self.write_token(APTokenTypes.WRITE, formation_offset, bytes([formation]))
+
+    def write_boss_strength(self, mode: int, levels: bytes | None = None) -> None:
+        """The boss-scaling mode (0 unchanged, 1 party level, 2 per formation) and, for mode 2, the level per formation
+        byte (0 = unchanged). The config block is the same in both base patches."""
+        self.write_token(APTokenTypes.WRITE, data.CONFIG["AP_OPT_BOSS_STRENGTH"], bytes([mode]))
+        if levels is not None:
+            self.write_token(APTokenTypes.WRITE, data.CONFIG["AP_OPT_BOSS_LEVELS"], levels)
+
     def write_auth(self, auth: bytes) -> None:
         self.write_token(APTokenTypes.WRITE, data.CONFIG["AP_CONFIG_AUTH_OFFSET"], auth.ljust(AUTH_SIZE, b"\0"))
 

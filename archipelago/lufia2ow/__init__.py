@@ -10,7 +10,7 @@ import os
 import re
 from collections.abc import Callable
 from types import ModuleType
-from typing import Any, ClassVar
+from typing import Any, ClassVar, TextIO
 
 import settings
 from BaseClasses import CollectionState, Item, ItemClassification, Location, MultiWorld, Region, Tutorial
@@ -18,7 +18,7 @@ from Fill import fill_restrictive
 from Options import OptionError
 from worlds.AutoWorld import WebWorld, World
 
-from . import data, data_open_world, hints
+from . import bosses, data, data_open_world, hints
 from .client import L2OWSNIClient  # noqa: F401 - importing it registers the SNI client
 from .items import (
     BASE_ID,
@@ -60,7 +60,17 @@ from .logic import (
     stage_of_map,
     without,
 )
-from .options import Arrows, FillerItems, Goal, L2OWOptions, Placement, ShipUpgrades, StoryRewards
+from .options import (
+    Arrows,
+    BossPlacement,
+    BossStrength,
+    FillerItems,
+    Goal,
+    L2OWOptions,
+    Placement,
+    ShipUpgrades,
+    StoryRewards,
+)
 from .rom import AUTH_SIZE, US_MD5, L2OWProcedurePatch, base_patch, get_base_rom_path
 
 
@@ -112,6 +122,8 @@ class L2OWWorld(World):
     """Open world's boss NPC rewards (locations); empty in the linear game."""
     boss_offsets: dict[int, int]
     """Boss reward location id -> offset of its grant's item byte in the open-world base ROM."""
+    boss_placement: list[bosses.Boss]
+    """Open world: the boss at each spot of ``data_open_world.BOSS_SPOTS`` (Daos not included); empty in linear."""
     stages: list[Stage]
     """The stages up to and including the goal's; empty in open world, which has areas (``logic.OPEN_AREAS``)."""
     location_infos: list[LocationInfo]
@@ -138,8 +150,14 @@ class L2OWWorld(World):
         self.grant_offsets = grant_offsets(self.data)
         self.boss_rewards = BOSS_REWARDS if self.options.open_world else []
         self.boss_offsets = {reward.code: reward.offset for reward in self.boss_rewards}
+        self.boss_placement = []
         if self.options.open_world:
             self._open_world_options()
+            self.boss_placement = (
+                bosses.shuffled_placement(self.random)
+                if self.options.boss_placement == BossPlacement.option_shuffled
+                else bosses.fixed_placement()
+            )
             self.stages = []
             self.location_infos = [
                 info for info in LOCATIONS
@@ -165,7 +183,8 @@ class L2OWWorld(World):
 
     def _open_world_options(self) -> None:
         """Open world has no stages and no story: own_stage placement is own_world, vanilla ship upgrades are
-        progressive, and only the goals in ``OPEN_GOALS`` are allowed."""
+        progressive, and only the goals in ``OPEN_GOALS`` are allowed. Boss Placement and Boss Strength only act here;
+        the linear game ignores them."""
         goal = self.options.goal.current_key
         if goal not in OPEN_GOALS:
             msg = f"{self.player_name}: goal {goal} needs the story; with Open World use one of {sorted(OPEN_GOALS)}."
@@ -507,10 +526,30 @@ class L2OWWorld(World):
         for n, (npc, _, _, texts) in enumerate(self.npc_hints):
             _, _, offset, size = self.data.HINT_NPCS[npc]
             patch.write_hint_npc(offset, hints.fitted(self.data.HINT_FLAGS[n], texts, size))
+        if self.options.open_world:
+            self._write_bosses(patch)
         patch.write_auth(self.auth)
         patch.write_file("tokens.bin", patch.get_token_binary())
         out_name = f"{self.multiworld.get_out_file_name_base(self.player)}{patch.patch_file_ending}"
         patch.write(os.path.join(output_directory, out_name))
+
+    def _write_bosses(self, patch: L2OWProcedurePatch) -> None:
+        """The shuffled bosses' sprite, music and formation at each spot (the base patch has the fixed ones), and the
+        boss-scaling mode, with by_depth's level per formation from the placement in effect."""
+        if self.options.boss_placement == BossPlacement.option_shuffled:
+            for row, boss in zip(data_open_world.BOSS_NPCS[:-1], self.boss_placement, strict=True):  # Daos last, stays
+                patch.write_boss(row, boss)
+        strength = self.options.boss_strength.value
+        levels = bosses.depth_levels(self.boss_placement) if strength == BossStrength.option_by_depth else None
+        patch.write_boss_strength(strength, levels)
+
+    def write_spoiler(self, spoiler_handle: TextIO) -> None:
+        if not self.options.open_world:
+            return
+        spoiler_handle.write(f"\n\nBoss placement ({self.player_name}, {self.options.boss_placement.current_key}):\n")
+        for (spot, _, _), boss in zip(data_open_world.BOSS_SPOTS, self.boss_placement, strict=True):
+            spoiler_handle.write(f"    {spot}: {boss[0]}\n")
+        spoiler_handle.write(f"    {data_open_world.FINAL_SPOT[0]}: {data_open_world.DAOS[0]}\n")
 
     def modify_multidata(self, multidata: dict[str, Any]) -> None:
         name = base64.b64encode(self.auth.ljust(AUTH_SIZE, b"\0")).decode()
