@@ -194,3 +194,41 @@ tested checkpoint (no push), so a session that stops midway can resume with "con
 - For prompt 5: the token pattern is `L2OWProcedurePatch.write_*` in `rom.py` plus a `_write_*` call from
   `generate_output` under `if self.options.open_world`; a test can record `write_token` calls (see
   `test/test_open_world_bosses.py`'s `TokenTest.tokens()`). Upstream lufia2ow tests: 84 pass.
+
+## Findings from prompt 5 (commits 4a3830a..HEAD)
+
+- Every variant is shipped as an apworld option; nothing had to stay Iris-only. Without room in the base, each NPC
+  extra and each leader was a 45-65KB diff (a grown event container moved, and so did everything allocated after
+  it); escapable_dungeons was already in place (489 bytes).
+- ROM side (`archipelago=True` only; CLI open-world builds and the linear `basepatch.bsdiff4`/`data.py` are
+  byte-identical): `apply_open_world(reserve=True)` runs `reserve_extras_room()` and `leader.reserve_leader_room()`
+  after base.txt. Each map an extra's event patch touches (05, 0E, 1D, 44, 9A, 9F) is relocated into a block of its
+  own (`MapEvent.reserve`, reused by later relocations that fit), every script an extra replaces gets
+  `EventScript.min_slot` (its biggest version, measured with `event_patch.measure_event_patch`) and `slack` (padding
+  that keeps the slot the same whichever version it holds, updated when an event patch replaces it), new scripts
+  exist as an empty END, and the ZoneData gets room for the added NPCs (`ZoneData.reserve`). The opening always has
+  the party swap with Maxim (branch on Maxim's flag, so skipped); `set_leader` then only rewrites its operands. The
+  Artea and Lexis sprites are imported up front. Hint candidates skip `min_slot` scripts (otherwise a tip NPC's text
+  became a hint slot and moved everything).
+- Diff sizes (bytes / runs): secondary_tool_tip 5108/308 (the map 05 ZoneData's sections after the NPC table shift),
+  capsule_tips 1172/25, tanbel_inn 189/9, orb guard 46/2, egg_key_trader 1867/80, egg_wishes 850/37, orb_check
+  30/1, escapable_dungeons 301/301; leaders 88-103 bytes each. The leader also changes Maxim's moves inside
+  egg_key_trader's and egg_wishes' scripts: `LEADER_EXTRA_DIFFS` (19-36 bytes per pair). `data_open_world.py` is
+  139KB now.
+- Export (`tools/export_ap_data.py`): `EXTRAS`, `EXCLUSIVE_EXTRAS`, `EXTRA_DIFFS`, `LEADERS`, `LEADER_DIFFS`,
+  `LEADER_EXTRA_DIFFS`, `EXTRA_BOSS_NPCS` (secondary_tool_tip moves the Skill Cave boss to 05-B-5F: new sprite, bgm,
+  formation and reward offsets), `EXTRA_REPLACED_SCRIPTS` (egg_wishes replaces 9F-B-50, whose grants are excluded
+  anyway), `ORB_CHECK` = (0x44, offset, item 9 Miracle, flag 0x30). The exporter fails if a variant moves a grant or
+  a hint slot. Its `--check` takes about 2.5 minutes now (28 extra builds).
+- `tests/test_open_world_variants.py` (Iris): base + runs equals Iris's build for all extras (orb_check or guard)
+  with no leader and with each leader, and for each extra alone. 24 pass.
+- apworld: options `leader`, `cave_bridge_orb` (none/orb_check/guard), `escapable_dungeons`, `extra_npcs`
+  (OptionSet), all open-world only. `generate_output` writes the variants first (extras in `EXTRAS` order, leader,
+  leader-in-extra), then the other tokens. A non-Maxim leader puts Maxim in the pool instead of the leader. The orb
+  check is location `Cave Bridge B5: Orb` (id BASE_ID + 0x3000), reported from flag 0x30 (`ORB_FLAGS`).
+  egg_key_trader is dropped (with a warning) under the dragon_eggs goal. Upstream lufia2ow tests: 168 pass.
+- Seed 12345: linear and open spoilers differ from prompt 4's only by the four new option lines; mixed generates;
+  `l2ow_players/p5_leader` (lexis + orb_check + escapable + all NPCs + shuffled bosses) generates, Maxim is placed
+  as an item and the orb location holds an item.
+- Not tried in an emulator: any leader through the AP patch (Maxim joining from the receive list, rx_specials
+  character 0), the extras, the orb check.

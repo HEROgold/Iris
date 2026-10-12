@@ -55,14 +55,14 @@ Branch `ap/open-world`, worktree `C:\Users\marti\Documents\GitHub\Iris-src-read-
   - [x] apworld tests (tokens per choice, shuffle multiset, by_depth fixed levels)
   - [x] Seeds: linear/open/mixed + open shuffled+by_depth; linear spoiler unchanged; commit
   - [x] Findings in step3-next-prompts.md
-- [ ] Prompt 5: leader and extras as per-seed options (token variants, else documented Iris flags)
+- [x] Prompt 5: leader and extras as per-seed options (token variants, else documented Iris flags)
   - [x] 5.1 Diff each leader and each extra against the plain open-world base; decide token-able or not
   - [x] 5.2 ROM-side room in the open-world base for variants that need it (linear base unchanged, CLI unchanged)
   - [x] 5.3 Export the shipped variant diffs to data_open_world.py; composition tests (Iris side)
   - [x] 5.4 apworld options (Leader + shipped extras), tokens in generate_output, leader pool, orb location if shipped
   - [x] 5.5 apworld tests (tokens per option, pool fits per leader, orb location)
   - [x] 5.6 Generate linear/open/mixed/leader+extras seeds; linear spoiler differs only in option lines
-  - [ ] 5.7 setup_en.md: apworld options vs Iris-only flags; findings in step3-next-prompts.md
+  - [x] 5.7 setup_en.md: apworld options vs Iris-only flags; findings in step3-next-prompts.md
 
 ## Generation testing in upstream Archipelago (set up in prompt 2, reuse it)
 
