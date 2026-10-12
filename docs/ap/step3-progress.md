@@ -46,6 +46,9 @@ Branch `ap/open-world`, worktree `C:\Users\marti\Documents\GitHub\Iris-src-read-
   - [x] client.py: report boss rewards from the boss flag; own specials delivered through the receive list
   - [x] Tests (apworld + Iris), linear/open/mixed seeds, linear spoiler unchanged; commit
   - [x] Findings in step3-next-prompts.md
+- On hold (2026-10-12, the user's call): prompt 4 waits until the uncommitted bank $E8 code-region work in
+  this worktree (constants `*_CODE_REGION`, `apply_asm_patch(code_region=…)`, by another session) is committed,
+  then regenerates the base patches on top of it.
 - [ ] Prompt 4: boss placement and boss strength options (tokens)
 - [ ] Prompt 5: leader and extras as per-seed options (token variants, else documented Iris flags)
 
