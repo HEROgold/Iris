@@ -31,6 +31,13 @@ Branch `ap/open-world`, worktree `C:\Users\marti\Documents\GitHub\Iris-src-read-
     rows and all 12 current grant locations drop out for open-world players (`locations.grant_offsets`).
     Boss reward grants are only in `BOSS_NPCS`, not in `GRANTS`.
 - [ ] Prompt 2: open-world region map (ship, submarine, airship)
+  - [ ] logic.py: open-world areas (travel + key/tool rules) from terrorwave's requirements.txt
+  - [ ] __init__.py: open-world regions/goal; linear unchanged
+  - [ ] options: goals (daos, dragon_eggs only), own_stage -> own_world, ship vanilla -> progressive, docs
+  - [ ] Pool fits the locations in open world (no grants, no Merix egg)
+  - [ ] Upstream clone set up (commands below); linear, open-world and mixed seeds generate
+  - [ ] archipelago/lufia2ow/test/ (WorldTestBase) passes in the upstream clone
+  - [ ] build_apworld packages; export/basepatch --check green; committed
 - [ ] Prompt 3: characters, capsules, maidens as items; boss NPCs and the orb as locations
 - [ ] Prompt 4: boss placement and boss strength options (tokens)
 - [ ] Prompt 5: leader and extras as per-seed options (token variants, else documented Iris flags)
