@@ -81,7 +81,8 @@ endmacro
 org $81FCDA
     jsl scale_boss              ; was JSL $81F4D5
 
-freecode
+; SCALE_BOSSES_CODE_REGION (apply_asm_patch's code_region), not freecode: asar's freespace finder lands in vanilla tile data.
+org !code
 scale_boss:
     php
     rep #$30
@@ -275,3 +276,5 @@ scale_field:
     pla
     pla
     rts
+
+warnpc !code_end

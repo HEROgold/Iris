@@ -53,6 +53,21 @@ SCALE_ENCOUNTERS_MAX_BAND = 0xFF
 # have no arena out here: they must stay in banks $80-$BF (HER-232) and grow into the space ZoneData leaves behind.
 ZONE_DATA_FREESPACE = range(0x320000, 0x340000)
 
+# --- Reserved space: asar patch code --------------------------------------------------------------
+# Code an asar patch adds (not just hooks over vanilla code) goes here with `org !code` (patcher.apply_asm_patch's
+# code_region), never `freecode`: asar's freespace finder takes the first run of $00 it sees, and in vanilla those runs
+# are blank tiles. Bank $9F from $8000 is DMA'd raw into VRAM, so code at $9F:84FF / $9F:8D3E showed up as garbled item
+# icons and battle tiles. One slot per patch in bank $E8 (headerless 0x340000); each patch's `warnpc !code_end` keeps it
+# inside its slot.
+RX_CODE_REGION = range(0x340000, 0x340800)
+"""rx.asm with rx_specials.asm and key_items.asm (about 0.75KB)."""
+NEW_GAME_CODE_REGION = range(0x340800, 0x340C00)
+"""new_game.asm, including its start-item table."""
+START_CAPSULE_CODE_REGION = range(0x340C00, 0x340E00)
+"""start_capsule.asm."""
+SCALE_BOSSES_CODE_REGION = range(0x340E00, 0x341800)
+"""open_world/scale_bosses.asm (about 0.6KB)."""
+
 # --- Reserved space: RealCritical fix_cave_chest_table --------------------------------------------
 # 71-byte hook body at headerless 0x30D820 (SNES $E1:D820); the patched code at 0x19176 jumps to $E1:D84A.
 CAVE_CHEST_FIX_REGION = range(0x30D820, 0x30D867)
@@ -115,7 +130,16 @@ AP_HINT_ARENA_OFFSET = 0x360090
 AP_HINT_ARENA_END = 0x368000
 """Reserved hint text arena: AP_HINT_ARENA_OFFSET up to the end of AP_CONFIG_REGION."""
 
-RESERVED_REGIONS = [SCALE_ENCOUNTERS_REGION, ZONE_DATA_FREESPACE, CAVE_CHEST_FIX_REGION, AP_CONFIG_REGION]
+RESERVED_REGIONS = [
+    SCALE_ENCOUNTERS_REGION,
+    ZONE_DATA_FREESPACE,
+    CAVE_CHEST_FIX_REGION,
+    AP_CONFIG_REGION,
+    RX_CODE_REGION,
+    NEW_GAME_CODE_REGION,
+    START_CAPSULE_CODE_REGION,
+    SCALE_BOSSES_CODE_REGION,
+]
 """Every fixed ROM-expansion reservation, checked for overlaps by helpers.rom_expansion.assert_no_overlaps."""
 
 

@@ -67,6 +67,18 @@ def test_basepatch_keeps_the_copy_protection_happy_with_32kb_sram(vanilla: bytes
         assert patched[offset : offset + 4] == bytes.fromhex("cf000071")  # CMP $710000
 
 
+@patches
+def test_basepatch_code_stays_out_of_the_vram_graphics_bank(vanilla: bytes, patch_file: Path, options: Options) -> None:
+    """Bank $9F from $8000 is DMA'd raw into VRAM; code asar's ``freecode`` put in its zero runs showed up as garbled
+    item icons and battle tiles. Only the AP item's sprite ($9F:A900, 128 bytes) may change there, and no patch may
+    leave a RATS tag (``freecode``) anywhere."""
+    patched = bsdiff4.patch(vanilla, patch_file.read_bytes())
+    bank, sprite = range(0x0F8000, 0x100000), range(0x0FA900, 0x0FA980)
+    changed = [offset for offset in bank if offset not in sprite and patched[offset] != vanilla[offset]]
+    assert not changed, f"bank $9F changed at {changed[0]:#x} ({len(changed)} bytes)"
+    assert patched[: len(vanilla)].count(b"STAR") == vanilla.count(b"STAR"), "a freecode block landed in vanilla space"
+
+
 @modules
 def test_data_module_is_current(vanilla: bytes, data_file: Path, options: Options) -> None:
     assert data_file.read_text(encoding="utf-8") == render(vanilla, options), "rerun tools/export_ap_data.py, commit it"

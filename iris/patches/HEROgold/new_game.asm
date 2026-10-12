@@ -32,7 +32,8 @@ org $03ADC2                 ; file 0x1ADC2: was  A9 FF 8D 9D 09 4C 8E B1  (LDA #
     jml new_game_hook       ; 4 bytes
     db $EA,$EA,$EA,$EA      ; pad the remaining 4 replaced bytes with NOP
 
-freecode
+; NEW_GAME_CODE_REGION (apply_asm_patch's code_region), not freecode: asar's freespace finder lands in vanilla tile data.
+org !code
 new_game_hook:
 if !unlock_warps
     lda #$FF                ; A stays 8-bit (M flag already set by surrounding code)
@@ -131,3 +132,5 @@ if !start_item_count
 start_items:
     dw !start_items
 endif
+
+warnpc !code_end

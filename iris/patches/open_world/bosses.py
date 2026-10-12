@@ -21,7 +21,13 @@ from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 
 from iris.enums.flags import EventFlag
-from iris.constants import AP_OPT_BOSS_LEVELS, AP_OPT_BOSS_LEVELS_SIZE, AP_OPT_BOSS_STRENGTH, EXPANDED_ROM_SIZE
+from iris.constants import (
+    AP_OPT_BOSS_LEVELS,
+    AP_OPT_BOSS_LEVELS_SIZE,
+    AP_OPT_BOSS_STRENGTH,
+    EXPANDED_ROM_SIZE,
+    SCALE_BOSSES_CODE_REGION,
+)
 from iris.helpers.addresses import address_to_lorom
 from iris.helpers.files import on_new_session, read_file, write_file
 from iris.helpers.rom_expansion import ensure_rom_expanded
@@ -380,7 +386,7 @@ def install_boss_scaling(mode: int = BOSS_SCALING_PARTY) -> None:
         "boss_strength": f"${address_to_lorom(AP_OPT_BOSS_STRENGTH) | 0x800000:06X}",
         "boss_levels": f"${address_to_lorom(AP_OPT_BOSS_LEVELS) | 0x800000:06X}",
         "boss_level_count": str(AP_OPT_BOSS_LEVELS_SIZE),
-    })
+    }, code_region=SCALE_BOSSES_CODE_REGION)
     if mode:
         ensure_rom_expanded(EXPANDED_ROM_SIZE)
         write_file.seek(AP_OPT_BOSS_STRENGTH)

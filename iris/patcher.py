@@ -9,8 +9,10 @@ from typing import cast
 from bitstring import BitArray
 
 from iris.enums.patches import Patch
-from iris.helpers.addresses import address_from_lorom
+from iris.constants import EXPANDED_ROM_SIZE
+from iris.helpers.addresses import address_from_lorom, address_to_lorom
 from iris.helpers.files import write_file
+from iris.helpers.rom_expansion import assert_region_blank, ensure_rom_expanded
 from iris.logger import iris
 from iris.patches.parser import PatchData, PatchParser
 from iris.structures.item import Item
@@ -30,6 +32,7 @@ def apply_asm_patch(
     *,
     fix_checksum: bool = True,
     defines: dict[str, str] | None = None,
+    code_region: range | None = None,
 ) -> None:
     """Assemble a 65816 asar patch onto the current per-seed ROM using the bundled asar.exe.
 
@@ -40,9 +43,22 @@ def apply_asm_patch(
     is written next to the ROM.
 
     ``defines`` become asar ``-Dname=value`` arguments, readable in the patch as ``!name``.
+
+    ``code_region`` is where the patch's own code goes (one of the ``*_CODE_REGION`` reservations in constants): the
+    ROM is expanded, the region must still be blank, and the patch gets its SNES bounds as ``!code`` and ``!code_end``
+    for ``org !code`` ... ``warnpc !code_end``. Patches don't use ``freecode``: asar's finder picks vanilla runs of
+    $00, which are blank tiles the game loads into VRAM.
     """
     if include_dirs is None:
         include_dirs = []
+    if code_region is not None:
+        ensure_rom_expanded(EXPANDED_ROM_SIZE)
+        assert_region_blank(code_region, owner=asm_path.name)
+        defines = {
+            **(defines or {}),
+            "code": f"${address_to_lorom(code_region.start):06X}",
+            "code_end": f"${address_to_lorom(code_region.stop - 1) + 1:06X}",
+        }
     with tempfile.TemporaryDirectory(prefix="iris-asar-") as tmp:
         sfc = Path(tmp)/"rom.sfc"
         write_file.seek(0)

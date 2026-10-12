@@ -44,7 +44,8 @@ org $82EAD5
     ; A = save slot
     jsl LoadRX              ; overwrites JSL $809099
 
-freecode
+; RX_CODE_REGION (apply_asm_patch's code_region), not freecode: asar's freespace finder lands in vanilla tile data.
+org !code
 
 MainLoop:
     jsr RX
@@ -119,3 +120,5 @@ LoadRX:
 
 incsrc "rx_specials.asm"
 incsrc "key_items.asm"
+
+warnpc !code_end

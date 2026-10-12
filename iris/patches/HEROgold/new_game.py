@@ -14,6 +14,7 @@ asar can only hook the new-game handoff once, so every new-game feature is a swi
 from collections.abc import Sequence
 from pathlib import Path
 
+from iris.constants import NEW_GAME_CODE_REGION
 from iris.logger import iris
 from iris.patcher import apply_asm_patch
 from iris.structures.item import Item
@@ -67,4 +68,4 @@ def apply_new_game_hook(
                 raise ValueError(msg)
         defines["start_item_count"] = str(len(start_items))
         defines["start_items"] = ",".join(f"${value:04X}" for item, quantity in start_items for value in (item.index, quantity))
-    apply_asm_patch(_ASM, defines=defines)
+    apply_asm_patch(_ASM, defines=defines, code_region=NEW_GAME_CODE_REGION)

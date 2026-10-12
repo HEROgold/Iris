@@ -28,6 +28,9 @@
 !TREADOOL_DOCK = $01            ; ship location of the Treadool scene, 7D(01)
 !FIRE_ARROW_ITEM = 426
 
+; The code continues rx.asm's block (RX_CODE_REGION); the hooks step out of it and back.
+pushpc
+
 ; Airship only (3) can't dive: the R-button dive used to go for any ship type but the boat.
 org $8697FA
     jml DiveCheck               ; overwrites LDA $09DF : BNE $9829
@@ -37,7 +40,7 @@ org $8697FA
 org $86981A
     jml ShipKind                ; overwrites BEQ $9841 : DEC : BEQ $9829; A = $09DF
 
-freecode
+pullpc
 
 DiveCheck:
     lda $09DF
@@ -63,7 +66,7 @@ ShipKind:
 .airship:
     jml $86982C
 
-; m=1, x=0. DB mirrors WRAM $0000-$1FFF. Called with JSL from rx.asm's main loop (another freecode block).
+; m=1, x=0. DB mirrors WRAM $0000-$1FFF. Called with JSL from rx.asm's main loop.
 KeyItems:
     jsr ProgressiveShip
     jsr ProgressiveArrow

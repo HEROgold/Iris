@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+from iris.constants import RX_CODE_REGION
 from iris.patcher import apply_asm_patch
 from iris.patches.archipelago.overworld.ap_item import apply_ap_item
 from iris.patches.archipelago.overworld.config_block import write_config_block
@@ -16,12 +17,11 @@ RX_ASM = Path(__file__).parent / "rx.asm"
 def apply_overworld_basepatch(hint_npcs: list[HintNpc]) -> None:
     """The hint slots, the config block header, receiving items and key items (rx.asm), the key-item slots and the AP item.
 
-    The hint slots come first: asar's ``freecode`` must see the containers they move as taken. The last asar run (the
-    AP item's sprite) fixes the checksum.
+    The last asar run (the AP item's sprite) fixes the checksum.
     """
     make_hint_slots(hint_npcs)
     write_config_block()
-    apply_asm_patch(RX_ASM, defines={"capsule_names": _capsule_names()})
+    apply_asm_patch(RX_ASM, defines={"capsule_names": _capsule_names()}, code_region=RX_CODE_REGION)
     apply_key_items()
     apply_ap_item()
 
