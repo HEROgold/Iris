@@ -182,10 +182,12 @@ def _moved(grants: list[Grant], *, open_world: bool) -> list[Grant]:
     A grant is the n-th grant instruction of its script; the script is found again by its signature, which moving its
     container doesn't change. Open world replaces some story scripts with ones that grant nothing (13 scripts, 14
     grants); those grants are left out. It adds no grant of its own besides the boss rewards (``BOSS_NPCS``).
+    The flags are the vanilla ones, then any the base script sets besides them (the three of
+    ``patches.archipelago.overworld.grant_flags``, Iris-Dev#22), so a grant's first flag stays the vanilla one.
     """
     out = []
     order: dict[tuple[int, str], int] = {}
-    for map_index, signature, _, item, count, flags in grants:
+    for map_index, signature, _, item, count, vanilla_flags in grants:
         n = order.get((map_index, signature), 0)
         order[map_index, signature] = n + 1
         script = _script(map_index, signature)
@@ -196,6 +198,8 @@ def _moved(grants: list[Grant], *, open_world: bool) -> list[Grant]:
         if GRANT_OPS[instruction.opcode] + int(instruction.operands[0]) != item:
             msg = f"Grant {n} of {signature} gives {instruction.operands[0]} in the base ROM, not item {item}."
             raise ValueError(msg)
+        base_flags = [int(ins.operands[0]) for ins in script.instructions if ins.opcode == SET_FLAG]
+        flags = vanilla_flags + tuple(flag for flag in base_flags if flag not in vanilla_flags)
         out.append((map_index, signature, script.pointer + instruction.line + 1, item, count, flags))
     return out
 

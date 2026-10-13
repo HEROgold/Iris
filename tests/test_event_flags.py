@@ -10,6 +10,8 @@ from tests.reset_file import reset_file
 
 
 FOUND_FLAGS = [flag for flag in EventFlag if flag.name.startswith("FOUND_")]
+GRANT_FLAGS = [EventFlag.RECEIVED_EAR_JEWEL, EventFlag.RECEIVED_DRAGON_EGG_MERIX, EventFlag.RECEIVED_ENGINE]
+"""Iris' flags for the grants vanilla left without one (Iris-Dev#22)."""
 
 # 1A/1B set/clear, 15/6A branch on a flag; the 14 chain's flag sub-codes are handled in _vanilla_flags.
 _SINGLE = re.compile(r"^\s+[0-9A-F]{4}\. (?:1A|1B|15|6A)\(([0-9A-F]{2})\b", re.MULTILINE)
@@ -51,6 +53,11 @@ def vanilla_flags() -> set[int]:
 def test_found_flags_are_unused_by_vanilla(vanilla_flags: set[int]) -> None:
     assert len(FOUND_FLAGS) == 7
     assert not {int(flag) for flag in FOUND_FLAGS} & vanilla_flags
+
+
+def test_grant_flags_are_unused_by_vanilla(vanilla_flags: set[int]) -> None:
+    assert not {int(flag) for flag in GRANT_FLAGS} & vanilla_flags
+    assert all(flag < SCRATCH_FLAGS_START for flag in GRANT_FLAGS)
 
 
 def test_free_flags_are_unused_by_vanilla(vanilla_flags: set[int]) -> None:

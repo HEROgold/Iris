@@ -445,6 +445,13 @@ class EventFlag(IntEnum):
     FOUND_DEKAR = 225
     FOUND_LEXIS = 226
 
+    # Iris' grant flags (new, Iris-Dev#22): set right after three script grants that set no flag in vanilla, so the
+    # Archipelago client can report them. No vanilla script sets, clears or tests these, and they are outside the
+    # open-world boss NPCs' range (0x20-0x6F) and the hint NPCs' 227-239.
+    RECEIVED_EAR_JEWEL = 122  # 26-A-01
+    RECEIVED_DRAGON_EGG_MERIX = 165  # 3F-B-1B
+    RECEIVED_ENGINE = 189  # D6-C-02
+
     @classmethod
     def name_of(cls, index: int) -> str:
         """Return the flag's name: ``VANILLA_XX`` for a used flag with no name, ``FREE_XX`` for a blank one."""
