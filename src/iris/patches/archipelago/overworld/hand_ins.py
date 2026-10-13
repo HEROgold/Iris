@@ -8,6 +8,11 @@ uses for the Crown, ``14(C2-item-01-20-@target-FF)``: sub-code ``C2`` is "the pa
 
 The gate grows from 4 to 10 bytes, so the map's event container moves: ``structures.zone.move_all_zone_data`` must
 have run. Open world drops these grants, so it doesn't need this.
+
+Lexis's lab (``A2-B-2C``) builds the airship on GOT_ENGINE (98), which only the scene after the Gratze grant sets
+(``A0-A-03``), not on the Engine (Iris-Dev#86). There the item gate is added in front of the flag gate, which stays: the
+lab builds the airship from a held Engine or from the vanilla flag, and its ``25(C1-01)`` still takes the Engine.
+Open world empties the lab's script.
 """
 
 from dataclasses import dataclass
@@ -37,6 +42,12 @@ class HandIn:
     item: int
 
 
+ENGINE = 449
+LEXIS_LAB = 0xA2
+LEXIS_SCRIPT = 0x2C
+"""Lexis's lab talk script: ``15(62-@75E)`` (GOT_ENGINE) jumps to the airship scene."""
+
+
 HAND_INS = (
     HandIn(0x10, 0x59, EventFlag.PICKED_UP_CROWN, 459),  # King of Alunze, Crown
     HandIn(0x26, 0x55, EventFlag.RECEIVED_RUBY_APPLE, 460),  # Ruby apple
@@ -45,15 +56,15 @@ HAND_INS = (
 )
 
 
-def _script(hand_in: HandIn) -> EventScript:
-    map_event = MapEvent.from_index(hand_in.map_index)
+def _script(map_index: int, script_index: int) -> EventScript:
+    map_event = MapEvent.from_index(map_index)
     map_event.read()
     return next(
         script
         for event_list in map_event.event_lists
         if event_list.event_class is EventClass.REFERENCED
         for script in event_list.events
-        if script.index == hand_in.script_index
+        if script.index == script_index
     )
 
 
@@ -69,7 +80,7 @@ def _gate(script: EventScript, flag: int) -> int:
 def gate_hand_ins_on_items() -> None:
     """Make each hand-in in :data:`HAND_INS` jump to its reward when the party holds the item."""
     for hand_in in HAND_INS:
-        script = _script(hand_in)
+        script = _script(hand_in.map_index, hand_in.script_index)
         position = _gate(script, hand_in.flag)
         gate = script.instructions[position]
         target = gate.operands[1]
@@ -84,3 +95,25 @@ def gate_hand_ins_on_items() -> None:
         script.dirty = True
         MapEvent.from_index(hand_in.map_index).write()
         iris.debug(f"Hand-in {hand_in.map_index:02X}-{hand_in.script_index:02X} tests item {hand_in.item}.")
+
+
+def gate_airship_on_engine() -> None:
+    """Make Lexis's lab jump to its airship scene when the party holds the Engine, as well as on GOT_ENGINE."""
+    script = _script(LEXIS_LAB, LEXIS_SCRIPT)
+    position = _gate(script, EventFlag.GOT_ENGINE)
+    gate = script.instructions[position]
+    target = gate.operands[1]
+    if not isinstance(target, Address):
+        msg = f"Gate {gate} has no jump target."
+        raise TypeError(msg)
+    script.instructions.insert(
+        position,
+        Instruction(
+            gate.line - 1,  # between the GOT_AIRSHIP and GOT_ENGINE gates; no jump lands inside a 4-byte gate
+            CONDITION,
+            [HOLDS_ITEM, ENGINE, 1, JUMP_IF_TRUE, Address(target.offset), END_CONDITION],
+        ),
+    )
+    script.dirty = True
+    MapEvent.from_index(LEXIS_LAB).write()
+    iris.debug(f"Lexis's lab {LEXIS_LAB:02X}-{LEXIS_SCRIPT:02X} builds the airship from a held Engine.")

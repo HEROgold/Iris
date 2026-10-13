@@ -15,7 +15,8 @@ from iris.build import build
 from iris.enums.patches import Patch
 from iris.helpers import files
 from iris.helpers.files import open_rom, session, use
-from iris.patches.archipelago.overworld.hand_ins import HAND_INS, HandIn
+from iris.enums.flags import EventFlag
+from iris.patches.archipelago.overworld.hand_ins import ENGINE, HAND_INS, HandIn
 from iris.structures.event_script import MapEvent
 from iris.structures.event_script.containers import reset_map_events
 from iris.structures.event_script.dump import _signature
@@ -35,6 +36,10 @@ REMOVE_ITEM = {0x24: 0x000, 0x25: 0x100}
 FLAG_BRANCHES = (0x15, 0x6A)
 """Branch if the flag is set / not set: ``(flag, @target)``."""
 CONDITION = 0x14
+SET_FLAG = 0x1A
+ENGINE_GRANT_CHAIN = ("D6-C-02", "A0-A-02", "90-A-01", "A0-A-03")
+"""The Gratze grant and the warp chain after it, which ends in the scene that sets GOT_ENGINE."""
+LEXIS_LAB = "A2-B-2C"
 CHAIN_FLAG_CODES = frozenset((0x00, 0x01, 0x40, 0x41, 0x80, 0x81))
 """``0x14`` sub-codes that test a flag (the next operand)."""
 
@@ -166,5 +171,81 @@ def test_hand_ins_jump_to_the_same_reward_and_still_take_the_item() -> None:
 def test_open_world_doesnt_gate_hand_ins(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[None] = []
     monkeypatch.setattr(build_module, "gate_hand_ins_on_items", lambda: calls.append(None))
+    build(vanilla_image(files.original_file), OPEN_WORLD_OPTIONS)
+    assert not calls
+
+
+def _set_flags(script: EventScript) -> set[int]:
+    flags = set()
+    for ins in script.instructions:
+        if ins.opcode == SET_FLAG:
+            flag = ins.operands[0]
+            assert isinstance(flag, int)
+            flags.add(flag)
+    return flags
+
+
+def _engine_gates(script: EventScript) -> list[Instruction]:
+    """The script's ``14(C2-Engine-01-20-@target-FF)`` gates."""
+    return [
+        ins for ins in script.instructions
+        if ins.opcode == CONDITION and ins.operands[:4] == [0xC2, ENGINE, 1, 0x20] and ins.operands[5:] == [0xFF]
+    ]
+
+
+def _target(script: EventScript, gate: Instruction) -> Instruction:
+    target = gate.operands[1] if gate.opcode in FLAG_BRANCHES else gate.operands[4]
+    assert isinstance(target, Address)
+    return _at(script, target.offset)
+
+
+@pytest.mark.usefixtures("restore")
+def test_no_engine_removal_is_reached_only_through_the_grant_scenes_flag() -> None:
+    """The Engine can come from another world: no script that takes it may need a flag only the Gratze chain sets."""
+    build(vanilla_image(files.original_file), OPTIONS)
+    scripts = dict(_scripts())
+    chain_flags = set().union(*(_set_flags(scripts[signature]) for signature in ENGINE_GRANT_CHAIN))
+    elsewhere = set().union(*(_set_flags(script) for sig, script in scripts.items() if sig not in ENGINE_GRANT_CHAIN))
+    only_chain = chain_flags - elsewhere
+    assert EventFlag.GOT_ENGINE in only_chain
+    removers = [(sig, script) for sig, script in scripts.items() if ENGINE in _removed_items(script)]
+    assert [sig for sig, _ in removers] == [LEXIS_LAB]
+    for signature, script in removers:
+        item_targets = [_target(script, gate) for gate in _engine_gates(script)]
+        for gate in script.instructions:
+            if gate.opcode == FLAG_BRANCHES[0] and gate.operands[0] in only_chain:
+                assert _target(script, gate) in item_targets, f"{signature} {gate} has no Engine gate beside it"
+
+
+@pytest.mark.usefixtures("restore")
+def test_lexis_lab_builds_the_airship_from_a_held_engine() -> None:
+    """The Engine gate sits between the GOT_AIRSHIP and GOT_ENGINE gates, and jumps where GOT_ENGINE does."""
+    build(vanilla_image(files.original_file), OPTIONS)
+    script = dict(_scripts())[LEXIS_LAB]
+    ladder = [
+        ins.operands[0] if ins.opcode == FLAG_BRANCHES[0] else "Engine"
+        for ins in script.instructions
+        if ins.opcode == FLAG_BRANCHES[0] or ins in _engine_gates(script)
+    ]
+    airship = ladder.index(EventFlag.GOT_AIRSHIP)
+    assert ladder[airship + 1 : airship + 3] == ["Engine", EventFlag.GOT_ENGINE]
+    (engine_gate,) = _engine_gates(script)
+    flag_gate = next(
+        ins for ins in script.instructions if ins.opcode == FLAG_BRANCHES[0] and ins.operands[0] == EventFlag.GOT_ENGINE
+    )
+    branch = _target(script, engine_gate)
+    assert branch is _target(script, flag_gate)
+    assert (branch.opcode, branch.operands) == (0x33, [0x15, 0x00])
+    tail = script.instructions[script.instructions.index(branch) :]
+    take = next(ins for ins in tail if ins.opcode in REMOVE_ITEM)
+    assert REMOVE_ITEM[take.opcode] + take.operands[0] == ENGINE
+    after = tail[tail.index(take) + 1 :]
+    assert (after[0].opcode, after[0].operands) == (SET_FLAG, [EventFlag.GOT_AIRSHIP])
+
+
+@pytest.mark.usefixtures("restore")
+def test_open_world_doesnt_gate_the_lab(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[None] = []
+    monkeypatch.setattr(build_module, "gate_airship_on_engine", lambda: calls.append(None))
     build(vanilla_image(files.original_file), OPEN_WORLD_OPTIONS)
     assert not calls
