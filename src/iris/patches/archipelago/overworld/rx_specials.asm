@@ -8,7 +8,8 @@
 ;   $0210 + s   capsule species s (0 Foomy .. 6 Armor Dog): owned, at its start level, under its default name, with
 ;               its story flag set; with no capsule in the party it also becomes the active one, the way
 ;               start_capsule.asm gives one (see there for each step).
-;   $0220 + m   maiden m (0 Lisa, 1 Marie, 2 Clare): her flag (0x1A + m), which the Doom Island barrier reads.
+;   $0220 + m   maiden m (0 Lisa, 1 Marie, 2 Clare): her flag (0x1A + m), which the Portravia lab
+;               dock that flies to Doom Island reads (open_world/base.txt, A2-D-0A).
 ;
 ; Defines (rx_specials.py): !capsule_names, 35 bytes: each species' 5-byte default name.
 ; On entry: A 16-bit holding the id, X 16-bit; returns with A 8-bit.

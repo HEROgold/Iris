@@ -199,3 +199,164 @@ EVENT EF-X-XX
 0002. 69(91)
 0004. 4B(14)                         # Preload Music
 0010. 00()
+
+# The two ways to Daos (Iris-Dev#75), from terrorwave's tables/template_open_world_events.txt. Without them nothing
+# leads into the Shrine of Daos (map E6 on): no exit does, and the story's warps start from scenes open world empties.
+#
+# 1. The Portravia lab dock (A2): with Lisa, Marie and Clare (flags 1A-1C, which rx_specials.asm sets for a received
+#    maiden) and the Engine (item 1C1), "Fly to Doom Island?" warps to the shrine's entrance scene, E6-B-63.
+!npc 0f (05) a2:0d,21
+!tile 0a a2:0d,20 2x1
+EVENT A2-C-5D
+0000. 14(00-1A-80-1B-80-1C-30-@1000-FF)
+0010. 14(C2-01C1-0001-30-@800-FF)
+0020. 08: You've rescued all three
+          maidens! Board the Excerion
+          to fly to Doom Island!<END EVENT>
+0800. 08: You need an Engine to fly
+          to Doom Island.<END EVENT>
+1000. 08: Return here after rescuing
+          the three maidens to go to
+          Doom Island!<END EVENT>
+
+EVENT A2-D-0A
+0000. 14(00-1A-80-1B-80-1C-30-@1000-FF)
+0010. 14(C2-01C1-0001-30-@1000-FF)
+0020. 9E: <POSITION 02>Fly to Doom Island?<END MESSAGE>
+0030. 10(02-@60-@1000)
+0040. 08: Yes.
+          No.<CHOICE>
+0050. 1C(@1000)
+0060. 5B(04-0D)
+0070. 5B(04-0E)
+0080. 16(E6-63-01)
+0800. 00()
+1000. 9E: <POSITION 02>Depart on the
+          Excerion?<END MESSAGE>
+1010. 10(02-@1040-@1030)
+1020. 08: Yes.
+          No.<CHOICE>
+1030. 00()
+1040. 7E(00)
+1050. 7D(02)
+1060. 7F(FF)
+1100. 2E(00)
+1110. 2E(01)
+1120. 2E(02)
+1130. 2E(03)
+1140. 2E(04)
+1150. 2E(05)
+1160. 2E(06)
+1170. 33(25-5E)
+1200. 5E(03)
+7FFF. 00()
+
+# 2. The Iris treasures (Gruberik's Ancient Cave lobby, 69): while the party holds an Iris treasure (items 19C-1A5),
+#    its found flag (C8-D1) is set, so the curator (69-C-59) takes it and counts it in variable 0E. With all ten in,
+#    the new NPC 6D beats Daos (sets DAOS_DEFEATED, 73) and warps into the shrine at E7-B-62.
+#    Left out from terrorwave: 69-A-02's 2E(53), which hides the Ancient Cave party NPC; 69-C-6D's ending flag and
+#    party removal, which only serve terrorwave's ending scene on EB (open world has none, and an empty party
+#    softlocks).
+!npc 1e (05) 69:02,10
+EVENT 69-X-XX
+0000. 69(08)
+0002. 69(98)
+0004. 4B(15)
+0006. 68(50-0E)
+0009. 68(51-32)
+000C. 68(52-0E)
+000F. 68(53-0E)
+0012. 68(54-0C)
+0015. 68(55-0E)
+0018. 68(56-1C)
+001B. 68(57-10)
+001E. 68(58-0D)
+0021. 68(59-1C)
+0024. 68(5A-0F)
+0027. 68(5B-1A)
+002A. 68(5C-F1)
+002D. 68(5D-F2)
+0030. 68(5E-F3)
+0033. 68(5F-F4)
+0036. 68(60-F5)
+0039. 68(61-F6)
+003C. 68(62-F7)
+003F. 68(63-F8)
+0042. 68(64-F9)
+0045. 68(65-94)
+0046. 68(6D-6D)
+0048. 14(00-C4-81-02-30-@54-FF)
+0051. 68(66-01)
+0054. 14(00-C4-81-03-30-@60-FF)
+005D. 68(67-02)
+0060. 14(00-C4-81-04-30-@6C-FF)
+0069. 68(68-03)
+006C. 14(00-C4-81-06-30-@78-FF)
+0075. 68(69-04)
+0078. 14(00-C4-81-05-30-@84-FF)
+0081. 68(6A-05)
+0084. 14(00-C4-81-07-30-@90-FF)
+008D. 68(6B-06)
+0090. 00()
+
+EVENT 69-A-02
+1000. 14(C2-019C-0001-30-@1020-FF)
+1010. 1A(C8)
+1020. 14(C2-019D-0001-30-@1040-FF)
+1030. 1A(C9)
+1040. 14(C2-019E-0001-30-@1060-FF)
+1050. 1A(CA)
+1060. 14(C2-019F-0001-30-@1080-FF)
+1070. 1A(CB)
+1080. 14(C2-01A0-0001-30-@10a0-FF)
+1090. 1A(CC)
+10a0. 14(C2-01A1-0001-30-@10c0-FF)
+10b0. 1A(CD)
+10c0. 14(C2-01A2-0001-30-@10e0-FF)
+10d0. 1A(CE)
+10e0. 14(C2-01A3-0001-30-@1100-FF)
+10f0. 1A(CF)
+1100. 14(C2-01A4-0001-30-@1120-FF)
+1110. 1A(D0)
+1120. 14(C2-01A5-0001-30-@1140-FF)
+1130. 1A(D1)
+1140. 00()
+
+EVENT 69-C-6D
+0000. 14(12-0E-0A-20-@2000-FF)
+1000. 08: Hark, traveler, do you
+          tire of all the fighting?
+          There exists another
+          path to victory.<END MESSAGE>
+1010. 08: Gather all ten Iris
+          treasures hither this
+          hallowed tea shop
+          basement.<END MESSAGE>
+1020. 08: Then seek my counsel
+          yet once more, and
+          Doom Island shall
+          be yours.<END MESSAGE>
+1030. 00()
+2000. 08: Hark.<PAUSE 82>.<PAUSE 82>.<PAUSE 82> HARK!!<PAUSE 82>
+          Doth mine eyes behold
+          a trickery? <PAUSE 82>An ILLUSION??<END MESSAGE>
+2010. 08: 'Tis not! Reunited at
+          last are the Iris
+          treasures of old!<END MESSAGE>
+2020. 08: Now go, adventurer,
+          and seize the prize
+          befitting your long
+          hunt!<END MESSAGE>
+2030. 4C(33)
+2040. 95(FF-00-3C)
+2050. 37(3C)
+2070. 4C(33)
+2080. 37(3C)
+2090. 97()
+2095. 37(1E)
+20a0. 4C(32)
+2100. A3(00-9B)
+2110. 37(48)
+2200. 1A(73)
+7000. 16(E7-62-01)
+7FFF. 00()
