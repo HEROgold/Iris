@@ -30,6 +30,11 @@ from iris.tables import MapMetaObject, ZoneObject
 # The ROM table that locates each map's ZoneData: one 3-byte little-endian LoROM address per map index
 # (see the lufia2-object-layout skill). Used to repoint a ZoneData blob after it is relocated.
 ZONE_DATA_POINTER_TABLE = MapMetaObject.address
+# Ancient Cave code reads four ZoneData blobs through hard-coded 3-byte LoROM pointers at $83:9F73 (Iris-Dev#69).
+# Only one of the four targets ($94:EFE8, map 0xF1's blob) is a blob the pointer table locates; the other three are
+# blobs nothing else points at, which move_all_zone_data leaves in place (it never gives their bytes away).
+ANCIENT_CAVE_ZONE_DATA_POINTERS = 0x019F73
+ANCIENT_CAVE_ZONE_DATA_POINTER_COUNT = 4
 EXIT_SECTION = 2
 TILE_SECTION = 5
 NPC_SECTION = 7
@@ -753,8 +758,10 @@ def move_all_zone_data() -> None:
     own start) and its pointer-table entry repointed; its old bytes stay as they are until an event container takes
     them. A ZoneData already read follows its blob. Blobs already outside banks $80-$BF are left alone, so a second
     call does nothing.
+    The Ancient Cave pointers at $83:9F73 that point into a moved blob follow it (Iris-Dev#69).
     """
     ensure_rom_expanded(ZONE_DATA_FREESPACE.stop)
+    moved: dict[int, tuple[int, int]] = {}
     for index in range(MapMetaObject.count):
         start = zone_data_pointer(index)
         if start >= EVENT_BANK_LIMIT:
@@ -766,6 +773,7 @@ def move_all_zone_data() -> None:
         pointer = zone_data_allocator.allocate(length)
         zone_data_allocator.write(pointer, blob)
         _moved_blobs[pointer] = length
+        moved[start] = (pointer, length)
         relocate_pointer_table_entry(
             ZONE_DATA_POINTER_TABLE, index, MapMetaObject.reference_pointer, pointer, encode=address_to_lorom,
         )
@@ -776,6 +784,24 @@ def move_all_zone_data() -> None:
             zone_data._blob_length = length  # noqa: SLF001
             ZoneData._cache.to_cache(pointer, zone_data)  # noqa: SLF001
         event_script_allocator.deallocate(start, length)
+    _repoint_ancient_cave_pointers(moved)
+
+
+def _repoint_ancient_cave_pointers(moved: dict[int, tuple[int, int]]) -> None:
+    """Point each Ancient Cave ZoneData pointer that targets a moved blob at the same offset in the blob's copy.
+
+    ``moved`` maps a blob's old start to its new start and length. A pointer into no moved blob is left alone.
+    """
+    for index in range(ANCIENT_CAVE_ZONE_DATA_POINTER_COUNT):
+        read_file.seek(ANCIENT_CAVE_ZONE_DATA_POINTERS + index * MapMetaObject.reference_pointer)
+        target = address_from_lorom(read_little_int(read_file, MapMetaObject.reference_pointer))
+        for old_start, (new_start, length) in moved.items():
+            if old_start <= target < old_start + length:
+                relocate_pointer_table_entry(
+                    ANCIENT_CAVE_ZONE_DATA_POINTERS, index, MapMetaObject.reference_pointer,
+                    new_start + target - old_start, encode=address_to_lorom,
+                )
+                break
 
 
 @on_new_session
