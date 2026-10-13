@@ -67,6 +67,8 @@ START_CAPSULE_CODE_REGION = range(0x340C00, 0x340E00)
 """start_capsule.asm."""
 SCALE_BOSSES_CODE_REGION = range(0x340E00, 0x341800)
 """open_world/scale_bosses.asm (about 0.6KB)."""
+REMOTE_ITEMS_CODE_REGION = range(0x341800, 0x341A00)
+"""archipelago/overworld/remote_items.asm: chests and grants holding the AP item (Iris-Dev#19)."""
 
 # --- Reserved space: RealCritical fix_cave_chest_table --------------------------------------------
 # 71-byte hook body at headerless 0x30D820 (SNES $E1:D820); the patched code at 0x19176 jumps to $E1:D84A.
@@ -77,7 +79,7 @@ CAVE_CHEST_FIX_REGION = range(0x30D820, 0x30D867)
 # client and by our asm; filled per seed by Archipelago tokens (offset + bytes) over a static base
 # patch, so every field has a fixed offset. Bump AP_CONFIG_VERSION whenever the layout changes.
 AP_CONFIG_REGION = range(0x360000, 0x368000)
-AP_CONFIG_VERSION = 2
+AP_CONFIG_VERSION = 3
 """Layout version stored in the byte at AP_CONFIG_VERSION_OFFSET."""
 AP_CONFIG_MAGIC = b"IRISAP"
 AP_CONFIG_MAGIC_OFFSET = 0x360000
@@ -126,7 +128,15 @@ AP_OPT_RESERVED = 0x360074
 AP_HINT_HEADER_OFFSET = 0x360080
 AP_HINT_HEADER_SIZE = 16
 """Hint table header: u16 hint count, u16 arena bytes used, 12 reserved bytes."""
-AP_HINT_ARENA_OFFSET = 0x360090
+AP_REMOTE_TEXT_SIZE = 46
+"""Bytes of the longest remote-item message: "Found <18-character item>", a line break, "for <16-character player>."."""
+AP_REMOTE_CHEST_TEXT_OFFSET = 0x360090
+"""Remote-item chest messages (Iris-Dev#19): one entry per red chest, by global chest index. An entry is the message,
+zero-terminated and zero-padded; an empty entry keeps the vanilla "Found AP item". remote_items.asm reads it."""
+AP_REMOTE_CHEST_TEXT_ENTRY_SIZE = 48
+AP_REMOTE_CHEST_TEXT_COUNT = 171
+"""Red chests 0-170."""
+AP_HINT_ARENA_OFFSET = AP_REMOTE_CHEST_TEXT_OFFSET + AP_REMOTE_CHEST_TEXT_COUNT * AP_REMOTE_CHEST_TEXT_ENTRY_SIZE
 AP_HINT_ARENA_END = 0x368000
 """Reserved hint text arena: AP_HINT_ARENA_OFFSET up to the end of AP_CONFIG_REGION."""
 
@@ -139,6 +149,7 @@ RESERVED_REGIONS = [
     NEW_GAME_CODE_REGION,
     START_CAPSULE_CODE_REGION,
     SCALE_BOSSES_CODE_REGION,
+    REMOTE_ITEMS_CODE_REGION,
 ]
 """Every fixed ROM-expansion reservation, checked for overlaps by helpers.rom_expansion.assert_no_overlaps."""
 

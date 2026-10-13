@@ -1,7 +1,8 @@
 """A grant's "Gets ..." message names the item its ``20``/``21`` gives (Iris-Dev#52).
 
 The linear base patch keeps each AP grant's vanilla message in a fixed-size slot; the world writes the grant's item
-and, for another item, "Gets <name>." over the slot (``lufia2ow/grant_text.py``). These build the base ROM, write a
+and, for another item, "Gets <name>." over the slot (``lufia2ow/grant_text.py``); the AP item says who it's for
+(Iris-Dev#19). These build the base ROM, write a
 seed's tokens the way the world does and read every grant script back.
 """
 
@@ -41,6 +42,8 @@ WORLD_GRANT_TEXT = Path(__file__).resolve().parents[2] / "lufia2ow" / "grant_tex
 POTION = 2
 FIRE_ARROW = 426
 """Above 0xFF: the grant becomes opcode 0x21."""
+REMOTE_ITEM, REMOTE_PLAYER = "Master Sword of the Ages", "Tester2"
+REMOTE_MESSAGE = "Found Master Sword of\nfor Tester2."
 
 
 def _world_module() -> ModuleType:
@@ -74,14 +77,15 @@ def _texts(instruction: Instruction) -> list[TextChunk]:
 
 
 def _message(map_index: int, signature: str) -> str:
-    """The script's "Gets ..." message as it shows: no position, END MESSAGE or pauses, no trailing space."""
+    """The script's "Gets ..." (or a remote item's "Found ...") message as it shows: no position, END MESSAGE or pauses,
+    no trailing space."""
     script = _script(map_index, signature)
     found = [
         render_text([chunk for chunk in _texts(ins) if chunk.tag not in {"POSITION", 0x01}]).replace(PAUSE_TAG, "")
         for ins in script.instructions
         if ins.opcode == TEXT_WINDOW
     ]
-    gets = [text.rstrip(" ") for text in found if text.startswith("Gets")]
+    gets = [text.rstrip(" ") for text in found if text.startswith(("Gets", "Found"))]
     assert len(gets) == 1, f"{signature}: {gets}"
     return gets[0]
 
@@ -116,11 +120,13 @@ def test_slots_fit_every_name() -> None:
     for slot in text_slots():
         assert slot.size >= MESSAGE_SIZE
         assert len(world.message(max(names, key=len), slot.size)) == slot.size
+        assert len(world.remote_message("x" * 40, "y" * 40, slot.size)) == slot.size
 
 
 @pytest.mark.usefixtures("restore")
 def test_seed_messages_name_the_granted_item() -> None:
-    """A seed with another item at every slot grant: the local Potion, the AP item (remote) and the Fire arrow (0x21)."""
+    """A seed with another item at every slot grant: the local Potion, the AP item (another player's item, Iris-Dev#19)
+    and the Fire arrow (0x21)."""
     _, _, grants = _base()
     names = _shown_names(output_bytes())
     world = _world_module()
@@ -135,7 +141,10 @@ def test_seed_messages_name_the_granted_item() -> None:
         write_file.seek(offset - 1)
         write_file.write(bytes([opcode, new & 0xFF]))
         write_file.seek(slot.offset)
-        write_file.write(world.message(names[new], slot.size))
+        if new == AP_ITEM_INDEX:
+            write_file.write(world.remote_message(REMOTE_ITEM, REMOTE_PLAYER, slot.size))
+        else:
+            write_file.write(world.message(names[new], slot.size))
         placed[signature] = new
     assert len(placed) == len(GRANT_TEXTS)
     reset_map_events()
@@ -147,7 +156,8 @@ def test_seed_messages_name_the_granted_item() -> None:
             continue
         given = _given(map_index, signature, n)
         assert given == placed[signature]
-        assert _message(map_index, signature) == f"Gets {names[given]}."
+        expected = REMOTE_MESSAGE if given == AP_ITEM_INDEX else f"Gets {names[given]}."
+        assert _message(map_index, signature) == expected
 
 
 @pytest.mark.usefixtures("restore")

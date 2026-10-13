@@ -31,6 +31,7 @@ def _fields() -> list[tuple[str, int, int]]:
         ("auth", c.AP_CONFIG_AUTH_OFFSET, c.AP_CONFIG_AUTH_SIZE),
         *_option_fields(),
         ("hint_header", c.AP_HINT_HEADER_OFFSET, c.AP_HINT_HEADER_SIZE),
+        ("remote_chest_text", c.AP_REMOTE_CHEST_TEXT_OFFSET, c.AP_REMOTE_CHEST_TEXT_COUNT * c.AP_REMOTE_CHEST_TEXT_ENTRY_SIZE),
         ("hint_arena", c.AP_HINT_ARENA_OFFSET, c.AP_HINT_ARENA_END - c.AP_HINT_ARENA_OFFSET),
     ]
 
@@ -71,3 +72,8 @@ def test_no_overlap_with_other_reservations() -> None:
     for other in RESERVED_REGIONS:
         if other is not AP_CONFIG_REGION:
             assert other.stop <= AP_CONFIG_REGION.start or AP_CONFIG_REGION.stop <= other.start
+
+
+def test_remote_chest_entries_hold_the_longest_message() -> None:
+    c = constants
+    assert c.AP_REMOTE_TEXT_SIZE < c.AP_REMOTE_CHEST_TEXT_ENTRY_SIZE  # room for the zero terminator

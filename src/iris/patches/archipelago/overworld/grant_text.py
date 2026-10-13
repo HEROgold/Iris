@@ -2,7 +2,8 @@
 
 Each AP grant with a ``9E: <POSITION 06>Gets the ....`` message gets a fixed-size text slot that holds the vanilla
 message. A seed whose grant holds another item writes "Gets <name>." over the slot as a token (``lufia2ow/grant_text.py``),
-so no container moves per seed.
+so no container moves per seed. A grant holding the AP item (another player's item) gets "Found <item> for <player>."
+over two lines instead (Iris-Dev#19), so every slot fits :data:`~iris.constants.AP_REMOTE_TEXT_SIZE` bytes.
 
 **Why not a text code.** The dialogue engine dispatches the control codes 00-0F through the jump table at $80:CA14.
 None prints an item name from a variable: ``02`` is a BRK, ``07 xx`` draws glyph 0x300 + xx, and ``09`` ($MAXIM$)
@@ -25,6 +26,7 @@ Grants with no "Gets" message (the Ear jewel ``26-A-01``, Dual Blade in ``E4-C-0
 
 from dataclasses import dataclass
 
+from iris.constants import AP_REMOTE_TEXT_SIZE
 from iris.logger import iris
 from iris.structures.event_script.codec import (
     REPEAT_COPYABLE,
@@ -51,8 +53,10 @@ PAUSE = b"\x04\x80"
 """``<PAUSE 80>``: one frame, no width."""
 PAUSE_TAG = "<PAUSE 80>"
 NAME_SIZE = ItemNameObject.name_text
-MESSAGE_SIZE = len(PREFIX) + NAME_SIZE + len(SUFFIX)
-"""The longest message a seed writes: "Gets <12-character name>."."""
+LOCAL_SIZE = len(PREFIX) + NAME_SIZE + len(SUFFIX)
+"""The longest local message: "Gets <12-character name>."."""
+MESSAGE_SIZE = max(LOCAL_SIZE, AP_REMOTE_TEXT_SIZE)
+"""The longest message a seed writes: a remote item's "Found <item>" / "for <player>." (Iris-Dev#19)."""
 MAX_RUN = REPEAT_MIN_LENGTH - 1
 """Plain characters in a row the slot may hold: a ``<REPEAT>`` copies 4 or more."""
 
