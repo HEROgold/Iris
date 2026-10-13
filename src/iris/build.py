@@ -54,6 +54,7 @@ from iris.patches.RealCritical import (
 )
 from iris.patches.archipelago.overworld.basepatch import apply_overworld_basepatch
 from iris.patches.archipelago.overworld.grant_flags import set_flags_on_grants
+from iris.patches.archipelago.overworld.grant_text import name_placed_items
 from iris.patches.archipelago.overworld.hand_ins import gate_airship_on_engine, gate_hand_ins_on_items
 from iris.patches.archipelago.overworld.hint_npcs import hint_npc_candidates
 from iris.patches.open_world import apply_open_world
@@ -203,6 +204,8 @@ def build(source: Path | bytes, options: Options) -> bytes:
             gate_hand_ins_on_items()  # the hand-ins test the item, not the grant's flag (Iris-Dev#49)
             gate_airship_on_engine()  # Lexis's lab builds the airship from a held Engine (Iris-Dev#86)
         set_flags_on_grants()  # grants that set no flag get one, so the client can report them (Iris-Dev#22)
+        if not options.open_world:
+            name_placed_items()  # each grant's "Gets ..." message is a slot the world writes the item's name in (Iris-Dev#52)
 
     party_toggle_in_elcid(require_found=not options.debug_party)  # event-script demo: Elcid townspeople toggle party join/leave
     set_found_flags_on_story_joins()  # story joins also set each character's "found/unlocked" flag

@@ -28,6 +28,7 @@ from iris.enums.patches import Patch
 from iris.helpers.files import open_rom, output_bytes, read_file
 from iris.patches import open_world
 from iris.patches.archipelago.overworld.ap_item import AP_ITEM_INDEX
+from iris.patches.archipelago.overworld.grant_text import text_slots
 from iris.patches.archipelago.overworld.hint_npcs import HINT_FLAGS, hint_slots
 from iris.patches.archipelago.overworld.key_items import KEY_ITEM_NAMES
 from iris.patches.open_world.bosses import (
@@ -55,7 +56,7 @@ from iris.structures.item import Item
 from iris.structures.key_doors import key_doors
 from iris.structures.zone import Zone
 from iris.structures.zone_data_pointers import zone_data_pointers
-from iris.tables import ChestObject, ItemObject, select
+from iris.tables import ChestObject, ItemNameObject, ItemObject, select
 from iris.structures.event_script.script import EventScript
 from tools.build_ap_basepatch import OPEN_WORLD_OPTIONS, OPTIONS, vanilla_image
 from tools.dump_item_grants import GRANT_OPS, SET_FLAG, collect
@@ -118,6 +119,23 @@ def _map_names() -> dict[int, str]:
         if name and name.isprintable() and "�" not in name:
             names[index] = name
     return names
+
+
+def _grant_texts(grants: list["Grant"], *, open_world: bool) -> dict[int, tuple[int, int]]:
+    """Offset of a grant's item byte -> (offset, size) of its "Gets ..." message slot, as the build made them.
+
+    Open world keeps none of the grants with a message (``patches.archipelago.overworld.grant_text``).
+    """
+    if open_world:
+        return {}
+    offsets = {(signature, item): offset for _, signature, offset, item, _, _ in grants}
+    return {offsets[slot.signature, slot.item]: (slot.offset, slot.size) for slot in text_slots()}
+
+
+def _shown_names(rom: bytes) -> list[str]:
+    """Every item's name in ``rom``."""
+    size, start = ItemNameObject.name_text, ItemNameObject.address
+    return [rom[start + size * index : start + size * (index + 1)].decode("ascii").strip() for index in range(ItemObject.count)]
 
 
 def _hint_npcs() -> list[tuple[int, str, int, int]]:
@@ -334,12 +352,19 @@ def _replaced_scripts(extra: str) -> tuple[str, ...]:
     return tuple(sorted(out))
 
 
+def _renamed(shown_names: list[str]) -> list[tuple[int, str]]:
+    """(index, name) of each item whose name in the base ROM isn't its vanilla one (in the vanilla session)."""
+    return [(index, name) for (index, vanilla, _), name in zip(_items(), shown_names, strict=True) if name != vanilla]
+
+
 def render(vanilla: bytes, options: Options = OPTIONS) -> str:
     """The module's text, from the vanilla US ROM ``vanilla`` and the base ROM Iris builds from it with ``options``."""
     select(Patch.VANILLA)
     open_rom(vanilla)
     vanilla_grants = _grants()
     grants, hint_npcs, boss_npcs = _from_base_rom(vanilla, vanilla_grants, options)
+    grant_texts = _grant_texts(grants, open_world=options.open_world)
+    shown_names = _shown_names(output_bytes())
     variants = (
         _variants(vanilla, vanilla_grants, options, (grants, hint_npcs, boss_npcs, output_bytes()))
         if options.open_world else None
@@ -365,6 +390,11 @@ def render(vanilla: bytes, options: Options = OPTIONS) -> str:
         "# Event-script grants: (map, event signature, offset of the item byte, item, count, flags the script sets).",
         "# Opcode 0x21 grants item 0x100 + the byte, opcode 0x20 the byte itself.",
         f"GRANTS = {pformat(grants, width=120)}\n",
+        "# Grant messages (Iris-Dev#52): offset of a grant's item byte -> (offset, size) of its message text. The base",
+        "# patch's slot holds the vanilla message; another item's is written over it (grant_text.message). Items whose",
+        "# in-game name in the base patch differs from ITEMS: index -> name.",
+        f"GRANT_TEXTS = {pformat(grant_texts, width=120)}",
+        f"SHOWN_NAMES = {pformat(dict(_renamed(shown_names)), width=120)}\n",
         "# Locked doors: (map, map object, key item). A door opens when the party holds the key.",
         f"KEY_DOORS = {pformat([(d.map_index, d.map_object, d.item) for d in key_doors()], width=120)}\n",
         f"MAP_NAMES = {pformat(_map_names(), width=120)}\n",
