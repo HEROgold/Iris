@@ -40,6 +40,15 @@ org $8697FA
 org $86981A
     jml ShipKind                ; overwrites BEQ $9841 : DEC : BEQ $9829; A = $09DF
 
+; Warp arrival on the world map ($86:9BCA, $09C9 == 1): the ship goes to the destination's dock, $09EE = $09CC (the
+; high byte of the Warp list entry). Until the Auralio water gate opens (flag 149) vanilla keeps it at Treadool: a
+; dock below $D6 (the towns before Treadool) becomes $D6, Treadool's. A Ship or Submarine item may come before the
+; gate, so with either one held the ship follows to every dock (Iris-Dev#51). Flag 127 stays the Treadool check.
+org $869C2B
+    jml WarpDockGate            ; overwrites LDA #$95 : JSL $80BE1A, then BNE $9C6F (gate open: keep the dock)
+    nop
+    nop
+
 pullpc
 
 DiveCheck:
@@ -65,6 +74,17 @@ ShipKind:
     jml $86981F
 .airship:
     jml $86982C
+
+; m=1. Long reads: DB is the warp code's caller's.
+WarpDockGate:
+    lda.l $7E0000+!KEYS_BYTE
+    and #!SHIP_BIT|!SUBMARINE_BIT
+    bne .follow
+    lda #$95                    ; flag 149, Auralio water gate open
+    jsl $80BE1A
+    jml $869C31                 ; BNE $9C6F on the flag
+.follow:
+    jml $869C6F
 
 ; m=1, x=0. DB mirrors WRAM $0000-$1FFF. Called with JSL from rx.asm's main loop.
 KeyItems:
