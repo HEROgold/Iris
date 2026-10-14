@@ -28,6 +28,14 @@ from iris.enums.patches import Patch
 from iris.helpers.files import open_rom, output_bytes, read_file
 from iris.patches import open_world
 from iris.patches.archipelago.overworld.ap_item import AP_ITEM_INDEX
+from iris.patches.archipelago.overworld.grant_sprites import (
+    AP_HELD_ICON,
+    FLOOR_OBJECTS,
+    MAP_SPRITES,
+    floor_operand,
+    held_icons,
+    held_operands,
+)
 from iris.patches.archipelago.overworld.grant_text import text_slots
 from iris.patches.archipelago.overworld.hint_npcs import HINT_FLAGS, hint_slots
 from iris.patches.archipelago.overworld.key_items import KEY_ITEM_NAMES
@@ -130,6 +138,33 @@ def _grant_texts(grants: list["Grant"], *, open_world: bool) -> dict[int, tuple[
         return {}
     offsets = {(signature, item): offset for _, signature, offset, item, _, _ in grants}
     return {offsets[slot.signature, slot.item]: (slot.offset, slot.size) for slot in text_slots()}
+
+
+def _grant_sprites(grants: list["Grant"]) -> tuple[dict[int, int], dict[int, int]]:
+    """Offset of a grant's item byte -> offset of its ``8C``'s ``YY`` byte (``ZZ`` follows), and -> offset of its
+    floor object's sprite byte in the map's NPC-load script, as the build made them (Iris-Dev#50)."""
+    offsets = {offset for _, _, offset, _, _, _ in grants}
+    held: dict[int, int] = {}
+    for map_index, signature in sorted({(row[0], row[1]) for row in grants}):
+        held.update((grant, operand) for grant, operand in held_operands(map_index, signature) if grant in offsets)
+    by_item = {(signature, item): offset for _, signature, offset, item, _, _ in grants}
+    floor = {
+        by_item[floor.signature, floor.item]: floor_operand(floor)
+        for floor in FLOOR_OBJECTS
+        if (floor.signature, floor.item) in by_item
+    }
+    return held, floor
+
+
+def _compact(mapping: dict[int, tuple[int, int]]) -> str:
+    """``mapping`` as a dict literal, several entries a line."""
+    lines = [""]
+    for key, value in mapping.items():
+        entry = f"{key}: {value!r},"
+        if lines[-1] and len(lines[-1]) + 1 + len(entry) > 118:  # noqa: PLR2004
+            lines.append("")
+        lines[-1] += f" {entry}" if lines[-1] else entry
+    return "{" + "\n ".join(lines).removesuffix(",") + "}"
 
 
 def _shown_names(rom: bytes) -> list[str]:
@@ -365,6 +400,8 @@ def render(vanilla: bytes, options: Options = OPTIONS) -> str:
     grants, hint_npcs, boss_npcs = _from_base_rom(vanilla, vanilla_grants, options)
     grant_texts = _grant_texts(grants, open_world=options.open_world)
     shown_names = _shown_names(output_bytes())
+    held_sprites, floor_sprites = _grant_sprites(grants)
+    item_icons = held_icons()
     variants = (
         _variants(vanilla, vanilla_grants, options, (grants, hint_npcs, boss_npcs, output_bytes()))
         if options.open_world else None
@@ -396,6 +433,15 @@ def render(vanilla: bytes, options: Options = OPTIONS) -> str:
         "# differs from ITEMS: index -> name.",
         f"GRANT_TEXTS = {pformat(grant_texts, width=120)}",
         f"SHOWN_NAMES = {pformat(dict(_renamed(shown_names)), width=120)}\n",
+        "# Grant sprites (Iris-Dev#50): offset of a grant's item byte -> offset of the YY byte of the 8C(XX-YY-ZZ) that",
+        "# shows Maxim holding it up (ZZ follows), and -> offset of its floor object's sprite byte (68(slot-sprite) in the",
+        "# map's NPC-load script). Write ITEM_ICONS[item] (YY, ZZ) over the 8C, AP_HELD_ICON (the AP logo) for the AP",
+        "# item, and MAP_SPRITES[item] over a floor object; an item with neither keeps the vanilla sprite.",
+        f"HELD_SPRITES = {pformat(held_sprites, width=120)}",
+        f"FLOOR_SPRITES = {pformat(floor_sprites, width=120)}",
+        f"ITEM_ICONS = {_compact(item_icons)}",
+        f"MAP_SPRITES = {pformat(MAP_SPRITES, width=120)}",
+        f"AP_HELD_ICON = {AP_HELD_ICON!r}\n",
         "# Locked doors: (map, map object, key item). A door opens when the party holds the key.",
         f"KEY_DOORS = {pformat([(d.map_index, d.map_object, d.item) for d in key_doors()], width=120)}\n",
         f"MAP_NAMES = {pformat(_map_names(), width=120)}\n",
