@@ -7,8 +7,14 @@ lands on the instruction we expect -- so the site cannot silently drift onto the
 """
 
 import random
+from collections.abc import Iterator
 
+import pytest
+from iris.build import Options, build
 from iris.constants import (
+    AP_OPT_SCALING_ENABLED,
+    AP_OPT_SCALING_LOW,
+    AP_OPT_SCALING_RANGE,
     SCALE_ENCOUNTERS_CODE,
     SCALE_ENCOUNTERS_LOW,
     SCALE_ENCOUNTERS_RANGE,
@@ -17,8 +23,11 @@ from iris.constants import (
     SCALE_ENCOUNTERS_TABLE,
     SCALE_ENCOUNTERS_TABLE_SIZE,
 )
-from iris.helpers.files import original_file, output_bytes, read_file, write_file
+from iris.enums.patches import Patch
+from iris.helpers.addresses import address_to_lorom
+from iris.helpers.files import original_file, output_bytes, read_file, session, use, write_file
 from iris.patches.HEROgold.scale_encounters import (
+    AP_DEFAULT_BAND,
     MAX_LEVEL,
     MIN_LEVEL,
     TIE_TOLERANCE,
@@ -30,7 +39,8 @@ from iris.patches.HEROgold.scale_encounters import (
 )
 from iris.structures.formation import EMPTY_SLOT, BattleFormation
 from iris.structures.monster import Monster
-from iris.tables import FormationObject
+from iris.structures.shop import Shop
+from iris.tables import FormationObject, select, selected
 
 
 _SEED = 1234
@@ -140,3 +150,79 @@ def test_reserved_region_is_blank_in_the_base_rom() -> None:
     assert SCALE_ENCOUNTERS_REGION.start >= _BASE_ROM_SIZE
     assert SCALE_ENCOUNTERS_REGION.stop <= SCALE_ENCOUNTERS_ROM_SIZE
     assert len(original_file.read_bytes()) <= _BASE_ROM_SIZE, "base ROM is larger than expected; re-check the reservation"
+
+
+# --- Archipelago: switched per seed by the config block (Iris-Dev#25) ----------------------------
+
+_HOOK_JSL = bytes([_JSL]) + address_to_lorom(SCALE_ENCOUNTERS_CODE).to_bytes(3, "little")
+
+
+def _lda_long(offset: int) -> bytes:
+    return bytes([0xAF]) + address_to_lorom(offset).to_bytes(3, "little")
+
+
+@pytest.fixture(autouse=True)
+def _restore_session() -> Iterator[None]:
+    """build() swaps the session; give the rest of the suite back the one conftest opened."""
+    rom, patch = session(), selected()
+    verify_pointers, easy_mode = Shop.verify_pointers, Monster.easy_mode
+    yield
+    Shop.verify_pointers, Monster.easy_mode = verify_pointers, easy_mode
+    select(patch)
+    use(rom)
+
+
+@pytest.fixture(scope="module")
+def source() -> bytes:
+    return original_file.read_bytes()
+
+
+@pytest.fixture(scope="module")
+def ap_rom(source: bytes) -> Iterator[bytes]:
+    """Built once for the module; module fixtures run before _restore_session, so this one restores its own."""
+    rom, patch = session(), selected()
+    verify_pointers, easy_mode = Shop.verify_pointers, Monster.easy_mode
+    yield build(source, Options(1, selected_patch=Patch.VANILLA, archipelago=True, unlock_warps=False))
+    Shop.verify_pointers, Monster.easy_mode = verify_pointers, easy_mode
+    select(patch)
+    use(rom)
+
+
+def _code(rom: bytes) -> bytes:
+    return rom[SCALE_ENCOUNTERS_CODE:SCALE_ENCOUNTERS_REGION.stop]
+
+
+def test_archipelago_always_hooks_and_reads_the_config_block(ap_rom: bytes) -> None:
+    assert ap_rom[_HOOK_SITE:_HOOK_SITE + 4] == _HOOK_JSL
+    assert any(ap_rom[SCALE_ENCOUNTERS_TABLE:SCALE_ENCOUNTERS_TABLE + SCALE_ENCOUNTERS_TABLE_SIZE])
+    code = _code(ap_rom)
+    for offset in (AP_OPT_SCALING_ENABLED, AP_OPT_SCALING_LOW, AP_OPT_SCALING_RANGE):
+        assert _lda_long(offset) in code, f"the hook doesn't read {offset:#x}"
+    for offset in (SCALE_ENCOUNTERS_LOW, SCALE_ENCOUNTERS_RANGE):
+        assert _lda_long(offset) not in code
+    # Off by default, with the default band, so the base patch alone plays like vanilla.
+    low, high = AP_DEFAULT_BAND
+    assert ap_rom[AP_OPT_SCALING_ENABLED] == 0
+    assert ap_rom[AP_OPT_SCALING_LOW] == low.to_bytes(1, "little", signed=True)[0]
+    assert ap_rom[AP_OPT_SCALING_RANGE] == high - low + 1
+    # Switched off, the hook replays the store and returns: STA.l $7FF8A4 : PHA : LDA.l enabled : BNE : PLA : PLP : RTL.
+    off_path = bytes.fromhex("8F A4 F8 7F 48") + _lda_long(AP_OPT_SCALING_ENABLED) + bytes.fromhex("D0 03 68 28 6B 68")
+    assert off_path in code
+
+
+def test_plain_builds_keep_the_vanilla_store(source: bytes) -> None:
+    rom = build(source, Options(1, selected_patch=Patch.VANILLA))
+    assert rom[_HOOK_SITE:_HOOK_SITE + 4] == _HOOK_VANILLA
+
+
+def test_cli_scaling_keeps_its_own_bytes_and_no_switch(source: bytes) -> None:
+    rom = build(source, Options(1, selected_patch=Patch.VANILLA, scale_encounters=(_LOW, _HIGH)))
+    assert rom[_HOOK_SITE:_HOOK_SITE + 4] == _HOOK_JSL
+    assert rom[SCALE_ENCOUNTERS_LOW] == _LOW_BYTE
+    assert rom[SCALE_ENCOUNTERS_RANGE] == _RANGE_BYTE
+    code = _code(rom)
+    assert _lda_long(SCALE_ENCOUNTERS_LOW) in code
+    assert _lda_long(SCALE_ENCOUNTERS_RANGE) in code
+    assert _lda_long(AP_OPT_SCALING_ENABLED) not in code
+    # The routine opens straight into the swap: PHP : SEP #$20 : STA.l $7FF8A4 : REP #$30.
+    assert code.startswith(bytes.fromhex("08 E2 20 8F A4 F8 7F C2 30"))

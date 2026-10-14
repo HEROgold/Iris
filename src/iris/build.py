@@ -43,6 +43,11 @@ from iris.patches.HEROgold import (
     swap_pierre_danielle_sprites,
 )
 from iris.patches.HEROgold.new_game import INTRO_SPAWN_ENTRANCE
+from iris.patches.HEROgold.scale_encounters import (
+    AP_DEFAULT_BAND,
+    install_ap_encounter_scaling,
+    write_ap_scaling_defaults,
+)
 from iris.patches.HEROgold.start_capsule import start_capsule
 from iris.patches.RealCritical import (
     ac_more_enemies,
@@ -264,6 +269,9 @@ def build(source: Path | bytes, options: Options) -> bytes:
 
     if options.archipelago:
         apply_overworld_basepatch(hint_npcs)
+        # Encounter scaling is off until the world's tokens switch it on (Iris-Dev#25); a CLI band switches it on here.
+        band = options.scale_encounters or AP_DEFAULT_BAND
+        write_ap_scaling_defaults(*band, enabled=options.scale_encounters is not None)
     return output_bytes()
 
 
@@ -314,6 +322,8 @@ def _apply_new_game(options: Options) -> None:
         max_out_party()
     if options.start_capsule is not None:
         start_capsule(options.start_capsule, options.start_capsule_name)
-    if options.scale_encounters:
-        # Runs with the other asm patches so asar assembles after every structure write.
+    # Runs with the other asm patches so asar assembles after every structure write.
+    if options.archipelago:
+        install_ap_encounter_scaling()  # the config block switches it per seed (Iris-Dev#25)
+    elif options.scale_encounters:
         scale_encounters(*options.scale_encounters, seed=options.seed)

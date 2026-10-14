@@ -33,6 +33,10 @@ import random
 from pathlib import Path
 
 from iris.constants import (
+    AP_OPT_SCALING_ENABLED,
+    AP_OPT_SCALING_LOW,
+    AP_OPT_SCALING_RANGE,
+    EXPANDED_ROM_SIZE,
     SCALE_ENCOUNTERS_LOW,
     SCALE_ENCOUNTERS_MAX_BAND,
     SCALE_ENCOUNTERS_MAX_OFFSET,
@@ -42,6 +46,7 @@ from iris.constants import (
     SCALE_ENCOUNTERS_TABLE,
     SCALE_ENCOUNTERS_TABLE_SIZE,
 )
+from iris.helpers.addresses import address_to_lorom
 from iris.helpers.files import write_file
 from iris.helpers.rom_expansion import assert_region_blank, ensure_rom_expanded
 from iris.logger import iris
@@ -123,11 +128,13 @@ def _write_scale_data(table: bytes, low: int, high: int) -> None:
     write_file.write((high - low + 1).to_bytes(1, "little"))
 
 
-def scale_encounters(low: int, high: int, seed: int) -> None:
-    """Scale normal encounters to the party's average level, offset by a roll in ``[low, high]``.
+AP_TABLE_SEED = 0
+"""The Archipelago base patch is static, so its level table is always baked from this seed."""
+AP_DEFAULT_BAND = (-2, 2)
+"""The band the Archipelago base patch carries until the world's tokens set one (the apworld's defaults)."""
 
-    ``seed`` makes the baked level table reproducible.
-    """
+
+def _check_band(low: int, high: int) -> None:
     limit = SCALE_ENCOUNTERS_MAX_OFFSET
     if not (-limit <= low <= high <= limit):
         msg = f"Encounter scaling band must satisfy {-limit} <= low <= high <= {limit}, got {low}..{high}."
@@ -137,6 +144,13 @@ def scale_encounters(low: int, high: int, seed: int) -> None:
                f"more than the {SCALE_ENCOUNTERS_MAX_BAND} the ROM can store.")
         raise ValueError(msg)
 
+
+def scale_encounters(low: int, high: int, seed: int) -> None:
+    """Scale normal encounters to the party's average level, offset by a roll in ``[low, high]``.
+
+    ``seed`` makes the baked level table reproducible.
+    """
+    _check_band(low, high)
     iris.info(f"Scaling normal encounters to party level, offset by [{low}, {high}].")
     # A dedicated Random keeps the table reproducible from the seed alone, independent of how much
     # of the global `random` stream earlier patches happened to consume.
@@ -144,3 +158,35 @@ def scale_encounters(low: int, high: int, seed: int) -> None:
     _write_scale_data(table, low, high)
     # asar runs last so its checksum fix covers the data written above.
     apply_asm_patch(_ASM)
+
+
+def install_ap_encounter_scaling() -> None:
+    """The Archipelago base patch's encounter scaling: the table and the hook, switched by the config block.
+
+    The table is baked from :data:`AP_TABLE_SEED` so the base patch stays static. The hook reads the on/off byte and
+    the band from ``AP_OPT_SCALING_*`` instead of ``$E2:8063/8064``, and with the byte at 0 leaves the vanilla
+    formation alone. :func:`write_ap_scaling_defaults` fills those bytes once the config block exists.
+    """
+    iris.info("Installing encounter scaling, switched per seed by the Archipelago config block.")
+    table = _build_level_table(random.Random(AP_TABLE_SEED))
+    ensure_rom_expanded(SCALE_ENCOUNTERS_ROM_SIZE)
+    assert_region_blank(SCALE_ENCOUNTERS_REGION, owner="scale_encounters")
+    write_file.seek(SCALE_ENCOUNTERS_TABLE)
+    write_file.write(table)
+    apply_asm_patch(_ASM, defines={
+        "enabled_byte": f"${address_to_lorom(AP_OPT_SCALING_ENABLED):06X}",
+        "low_byte": f"${address_to_lorom(AP_OPT_SCALING_LOW):06X}",
+        "range_byte": f"${address_to_lorom(AP_OPT_SCALING_RANGE):06X}",
+    })
+
+
+def write_ap_scaling_defaults(low: int, high: int, *, enabled: bool = False) -> None:
+    """Write the config block's scaling bytes: on/off, the band's low end (two's complement) and its size."""
+    _check_band(low, high)
+    ensure_rom_expanded(EXPANDED_ROM_SIZE)
+    write_file.seek(AP_OPT_SCALING_ENABLED)
+    write_file.write(bytes([int(enabled)]))
+    write_file.seek(AP_OPT_SCALING_LOW)
+    write_file.write(low.to_bytes(1, "little", signed=True))
+    write_file.seek(AP_OPT_SCALING_RANGE)
+    write_file.write((high - low + 1).to_bytes(1, "little"))

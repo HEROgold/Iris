@@ -4,6 +4,8 @@
 ;   $E2:8000  99 bytes  level 1..99 -> best-matching formation id
 ;   $E2:8063  1 byte    LOW  end of the offset band, two's complement
 ;   $E2:8064  1 byte    RANGE, i.e. HIGH - LOW + 1
+; (The Archipelago base patch reads LOW, RANGE and an on/off byte from the config block at $EC:8044-8046
+; instead, so the world sets them per seed; $E2:8063/8064 then stay unused.)
 ;   $E2:8065  this code
 ; The block is reserved in constants.py (SCALE_ENCOUNTERS_*) and claimed with an explicit `org` --
 ; never `freecode`, which would let asar's freespace scanner hand these bytes to another patch.
@@ -60,8 +62,11 @@
 lorom
 
 !table          = $E28000
-!low_byte       = $E28063
-!range_byte     = $E28064
+!low_byte       ?= $E28063      ; the Archipelago base patch passes the config block's bytes instead
+!range_byte     ?= $E28064
+; !enabled_byte (Archipelago only, constants.AP_OPT_SCALING_ENABLED): when defined, the swap runs only
+; while that byte is non-zero, so the world's tokens switch scaling per seed. Plain builds don't define
+; it and assemble exactly as before.
 
 !party_slots    = $7E0A7B       ; four bytes, one character index per active slot
 !party_size     = 7             ; Maxim, Selan, Guy, Arty, Tia, Dekar, Lexis -- indexes 0..6
@@ -112,6 +117,16 @@ scale_encounter:
     php
     sep #$20
     sta.l $7FF8A4               ; displaced instruction: the vanilla formation for this monster
+if defined("enabled_byte")
+    pha
+    lda.l !enabled_byte
+    bne .enabled
+    pla                         ; scaling off: A and $7FF8A4 stay exactly as vanilla left them
+    plp
+    rtl
+.enabled:
+    pla
+endif
     rep #$30
     phx
     phy
