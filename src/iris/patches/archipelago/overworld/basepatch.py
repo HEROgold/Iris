@@ -10,6 +10,7 @@ from iris.patches.archipelago.overworld.docks import nearest_docks
 from iris.patches.archipelago.overworld.hint_npcs import HintNpc, make_hint_slots
 from iris.patches.archipelago.overworld.key_items import apply_key_items
 from iris.patches.archipelago.overworld.remote_items import apply_remote_items
+from iris.patches.archipelago.overworld.scenario_items import apply_scenario_item_mode, write_scenario_item_mode
 from iris.patches.HEROgold.start_capsule import SPECIES_COUNT, default_name
 
 
@@ -18,7 +19,8 @@ RX_ASM = Path(__file__).parent / "rx.asm"
 
 def apply_overworld_basepatch(hint_npcs: list[HintNpc]) -> None:
     """The hint slots, the config block header, receiving items and key items (rx.asm), the key-item slots, chests and
-    grants holding the AP item (remote_items.asm) and the AP item.
+    grants holding the AP item (remote_items.asm), the scenario-item removal mode (scenario_items.asm, vanilla removals
+    by default) and the AP item.
 
     The last asar run (the AP item's sprite) fixes the checksum.
     """
@@ -28,6 +30,8 @@ def apply_overworld_basepatch(hint_npcs: list[HintNpc]) -> None:
     apply_asm_patch(RX_ASM, defines=defines, code_region=RX_CODE_REGION)
     apply_key_items()
     apply_remote_items()
+    write_scenario_item_mode()
+    apply_scenario_item_mode()
     apply_ap_item()
 
 

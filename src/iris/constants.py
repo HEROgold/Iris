@@ -69,6 +69,8 @@ SCALE_BOSSES_CODE_REGION = range(0x340E00, 0x341800)
 """open_world/scale_bosses.asm (about 0.6KB)."""
 REMOTE_ITEMS_CODE_REGION = range(0x341800, 0x341A00)
 """archipelago/overworld/remote_items.asm: chests and grants holding the AP item (Iris-Dev#19)."""
+SCENARIO_ITEMS_CODE_REGION = range(0x341A00, 0x341B00)
+"""archipelago/overworld/scenario_items.asm: the scenario-item removal mode (Iris-Dev#26)."""
 
 # --- Reserved space: RealCritical fix_cave_chest_table --------------------------------------------
 # 71-byte hook body at headerless 0x30D820 (SNES $E1:D820); the patched code at 0x19176 jumps to $E1:D84A.
@@ -109,7 +111,8 @@ AP_OPT_SCALING_LOW = 0x360045
 AP_OPT_SCALING_RANGE = 0x360046
 """1 byte: scaling band size (same semantics as SCALE_ENCOUNTERS_RANGE)."""
 AP_OPT_SCENARIO_ITEM_MODE = 0x360047
-"""1 byte: scenario-item removal mode."""
+"""1 byte: scenario-item removal mode (scenario_items.asm): 0 the story removes key items as in vanilla, 1 it never
+removes them."""
 AP_OPT_BLUE_CHESTS_ENABLED = 0x360048
 """1 byte (0/1): Ancient Cave blue chests are checks."""
 AP_OPT_BLUE_CHEST_COUNT = 0x360049
@@ -150,6 +153,7 @@ RESERVED_REGIONS = [
     START_CAPSULE_CODE_REGION,
     SCALE_BOSSES_CODE_REGION,
     REMOTE_ITEMS_CODE_REGION,
+    SCENARIO_ITEMS_CODE_REGION,
 ]
 """Every fixed ROM-expansion reservation, checked for overlaps by helpers.rom_expansion.assert_no_overlaps."""
 
