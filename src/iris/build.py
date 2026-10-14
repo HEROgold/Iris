@@ -17,7 +17,6 @@ from iris.patcher import (
     apply_absynnonym_patch,
     apply_game_genie_codes,
     set_spawn_location,
-    start_engine,
 )
 from iris.patches.genie_codes import (
     AIRSHIP_ANYWHERE,
@@ -122,7 +121,10 @@ class Options:
     start_items: tuple[tuple[int, int], ...] = ()
     """``(item index, quantity)`` pairs in the inventory at new game."""
     custom_spawn_city: bool = False
+    start_mermaid_jade: bool = False
+    """Start with the Mermaid jade and the submarine at Elcid's dock (Iris-Dev#24)."""
     start_engine: bool = False
+    """Start with the Engine and the airship at Elcid's dock. It can also dive: vanilla has no airship-only ship."""
     capsule_feeding_bonus: bool = False
     clear_initial_spells: bool = False
     eat_dragon_eggs: bool = False
@@ -289,8 +291,6 @@ def _apply_randomizer_patches(options: Options) -> None:
     elif options.custom_spawn_city:
         set_spawn_location(Zone.from_name("Elcid"), entrance_cutscene=0x02) # TODO: Investigate and fix (event) script loading.
         # set_spawn_location(Zone.from_name(options.spawn_location))
-    if options.start_engine:
-        start_engine()
     for option, patch in _FIX_PATCHES:
         if getattr(options, option):
             apply_absynnonym_patch(patch)
@@ -306,6 +306,9 @@ def _apply_new_game(options: Options) -> None:
         skip_intro=options.skip_intro,
         start_items=start_items,
         clear_ap_rx=options.archipelago,
+        start_mermaid_jade=options.start_mermaid_jade,
+        start_engine=options.start_engine,
+        ap_start_vehicles=options.archipelago,
     )
     if options.debug_party:
         max_out_party()

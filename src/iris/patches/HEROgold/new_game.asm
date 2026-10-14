@@ -14,6 +14,19 @@
 ;                 game also starts at Elcid entrance 3 (set_spawn_location) so the opening scene never loads.
 ; !start_items    Put items in the inventory through the game's add-item routine $82:E80C (item in $09CF, quantity
 ;                 in $09CD), as the Archipelago Ancient Cave patch's StartInventory does.
+; !start_mermaid_jade, !start_engine
+;                 Standalone Iris (Iris-Dev#16, #24): start with the Mermaid jade (448) and/or the Engine (449) and
+;                 the ship they make: type $09DF 1 (submarine) with the jade alone, 2 (submarine + airship) with the
+;                 Engine (vanilla has no airship that can't dive), placed at Elcid's dock $C8 the first time the world
+;                 map loads ($09E0 = 0 on the map, $09EE = the pending dock, placed by $86:A2AE). No story flag is set
+;                 (86/98/99/127/145 gate story scenes and NPCs). Two hooks keep the ship usable: event opcode 7C (set
+;                 ship type, $80:BD6C) never lowers $09DF, so the Treadool scene's 7C(00) and the submarine scene's
+;                 7C(01) can't take the vehicle back, and Warp arrival keeps the ship at the destination's dock before
+;                 the Auralio water gate opens instead of sending it to Treadool ($86:9C31 BNE -> BRA).
+; !ap_start_vehicles
+;                 Archipelago (overworld): read the config block's start bytes once, at new game, and set the item
+;                 bits: Start with Mermaid Jade = Ship 454 + Submarine 455, Start with Engine = Ship 454 + Engine 449.
+;                 key_items.asm builds the ship from them and places it at the nearest dock.
 
 lorom
 
@@ -23,6 +36,15 @@ lorom
 !start_item_count ?= 0      ; number of (item, quantity) pairs in !start_items
 !start_items ?= 0           ; "item,quantity,item,quantity,..." as dw values
 !clear_ap_rx ?= 0           ; zero the Archipelago RX counters (archipelago/overworld/rx.asm)
+!start_mermaid_jade ?= 0
+!start_engine ?= 0
+!ap_start_vehicles ?= 0
+!ap_opt_start_mermaid_jade ?= $EC8042   ; constants.AP_OPT_START_MERMAID_JADE
+!ap_opt_start_engine ?= $EC8043         ; constants.AP_OPT_START_ENGINE
+
+!SCENARIO_0920 = $7E0920    ; 448 Mermaid jade bit $10, 449 Engine bit $20
+!SCENARIO_0921 = $7E0921    ; 454 Ship bit $04, 455 Submarine bit $08
+!ELCID_DOCK = $C8
 
 ; Event flag n is bit n % 8 (low bit first) of $7E:077E + n / 8, as the game's own helper at $80:BE30 computes it.
 macro set_event_flag(n)
@@ -34,6 +56,16 @@ endmacro
 org $03ADC2                 ; file 0x1ADC2: was  A9 FF 8D 9D 09 4C 8E B1  (LDA #$FF/STA $099D/JMP $B18E)
     jml new_game_hook       ; 4 bytes
     db $EA,$EA,$EA,$EA      ; pad the remaining 4 replaced bytes with NOP
+
+if !start_mermaid_jade || !start_engine
+org $80BD6F                 ; event opcode 7C: was  8D DF 09 82 8B DF  (STA $09DF : BRL $9D00), A = the operand
+    jml ship_upgrade
+    nop
+    nop
+
+org $869C31                 ; Warp arrival: was  D0 3C  (BNE $9C6F on flag 149, the Auralio water gate)
+    db $80                  ; BRA: the ship always goes to the destination's dock
+endif
 
 ; NEW_GAME_CODE_REGION (apply_asm_patch's code_region), not freecode: asar's freespace finder lands in vanilla tile data.
 org !code
@@ -132,7 +164,35 @@ if !clear_ap_rx
     sta.l $F02802           ; processed
     plp
 endif
-if !skip_tutorial || !skip_intro || !unlock_warps == 0 || !start_item_count || !clear_ap_rx
+if !start_mermaid_jade || !start_engine
+    lda.l !SCENARIO_0920
+    ora.b #(!start_mermaid_jade*$10)|(!start_engine*$20)
+    sta.l !SCENARIO_0920
+    lda #$00
+    sta.l $7E09E0           ; the ship is on the world map
+    lda #!ELCID_DOCK
+    sta.l $7E09EE           ; at Elcid's dock, once the world map loads
+    lda #1+!start_engine
+    sta.l $7E09DF           ; 1 submarine, 2 submarine + airship
+endif
+if !ap_start_vehicles
+    lda.l !ap_opt_start_mermaid_jade
+    beq .no_start_jade
+    lda.l !SCENARIO_0921
+    ora #$0C                ; Ship + Submarine
+    sta.l !SCENARIO_0921
+.no_start_jade:
+    lda.l !ap_opt_start_engine
+    beq .no_start_engine
+    lda.l !SCENARIO_0921
+    ora #$04                ; Ship
+    sta.l !SCENARIO_0921
+    lda.l !SCENARIO_0920
+    ora #$20                ; Engine
+    sta.l !SCENARIO_0920
+.no_start_engine:
+endif
+if !skip_tutorial || !skip_intro || !unlock_warps == 0 || !start_item_count || !clear_ap_rx || !start_mermaid_jade || !start_engine || !ap_start_vehicles
     lda #$FF                ; A is still $FF after the warp stores unless something since changed it
 endif
     sta.l $7E099D           ; the original displaced write (LDA #$FF : STA $099D)
@@ -141,6 +201,17 @@ endif
 if !start_item_count
 start_items:
     dw !start_items
+endif
+
+if !start_mermaid_jade || !start_engine
+; Event opcode 7C, m=1, DB = the script's bank. The story only raises the ship type, except the Treadool scene's 7C(00);
+; with a vehicle from the start, neither may take it back.
+ship_upgrade:
+    cmp.l $7E09DF
+    bcc .keep
+    sta.l $7E09DF
+.keep:
+    jml $809D00
 endif
 
 warnpc !code_end

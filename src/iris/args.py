@@ -81,6 +81,7 @@ class Args(argparse.Namespace):
     custom_spawn_city: bool  # start in Portravia
     spawn_location: str = "Portravia"  # start in Portravia
     unlock_gift_mode: bool
+    start_mermaid_jade: bool
     start_engine: bool
     scale_encounters: list[int] | None
     # Fixing patches
@@ -171,7 +172,14 @@ parser.add_argument("--eat_dragon_eggs", action="store_true")
 parser.add_argument("--no_boat_encounters", action="store_true")
 parser.add_argument("--secondary_tool", action="store_true")
 parser.add_argument("--unlock_gift_mode", action="store_true")
-parser.add_argument("--start_engine", action="store_true")
+parser.add_argument(
+    "--start-mermaid-jade", "--start_mermaid_jade", dest="start_mermaid_jade", action="store_true",
+    help="Start with the Mermaid jade and the submarine at Elcid's dock.",
+)
+parser.add_argument(
+    "--start-engine", "--start_engine", dest="start_engine", action="store_true",
+    help="Start with the Engine and the airship at Elcid's dock. It can also dive: vanilla has no airship-only ship.",
+)
 parser.add_argument(
     "--scale-encounters", nargs=2, type=int, default=None, metavar=("LOW", "HIGH"),
     help=(
@@ -234,7 +242,6 @@ def _reject_unimplemented(args: Args) -> None:
     assert not args.custom_spawn_city, "Custom starting location not implemented."
     assert args.spawn_location == "Portravia", "Custom starting location not implemented."
     assert not args.unlock_gift_mode, "Patch not implemented."
-    assert not args.start_engine, "Patch not implemented."
     assert not args.ancient_cave_music, "Fix not implemented."  # Won't be implemented.
     # Item.from_index reads the equip bytes after these were applied, and Monster never writes its movement byte.
     assert not args.equip_everyone, "Patch not implemented."
@@ -287,7 +294,6 @@ def _enable_debug_patches(args: Args) -> None:
     args.secondary_tool = True
     args.unlock_gift_mode = True
     args.custom_spawn_city = True
-    args.start_engine = True
     args.ancient_cave_music = True
     args.capsule_master_select = True
     args.capsule_tag = True

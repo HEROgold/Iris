@@ -15,7 +15,6 @@ from iris.helpers.files import write_file
 from iris.helpers.rom_expansion import assert_region_blank, ensure_rom_expanded
 from iris.logger import iris
 from iris.patches.parser import PatchData, PatchParser
-from iris.structures.item import Item
 from iris.structures.zone import Zone
 
 
@@ -241,11 +240,6 @@ def apply_game_genie_codes(*codes: str) -> None:
 
 # Event patches (eventpatch_*.txt) are applied by structures.event_script.event_patch.
 
-
-def start_engine() -> None:
-    item = Item.from_index(449)
-    assert item.name_pointer.name.startswith("Engine"), f"Expected Engine, got {item.name_pointer}"
-    # TODO: add that to starting inventory.
 
 def set_spawn_location(location: Zone, entrance_cutscene: int = 0x2) -> None:
     # entrance_cutscene

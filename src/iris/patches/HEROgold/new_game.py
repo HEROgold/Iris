@@ -12,12 +12,21 @@ asar can only hook the new-game handoff once, so every new-game feature is a swi
   scenes), so those scenes skip. The other half, starting the new game at Elcid entrance 3 instead of 2 so the
   opening scene never loads, is ``set_spawn_location``'s job (see ``__main__``).
 - ``start_items``: ``(item, quantity)`` pairs the game's add-item routine ($82:E80C) puts in the inventory.
+- ``start_mermaid_jade`` / ``start_engine``: standalone Iris (Iris-Dev#16, #24). Start with the Mermaid jade and/or the
+  Engine, and the ship they make at Elcid's dock: the submarine (ship type 1) with the jade alone, the airship with the
+  Engine. Vanilla has no airship that can't dive, so the Engine always gives type 2 (submarine and airship). No story
+  flag is set: GOT_SUBMARINE, GOT_ENGINE, GOT_AIRSHIP, GOT_SHIP and RECEIVED_MERMAID_JADE gate the story scenes that
+  give the vehicles (and their NPCs), which still play. The ship type then only goes up (event opcode 7C), and Warp
+  takes the ship along before the Auralio water gate opens.
+- ``ap_start_vehicles``: the Archipelago base patch reads the config block's Start with Mermaid Jade / Start with Engine
+  bytes at new game and sets the item bits (Ship + Submarine, Ship + Engine); ``key_items.asm`` does the rest.
 """
 
 from collections.abc import Sequence
 from pathlib import Path
 
-from iris.constants import NEW_GAME_CODE_REGION
+from iris.constants import AP_OPT_START_ENGINE, AP_OPT_START_MERMAID_JADE, NEW_GAME_CODE_REGION
+from iris.helpers.addresses import address_to_lorom
 from iris.logger import iris
 from iris.patcher import apply_asm_patch
 from iris.structures.item import Item
@@ -58,28 +67,40 @@ INTRO_FLAGS = (
 """Set at new game by ``skip_intro``."""
 
 
-def apply_new_game_hook(
+def apply_new_game_hook(  # noqa: PLR0913 - one switch per new-game feature
     *,
     unlock_warps: bool = True,
     skip_tutorial: bool = False,
     skip_intro: bool = False,
     start_items: Sequence[tuple[Item, int]] = (),
     clear_ap_rx: bool = False,
+    start_mermaid_jade: bool = False,
+    start_engine: bool = False,
+    ap_start_vehicles: bool = False,
 ) -> None:
     """Install the new-game hook with the chosen features. Call once per build: a second call replaces the first.
 
     ``start_items`` are ``(item, quantity)`` pairs added to the inventory at new game. ``clear_ap_rx`` zeroes the
     Archipelago receive counters (Iris-Dev#20) so a new game starts with nothing received.
+
+    ``start_mermaid_jade`` starts with the Mermaid jade and the submarine; ``start_engine`` with the Engine and the
+    airship, which can also dive (ship type 2: vanilla has no airship-only ship). Either places the ship at Elcid's dock.
+    ``ap_start_vehicles`` makes the Archipelago base patch read those two choices from its config block instead.
     """
     iris.info(
         f"New-game hook: unlock_warps={unlock_warps}, skip_tutorial={skip_tutorial}, skip_intro={skip_intro}, "
-        f"start_items={len(start_items)}.",
+        f"start_items={len(start_items)}, start_mermaid_jade={start_mermaid_jade}, start_engine={start_engine}.",
     )
     defines = {
         "unlock_warps": str(int(unlock_warps)),
         "skip_tutorial": str(int(skip_tutorial)),
         "skip_intro": str(int(skip_intro)),
         "clear_ap_rx": str(int(clear_ap_rx)),
+        "start_mermaid_jade": str(int(start_mermaid_jade)),
+        "start_engine": str(int(start_engine)),
+        "ap_start_vehicles": str(int(ap_start_vehicles)),
+        "ap_opt_start_mermaid_jade": f"${address_to_lorom(AP_OPT_START_MERMAID_JADE):06X}",
+        "ap_opt_start_engine": f"${address_to_lorom(AP_OPT_START_ENGINE):06X}",
     }
     if start_items:
         for item, quantity in start_items:
