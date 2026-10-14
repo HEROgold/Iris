@@ -64,7 +64,8 @@ end
 act(function()
   state("A start")
   check("A: Progressive Ship became the Ship (bit 454)", rd(0x0921) & 0x14 == 0x04)
-  check("A: ship placed at the Treadool dock", rd(0x09E3) == 175 and rd(0x09E4) == 47 and rd(0x09E0) == 0)
+  -- The Ship arrived in Elcid, so it's at Elcid's dock, the nearest one (Iris-Dev#67; ship_dock.lua).
+  check("A: ship placed at Elcid's dock", rd(0x09E3) == 43 and rd(0x09E4) == 217 and rd(0x09E0) == 0)
   check("A: flags 127 and 149 clear", flag(127) == 0 and flag(149) == 0)
 end)
 warp(ALUNZE, "A Alunze", ALUNZE, 0)

@@ -6,6 +6,7 @@ from iris.constants import RX_CODE_REGION
 from iris.patcher import apply_asm_patch
 from iris.patches.archipelago.overworld.ap_item import apply_ap_item
 from iris.patches.archipelago.overworld.config_block import write_config_block
+from iris.patches.archipelago.overworld.docks import nearest_docks
 from iris.patches.archipelago.overworld.hint_npcs import HintNpc, make_hint_slots
 from iris.patches.archipelago.overworld.key_items import apply_key_items
 from iris.patches.archipelago.overworld.remote_items import apply_remote_items
@@ -23,7 +24,8 @@ def apply_overworld_basepatch(hint_npcs: list[HintNpc]) -> None:
     """
     make_hint_slots(hint_npcs)
     write_config_block()
-    apply_asm_patch(RX_ASM, defines={"capsule_names": _capsule_names()}, code_region=RX_CODE_REGION)
+    defines = {"capsule_names": _capsule_names(), "nearest_docks": _db(nearest_docks())}
+    apply_asm_patch(RX_ASM, defines=defines, code_region=RX_CODE_REGION)
     apply_key_items()
     apply_remote_items()
     apply_ap_item()
@@ -32,4 +34,9 @@ def apply_overworld_basepatch(hint_npcs: list[HintNpc]) -> None:
 def _capsule_names() -> str:
     """Every species' default name, 5 bytes each, as an asar ``db`` list (rx_specials.asm's !capsule_names)."""
     names = b"".join(default_name(species).encode("ascii").ljust(5, b"\x00") for species in range(SPECIES_COUNT))
-    return ",".join(f"${byte:02X}" for byte in names)
+    return _db(names)
+
+
+def _db(data: bytes) -> str:
+    """``data`` as an asar ``db`` list."""
+    return ",".join(f"${byte:02X}" for byte in data)

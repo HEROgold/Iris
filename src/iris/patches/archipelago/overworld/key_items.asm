@@ -2,13 +2,16 @@
 ; Included by rx.asm; KeyItems runs once per field frame, after RX.
 ;
 ; Items (free scenario-item slots, named by key_items.py):
-;   454 Ship        the boat; while the Treadool scene hasn't given it yet, it is placed at the Treadool dock
+;   454 Ship        the boat; while the Treadool scene hasn't given it yet, it is placed at the dock nearest the map
+;                   it arrives in (Iris-Dev#67)
 ;   455 Submarine
 ;   456 Prog. ship  token: becomes the first one missing of Ship, Submarine, Engine (airship)
 ;   457 Prog. arrow token: becomes the Fire arrow (Maxim always starts with the Arrow)
 ; The story still gives the ship (flag 127), the submarine (flag 86) and the airship (flag 99) as in vanilla; the items
 ; only add to it. The ship type $09DF follows from what you hold: 0 boat, 1 submarine, 2 submarine and airship, and
 ; 3 airship only (terrorwave's patch_no_submarine, ported below: 3 flies but can't dive).
+;
+; Defines (docks.py): !nearest_docks, 256 bytes: the world-map dock id ($C8-$E6) nearest each map index ($05AC).
 ;
 ; Scenario-item bits: item i (428+) is bit (i-428)&7 of $091E+((i-428)>>3). Event flag n: bit n&7 of $077E+(n>>3).
 
@@ -25,7 +28,7 @@
 !GOT_AIRSHIP_BIT = $08
 !GOT_SHIP_BYTE = $078D          ; flag 127, set by the Treadool scene that gives the ship
 !GOT_SHIP_BIT = $80
-!TREADOOL_DOCK = $01            ; ship location of the Treadool scene, 7D(01)
+!MAP = $05AC                    ; current map index
 !FIRE_ARROW_ITEM = 426
 
 ; The code continues rx.asm's block (RX_CODE_REGION); the hooks step out of it and back.
@@ -182,15 +185,20 @@ HasAirship:
 ShipState:
     jsr HasShip
     bcc .done
-    lda !GOT_SHIP_BYTE          ; a Ship item before the Treadool scene: put the ship at the Treadool dock, once
+    lda !GOT_SHIP_BYTE          ; a Ship item before the Treadool scene: put the ship at the nearest dock, once
     bit #!GOT_SHIP_BIT
     bne .type
     lda $09E0
     cmp #$FF
     bne .type
     stz $09E0                   ; as 7E(00)
-    lda #!TREADOOL_DOCK
-    sta $09EE                   ; as 7D(01)
+    rep #$20
+    lda !MAP
+    and #$00FF
+    tax
+    sep #$20
+    lda.l NearestDock,x         ; 7D(xx) stores its operand in $09EE as is: the Treadool scene's 7D(01) is dock $01,
+    sta $09EE                   ; at Treadool's tile; $86:A2AE places the ship there when the world map loads
 .type:
     jsr HasAirship
     bcc .no_airship
@@ -208,3 +216,7 @@ ShipState:
     sta $09DF
 .done:
     rts
+
+; KeyItems runs in the field only (towns and dungeons; the world map has its own loop), where the game keeps no
+; world-map position, so the dock comes from the map the player is in (docks.py).
+NearestDock:        db !nearest_docks
