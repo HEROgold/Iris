@@ -13,6 +13,12 @@ Lexis's lab (``A2-B-2C``) builds the airship on GOT_ENGINE (98), which only the 
 (``A0-A-03``), not on the Engine (Iris-Dev#86). There the item gate is added in front of the flag gate, which stays: the
 lab builds the airship from a held Engine or from the vanilla flag, and its ``25(C1-01)`` still takes the Engine.
 Open world empties the lab's script.
+
+Alunze's Crown line (``10-C-03``, Iris-Dev#26) shows a line and ``33(2D-00)`` while the party holds the Crown, with no
+story-flag test: vanilla takes the Crown at the hand-in, but with ``scenario_items=no_removals`` it stays held and the
+line came back forever. The script now starts with the hand-in's own ``15(28-@target)`` (RETURNED_CROWN_ALUNZE, set by
+``10-B-59``, which starts with the same gate), jumping to its end once the Crown is handed in. Open world empties the
+script.
 """
 
 from dataclasses import dataclass
@@ -46,6 +52,11 @@ ENGINE = 449
 LEXIS_LAB = 0xA2
 LEXIS_SCRIPT = 0x2C
 """Lexis's lab talk script: ``15(62-@75E)`` (GOT_ENGINE) jumps to the airship scene."""
+ALUNZE = 0x10
+CROWN_LINE = 0x03
+"""Alunze's NPC script ``10-C-03``: ``14(C2-459-01-30-@1D-FF)``, a line, ``33(2D-00)``, ``00`` at @1D."""
+CROWN = 459
+END = 0x00
 
 
 HAND_INS = (
@@ -56,13 +67,13 @@ HAND_INS = (
 )
 
 
-def _script(map_index: int, script_index: int) -> EventScript:
+def _script(map_index: int, script_index: int, event_class: EventClass = EventClass.REFERENCED) -> EventScript:
     map_event = MapEvent.from_index(map_index)
     map_event.read()
     return next(
         script
         for event_list in map_event.event_lists
-        if event_list.event_class is EventClass.REFERENCED
+        if event_list.event_class is event_class
         for script in event_list.events
         if script.index == script_index
     )
@@ -117,3 +128,20 @@ def gate_airship_on_engine() -> None:
     script.dirty = True
     MapEvent.from_index(LEXIS_LAB).write()
     iris.debug(f"Lexis's lab {LEXIS_LAB:02X}-{LEXIS_SCRIPT:02X} builds the airship from a held Engine.")
+
+
+def stop_crown_line_after_hand_in() -> None:
+    """Make Alunze's Crown line (``10-C-03``) jump to its end once the Crown is handed in (RETURNED_CROWN_ALUNZE)."""
+    script = _script(ALUNZE, CROWN_LINE, EventClass.NPC)
+    first = script.instructions[0]
+    end = script.instructions[-1]
+    if first.opcode != CONDITION or first.operands[:2] != [HOLDS_ITEM, CROWN] or end.opcode != END:
+        msg = f"Alunze's Crown line isn't the vanilla 10-C-03: {script.instructions}"
+        raise ValueError(msg)
+    script.instructions.insert(
+        0,
+        Instruction(first.line - 1, BRANCH_ON_FLAG, [EventFlag.RETURNED_CROWN_ALUNZE, Address(end.line)]),
+    )
+    script.dirty = True
+    MapEvent.from_index(ALUNZE).write()
+    iris.debug(f"Alunze's Crown line {ALUNZE:02X}-{CROWN_LINE:02X} stops after the hand-in.")

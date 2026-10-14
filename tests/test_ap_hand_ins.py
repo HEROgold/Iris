@@ -249,3 +249,29 @@ def test_open_world_doesnt_gate_the_lab(monkeypatch: pytest.MonkeyPatch) -> None
     monkeypatch.setattr(build_module, "gate_airship_on_engine", lambda: calls.append(None))
     build(vanilla_image(files.original_file), OPEN_WORLD_OPTIONS)
     assert not calls
+
+
+CROWN_LINE = "10-C-03"
+CROWN_HAND_IN = "10-B-59"
+
+
+@pytest.mark.usefixtures("restore")
+def test_crown_line_stops_after_the_hand_in() -> None:
+    """Alunze's Crown line starts with the hand-in's own RETURNED_CROWN_ALUNZE gate, jumping to its end (Iris-Dev#26)."""
+    build(vanilla_image(files.original_file), OPTIONS)
+    scripts = dict(_scripts())
+    line, hand_in = scripts[CROWN_LINE], scripts[CROWN_HAND_IN]
+    gate = line.instructions[0]
+    assert (gate.opcode, gate.operands[0]) == (FLAG_BRANCHES[0], EventFlag.RETURNED_CROWN_ALUNZE)
+    assert (hand_in.instructions[0].opcode, hand_in.instructions[0].operands[0]) == (gate.opcode, gate.operands[0])
+    assert _target(line, gate) is line.instructions[-1]
+    assert (line.instructions[-1].opcode, line.instructions[-1].operands) == (0x00, [])
+    crown = line.instructions[1]
+    assert (crown.opcode, crown.operands[:2]) == (CONDITION, [0xC2, 459])
+    assert _target(line, crown) is line.instructions[-1]
+
+
+@pytest.mark.usefixtures("restore")
+def test_open_world_empties_the_crown_line() -> None:
+    build(vanilla_image(files.original_file), OPEN_WORLD_OPTIONS)
+    assert [ins.opcode for ins in dict(_scripts())[CROWN_LINE].instructions] == [0x00]
