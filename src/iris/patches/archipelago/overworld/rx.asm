@@ -4,10 +4,17 @@
 ;
 ; The SNI client appends received items to a list in expanded SRAM and bumps the "received" counter; the field main
 ; loop gives one item per frame through the chest routine (the "found X" message, without the chest animation) until
-; "processed" catches up. Both counters are saved and loaded with the save slot. The new-game hook clears them
-; (new_game.asm, !clear_ap_rx).
+; "processed" catches up. Both counters, and blue_chests.asm's blue-chest counter, are saved and loaded with the save
+; slot. The new-game hook clears them (new_game.asm, !clear_ap_rx). $F0:2000-$27BF is free (vanilla saves end at
+; $F0:1FFF); the per-slot areas serve up to 8 save slots.
+;
+; Defines: !blue_chests / !blue_chests_saved (AP_SRAM_BLUE_CHESTS / _SAVED), !blue_chest_count
+; (AP_OPT_BLUE_CHEST_COUNT, u16).
 ;
 ; SRAM (bank $F0 = $70):
+;   $F0:27C0  u16 per save slot: saved blue-chest counter (AP_SRAM_BLUE_CHESTS_SAVED)
+;   $F0:27D0  u16 blue-chest counter: Ancient Cave blue chests opened as checks (blue_chests.asm, AP_SRAM_BLUE_CHESTS;
+;             read by the client)
 ;   $F0:27E0  4 bytes per save slot: saved received / processed counters
 ;   $F0:2800  u16 received counter (written by the client)
 ;   $F0:2802  u16 processed counter (written by the game)
@@ -82,8 +89,12 @@ SaveRX:
     sep #$10
     rep #$20
     asl
+    tax                     ; slot * 2
+    lda !blue_chests
+    sta !blue_chests_saved,x
+    txa
     asl
-    tax
+    tax                     ; slot * 4
     lda $F02800
     sta $F027E0,x
     lda $F02802
@@ -97,8 +108,16 @@ LoadRX:
     sep #$10
     rep #$20
     asl
+    tax                     ; slot * 2
+    lda !blue_chests_saved,x
+    cmp !blue_chest_count   ; above this seed's N: blank SRAM or garbage
+    bcc +
+    beq +
+    lda.w #$0000
++:  sta !blue_chests
+    txa
     asl
-    tax
+    tax                     ; slot * 4
     lda $F027E2,x
     cmp $F027E0,x           ; processed > received: a save from before this patch, or blank SRAM
     beq +

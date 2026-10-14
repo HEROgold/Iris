@@ -71,6 +71,8 @@ REMOTE_ITEMS_CODE_REGION = range(0x341800, 0x341A00)
 """archipelago/overworld/remote_items.asm: chests and grants holding the AP item (Iris-Dev#19)."""
 SCENARIO_ITEMS_CODE_REGION = range(0x341A00, 0x341B00)
 """archipelago/overworld/scenario_items.asm: the scenario-item removal mode (Iris-Dev#26)."""
+BLUE_CHESTS_CODE_REGION = range(0x341B00, 0x341C00)
+"""archipelago/overworld/blue_chests.asm: Ancient Cave blue chests as count-based checks (Iris-Dev#21)."""
 
 # --- Reserved space: RealCritical fix_cave_chest_table --------------------------------------------
 # 71-byte hook body at headerless 0x30D820 (SNES $E1:D820); the patched code at 0x19176 jumps to $E1:D84A.
@@ -117,6 +119,11 @@ AP_OPT_BLUE_CHESTS_ENABLED = 0x360048
 """1 byte (0/1): Ancient Cave blue chests are checks."""
 AP_OPT_BLUE_CHEST_COUNT = 0x360049
 """2 bytes, little-endian: number of blue chest checks N."""
+AP_SRAM_BLUE_CHESTS = 0xF027D0
+"""SNES address (SRAM, not a ROM offset) of the u16 blue-chest counter: Ancient Cave blue chests opened as checks so
+far (blue_chests.asm). Saved with the save slot by rx.asm; the client reports locations #1..#counter."""
+AP_SRAM_BLUE_CHESTS_SAVED = 0xF027C0
+"""SNES address (SRAM) of the saved blue-chest counters: a u16 per save slot (rx.asm's SaveRX/LoadRX)."""
 AP_OPT_DEATH_LINK = 0x36004B
 """1 byte (0/1): death link."""
 AP_OPT_BOSS_STRENGTH = 0x36004C
@@ -154,6 +161,7 @@ RESERVED_REGIONS = [
     SCALE_BOSSES_CODE_REGION,
     REMOTE_ITEMS_CODE_REGION,
     SCENARIO_ITEMS_CODE_REGION,
+    BLUE_CHESTS_CODE_REGION,
 ]
 """Every fixed ROM-expansion reservation, checked for overlaps by helpers.rom_expansion.assert_no_overlaps."""
 

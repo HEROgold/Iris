@@ -35,7 +35,8 @@ lorom
 !skip_intro ?= 0
 !start_item_count ?= 0      ; number of (item, quantity) pairs in !start_items
 !start_items ?= 0           ; "item,quantity,item,quantity,..." as dw values
-!clear_ap_rx ?= 0           ; zero the Archipelago RX counters (archipelago/overworld/rx.asm)
+!clear_ap_rx ?= 0           ; zero the Archipelago RX counters and the blue-chest counter (archipelago/overworld/rx.asm)
+!ap_blue_chests ?= $F027D0  ; constants.AP_SRAM_BLUE_CHESTS
 !start_mermaid_jade ?= 0
 !start_engine ?= 0
 !ap_start_vehicles ?= 0
@@ -162,6 +163,7 @@ if !clear_ap_rx
     lda.w #$0000
     sta.l $F02800           ; received
     sta.l $F02802           ; processed
+    sta.l !ap_blue_chests   ; Ancient Cave blue chests counted (blue_chests.asm)
     plp
 endif
 if !start_mermaid_jade || !start_engine

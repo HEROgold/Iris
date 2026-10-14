@@ -2,9 +2,11 @@
 
 from pathlib import Path
 
-from iris.constants import RX_CODE_REGION
+from iris.constants import AP_OPT_BLUE_CHEST_COUNT, AP_SRAM_BLUE_CHESTS, AP_SRAM_BLUE_CHESTS_SAVED, RX_CODE_REGION
+from iris.helpers.addresses import address_to_lorom
 from iris.patcher import apply_asm_patch
 from iris.patches.archipelago.overworld.ap_item import apply_ap_item
+from iris.patches.archipelago.overworld.blue_chests import apply_blue_chests, write_blue_chests
 from iris.patches.archipelago.overworld.config_block import write_config_block
 from iris.patches.archipelago.overworld.docks import nearest_docks
 from iris.patches.archipelago.overworld.hint_npcs import HintNpc, make_hint_slots
@@ -20,18 +22,26 @@ RX_ASM = Path(__file__).parent / "rx.asm"
 def apply_overworld_basepatch(hint_npcs: list[HintNpc]) -> None:
     """The hint slots, the config block header, receiving items and key items (rx.asm), the key-item slots, chests and
     grants holding the AP item (remote_items.asm), the scenario-item removal mode (scenario_items.asm, vanilla removals
-    by default) and the AP item.
+    by default), Ancient Cave blue chests as checks (blue_chests.asm, off by default) and the AP item.
 
     The last asar run (the AP item's sprite) fixes the checksum.
     """
     make_hint_slots(hint_npcs)
     write_config_block()
-    defines = {"capsule_names": _capsule_names(), "nearest_docks": _db(nearest_docks())}
+    defines = {
+        "capsule_names": _capsule_names(),
+        "nearest_docks": _db(nearest_docks()),
+        "blue_chests": f"${AP_SRAM_BLUE_CHESTS:06X}",
+        "blue_chests_saved": f"${AP_SRAM_BLUE_CHESTS_SAVED:06X}",
+        "blue_chest_count": f"${address_to_lorom(AP_OPT_BLUE_CHEST_COUNT):06X}",
+    }
     apply_asm_patch(RX_ASM, defines=defines, code_region=RX_CODE_REGION)
     apply_key_items()
     apply_remote_items()
     write_scenario_item_mode()
     apply_scenario_item_mode()
+    write_blue_chests()
+    apply_blue_chests()
     apply_ap_item()
 
 
